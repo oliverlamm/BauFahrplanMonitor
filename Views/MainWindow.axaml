@@ -1,0 +1,158 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="BauFahrplanMonitor.Views.MainWindow"
+        Title="{Binding Title}"
+        Background="White"
+        Width="1200"
+        Height="800"
+        MinWidth="1000"
+        MinHeight="650">
+
+    <Grid RowDefinitions="Auto,*,Auto"
+          ColumnDefinitions="260,1,*">
+
+        <!-- ================================================= -->
+        <!-- HEADER -->
+        <!-- ================================================= -->
+        <Border Grid.Row="0"
+                Grid.ColumnSpan="3"
+                Background="White"
+                BorderBrush="#D0D0D0"
+                BorderThickness="0,0,0,1"
+                Padding="16,12">
+
+            <TextBlock Text="{Binding Title}"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       Foreground="Black" />
+        </Border>
+
+        <!-- ================================================= -->
+        <!-- LEFT AREA (MENU + SYSTEMSTATUS) -->
+        <!-- ================================================= -->
+        <Grid Grid.Row="1"
+              Grid.Column="0"
+              Margin="12"
+              RowDefinitions="*,Auto">
+
+            <!-- ================= MENU CARD ================= -->
+            <Border Grid.Row="0"
+                    Background="#FAFAFA"
+                    BorderBrush="#D0D0D0"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="16">
+
+                <StackPanel Spacing="10">
+
+                    <TextBlock Text="Importer"
+                               FontWeight="Bold"
+                               Foreground="Black" />
+
+                    <ItemsControl ItemsSource="{Binding Importer}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Classes="MenuButton"
+                                        Margin="0,2"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Padding="8,6"
+                                        Command="{Binding DataContext.SelectImporterCommand,
+                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}">
+
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <PathIcon Width="16"
+                                                  Height="16"
+                                                  Foreground="Black"
+                                                  Data="M4 4H20V6H4zM4 9H20V11H4zM4 14H20V16H4z"/>
+                                        <TextBlock Text="{Binding}" />
+                                    </StackPanel>
+
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+
+                    <!-- dunklere Trennlinie -->
+                    <Separator Margin="0,10"
+                               Background="#9A9A9A" />
+
+                    <!-- Platzhalter für spätere Abschnitte -->
+
+                </StackPanel>
+            </Border>
+
+            <!-- ================= SYSTEMSTATUS BUTTON ================= -->
+            <Button Grid.Row="1"
+                    Margin="0,8,0,0"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Padding="12,8"
+                    Command="{Binding ShowStatusCommand}">
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Width="16"
+                              Height="16"
+                              Foreground="Black"
+                              Data="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8zm7.4 3.4c0-.5-.04-1-.1-1.48l2.02-1.58-2-3.46-2.4.97a7.96 7.96 0 0 0-2.56-1.48L14.4 2h-4.8l-.56 2.96a7.96 7.96 0 0 0-2.56 1.48l-2.4-.97-2 3.46 2.02 1.58c-.06.48-.1.98-.1 1.48s.04 1 .1 1.48l-2.02 1.58 2 3.46 2.4-.97a7.96 7.96 0 0 0 2.56 1.48L9.6 22h4.8l.56-2.96a7.96 7.96 0 0 0 2.56-1.48l2.4.97 2-3.46-2.02-1.58c.06-.48.1-.98.1-1.48z" />
+                    <TextBlock Text="Systemstatus" />
+                </StackPanel>
+
+            </Button>
+
+        </Grid>
+        
+        <!-- ================================================= -->
+        <!-- VERTICAL SEPARATOR (MENU / CONTENT) -->
+        <!-- ================================================= -->
+        <Border Grid.Row="1"
+                Grid.Column="1"
+                Background="#D0D0D0"
+                Width="1" />
+
+        <!-- ================================================= -->
+        <!-- CONTENT AREA -->
+        <!-- ================================================= -->
+        <Border Grid.Row="1"
+                Grid.Column="2"
+                Background="White"
+                Padding="24">
+
+            <ContentControl Content="{Binding Navigation.CurrentViewModel}" />
+        </Border>
+
+        <!-- ================================================= -->
+        <!-- STATUS BAR -->
+        <!-- ================================================= -->
+        <Border Grid.Row="2"
+                Grid.ColumnSpan="3"
+                Background="#FAFAFA"
+                BorderBrush="#D0D0D0"
+                BorderThickness="0,1,0,0"
+                Padding="8,6">
+
+            <Grid ColumnDefinitions="*,Auto">
+
+                <!-- Left -->
+                <TextBlock Text="{Binding StatusMessages.Message}"
+                           Foreground="Black"
+                           FontSize="12" />
+
+                <!-- Right -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding AppInfo}"
+                           Foreground="Black"
+                           FontSize="12" />
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>

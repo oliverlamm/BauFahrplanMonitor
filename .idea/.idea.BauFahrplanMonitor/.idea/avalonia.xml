@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AvaloniaProject">
+    <option name="projectPerEditor">
+      <map>
+        <entry key="App.axaml" value="BauFahrplanMonitor.csproj" />
+        <entry key="Views/MainWindow.axaml" value="BauFahrplanMonitor.csproj" />
+        <entry key="Views/MultiFileImporterView.axaml" value="BauFahrplanMonitor.csproj" />
+        <entry key="Views/StatusPageView.axaml" value="BauFahrplanMonitor.csproj" />
+      </map>
+    </option>
+  </component>
+</project>
