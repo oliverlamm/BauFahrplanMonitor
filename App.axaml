@@ -3,12 +3,14 @@
              xmlns:suki="clr-namespace:SukiUI;assembly=SukiUI"
              xmlns:helpers="clr-namespace:BauFahrplanMonitor.Helpers"
              xmlns:global="clr-namespace:"
+             xmlns:converter="clr-namespace:BauFahrplanMonitor.Converter"
              x:Class="BauFahrplanMonitor.App">
 
     <Application.Resources>
-        <helpers:DbStatusToColorConverter x:Key="DbStatusToColorConverter"/>
-        <global:BoolToCheckIconConverter x:Key="BoolToCheckIconConverter"/>
-        <global:DebugTooltipConverter x:Key="DebugTooltipConverter"/>
+        <converter:DbStatusToColorConverter x:Key="DbStatusToColorConverter"/>
+        <converter:BoolToCheckIconConverter x:Key="BoolToCheckIconConverter"/>
+        <converter:DebugTooltipConverter x:Key="DebugTooltipConverter"/>
+        <converter:StatusSeverityToBrushConverter x:Key="SeverityToBrush"/>
 
         <FontFamily x:Key="FontAwesomeSolid">
             avares://BauFahrplanMonitor/Assets/Font Awesome 7 Free-Solid-900.ttf#Font Awesome 7 Free Solid

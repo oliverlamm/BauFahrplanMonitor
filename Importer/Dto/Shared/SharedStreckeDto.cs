@@ -112,6 +112,6 @@ namespace BauFahrplanMonitor.Importer.Dto.Shared {
         ///  - Sonderregelungen
         ///  - erläuternde Hinweise
         /// </remarks>
-        public string? ZeitraumUnterbrochen { get; set; }
+        public bool ZeitraumUnterbrochen { get; set; } = false;
     }
 }

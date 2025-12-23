@@ -14,38 +14,14 @@ public static class FahrplanjahrHelper {
     /// - beginnt am 2. Sonntag im Dezember des Vorjahres
     /// - endet am 2. Samstag im Dezember des Jahres
     /// </summary>
-    public static int? FromDateRange(DateOnly? start, DateOnly? end) {
-        if (start == null) {
-            Log.Debug(
-                "[Fahrplanjahr] Kein Startdatum übergeben → kein Fahrplanjahr bestimmbar");
+    public static int? FromDateRange(DateOnly? from, DateOnly? to) {
+        if (from == null && to == null)
             return null;
-        }
 
-        Log.Debug(
-            "[Fahrplanjahr] Bestimme Fahrplanjahr: Start={0}, End={1}",
-            start,
-            end);
-
-        try {
-            var result = FromStartDate(start.Value);
-
-            Log.Debug(
-                "[Fahrplanjahr] Ergebnis: Datum {0} → Fahrplanjahr {1}",
-                start,
-                result);
-
-            return result;
-        }
-        catch (Exception ex) {
-            Log.Error(
-                ex,
-                "[Fahrplanjahr] Fehler bei Bestimmung: Start={0}, End={1}",
-                start,
-                end);
-
-            throw;
-        }
+        var date = from ?? to!.Value;
+        return FromDate(date);
     }
+
 
     /// <summary>
     /// Ermittelt das Fahrplanjahr anhand eines einzelnen Datums.
@@ -168,5 +144,19 @@ public static class FahrplanjahrHelper {
             result);
 
         return result;
+    }
+
+    public static int FromDate(DateOnly date) {
+        // Fahrplanjahr-Logik DB:
+        // Fahrplanjahr beginnt im Dezember des Vorjahres
+        // Beispiel:
+        // 10.12.2024 → Fahrplanjahr 2025
+        // 01.01.2025 → Fahrplanjahr 2025
+        // 30.11.2025 → Fahrplanjahr 2025
+        // 14.12.2025 → Fahrplanjahr 2026
+
+        return date.Month >= 12
+            ? date.Year + 1
+            : date.Year;
     }
 }

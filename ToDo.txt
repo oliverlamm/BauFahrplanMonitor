@@ -1,6 +1,3 @@
 - Anzeige Name und Version in der Fusszeile
-- Meldungen in der Statuszeile werden nicht angezeigt.
-- Meldung wieviele ZvF/ÜB/Fplo gefunden wurden (xx, xx bereits eingelesen)
-- Threads zweispaltig
 - SingleImporter
 - NetzfahrplanImporter neu

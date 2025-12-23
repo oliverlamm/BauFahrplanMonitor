@@ -98,4 +98,15 @@ public class SharedDocumentDto {
     /// weiter interpretiert.
     /// </remarks>
     public string AllgemeinText { get; set; } = "";
+    /// <summary>
+    /// Dateiname
+    /// </summary>
+    /// <remarks>
+    /// Wird verwendet für:
+    ///  - Eindeutige Identifikation in der Datenbank
+    ///
+    /// Der Inhalt wird bewusst nicht
+    /// weiter interpretiert.
+    /// </remarks>
+    public string Dateiname {get;set;} = "";
 }

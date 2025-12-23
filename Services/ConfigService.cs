@@ -117,14 +117,28 @@ public class ConfigService {
     // ------------------------------------------------------------
     // Merge: Allgemein
     // ------------------------------------------------------------
-    private static AllgemeinConfig Merge(AllgemeinConfig d, AllgemeinConfig? o)
-        => o == null
-            ? d
-            : new AllgemeinConfig {
-                ImportThreads      = o.ImportThreads != 0 ? o.ImportThreads : d.ImportThreads,
-                Debugging          = o.Debugging,
-                StopAfterException = o.StopAfterException
-            };
+    private static AllgemeinConfig Merge(AllgemeinConfig d, AllgemeinConfig? o) {
+        if (o == null)
+            return d;
+
+        var debugging = o.Debugging;
+
+        var importThreads = debugging
+            ? 1
+            : (o.ImportThreads != 0 ? o.ImportThreads : d.ImportThreads);
+
+        if (debugging && importThreads != 1) {
+            Logger.Warn(
+                "Debugging=true → ImportThreads wird zwangsweise auf 1 gesetzt (war {0})",
+                o.ImportThreads);
+        }
+
+        return new AllgemeinConfig {
+            Debugging          = debugging,
+            ImportThreads      = importThreads,
+            StopAfterException = o.StopAfterException
+        };
+    }
 
     // ------------------------------------------------------------
     // Merge: Datei

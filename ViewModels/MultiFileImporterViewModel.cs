@@ -13,6 +13,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
+using BauFahrplanMonitor.Importer.Dto;
 using BauFahrplanMonitor.Importer.Helper;
 using BauFahrplanMonitor.Importer.Interface;
 using BauFahrplanMonitor.Resolver;
@@ -35,8 +36,12 @@ public partial class MultiFileImporterViewModel : ObservableObject {
     private readonly SharedReferenceResolver           _resolver;
     private readonly IDbContextFactory<UjBauDbContext> _dbFactory;
 
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> FileLocks
+        = new();
 
     private Dictionary<string, ImportDbInfo>? _dbImportCache;
+
+    private int _importErrorCount = 0;
 
     // =====================================================
     // Header
@@ -57,24 +62,26 @@ public partial class MultiFileImporterViewModel : ObservableObject {
 
     public IBrush StatusBrush =>
         Status switch {
-            ImporterStatus.Bereit        => Brushes.Gray,
-            ImporterStatus.Scannen       => Brushes.RoyalBlue,
-            ImporterStatus.Importieren   => Brushes.DodgerBlue,
-            ImporterStatus.Abgeschlossen => Brushes.ForestGreen,
-            ImporterStatus.Abbruch       => Brushes.DarkOrange,
-            ImporterStatus.Fehler        => Brushes.IndianRed,
-            _                            => Brushes.Gray
+            ImporterStatus.Bereit                  => Brushes.Gray,
+            ImporterStatus.Scannen                 => Brushes.RoyalBlue,
+            ImporterStatus.Importieren             => Brushes.DodgerBlue,
+            ImporterStatus.Abgeschlossen           => Brushes.ForestGreen,
+            ImporterStatus.AbgeschlossenMitFehlern => Brushes.DarkOrange,
+            ImporterStatus.Abbruch                 => Brushes.DarkOrange,
+            ImporterStatus.Fehler                  => Brushes.IndianRed,
+            _                                      => Brushes.Gray
         };
 
     public string StatusText =>
         Status switch {
-            ImporterStatus.Bereit        => "Bereit",
-            ImporterStatus.Scannen       => "Scanne…",
-            ImporterStatus.Importieren   => "Importiere…",
-            ImporterStatus.Abgeschlossen => "Abgeschlossen",
-            ImporterStatus.Abbruch       => "Abbruch",
-            ImporterStatus.Fehler        => "Fehler",
-            _                            => "Unbekannt"
+            ImporterStatus.Bereit                  => "Bereit",
+            ImporterStatus.Scannen                 => "Scanne…",
+            ImporterStatus.Importieren             => "Importiere…",
+            ImporterStatus.Abgeschlossen           => "Abgeschlossen",
+            ImporterStatus.AbgeschlossenMitFehlern => "Abgeschlossen mit Fehlern",
+            ImporterStatus.Abbruch                 => "Abbruch",
+            ImporterStatus.Fehler                  => "Fehler",
+            _                                      => "Unbekannt"
         };
 
     public string StatusColor {
@@ -215,8 +222,7 @@ public partial class MultiFileImporterViewModel : ObservableObject {
         SharedReferenceResolver           resolver,
         string                            title,
         IFileImporterFactory              importerFactory,
-        ImporterTyp                       importerTyp)
-    {
+        ImporterTyp                       importerTyp) {
         _configService   = configService;
         _statusMessages  = statusMessages;
         _databaseService = databaseService;
@@ -287,8 +293,6 @@ public partial class MultiFileImporterViewModel : ObservableObject {
             TotalFiles = _importQueue.Count;
 
             Status = ImporterStatus.Abgeschlossen;
-            _statusMessages.Success(
-                $"Scan abgeschlossen ({QueueCount} importierbare Dateien)");
         }
         catch (OperationCanceledException) {
             Status = ImporterStatus.Abbruch;
@@ -326,7 +330,7 @@ public partial class MultiFileImporterViewModel : ObservableObject {
         try {
             await using (var db = await _dbFactory.CreateDbContextAsync(_importCts.Token)) {
                 await _resolver.WarmUpRegionCacheAsync(db, _importCts.Token);
-                
+
                 Logger.Info(
                     "[Region.Cache] Ready: Size={0}, Stats={1}",
                     _resolver.RegionCacheSize,
@@ -360,10 +364,25 @@ public partial class MultiFileImporterViewModel : ObservableObject {
 
         try {
             await Task.WhenAll(_workerTasks);
+
+            if (_importErrorCount > 0) {
+                Status = ImporterStatus.AbgeschlossenMitFehlern;
+                _statusMessages.Warning(
+                    $"Import endet mit Fehlern ({_importErrorCount} Datei(en))");
+            }
+            else {
+                Status = ImporterStatus.Abgeschlossen;
+                _statusMessages.Success("Erfolgreich importiert");
+            }
+
+            // 🔄 Cache neu aufbauen, da DB sich geändert hat
+            await BuildImportCacheAsync();
             Status = ImporterStatus.Abgeschlossen;
+            _statusMessages.Success("Import erfolgreich abgeschlossen");
         }
         catch (OperationCanceledException) {
             Status = ImporterStatus.Abbruch;
+            _statusMessages.Warning("Import wurde abgebrochen");
         }
         finally {
             IsImportRunning = false;
@@ -408,28 +427,71 @@ public partial class MultiFileImporterViewModel : ObservableObject {
 
         await BuildImportCacheAsync();
 
-        // 1️⃣ temporäre Liste für sortierbare Items
-        var items = new List<ImportFileItem>();
+        var maxDegree = _configService.Effective.Allgemein.ImportThreads;
+        var processed = 0;
+        var stat      = new ScanStat();
+        var items     = new ConcurrentBag<ImportFileItem>();
 
-        var index = 0;
+        await Parallel.ForEachAsync(
+            files,
+            new ParallelOptions {
+                MaxDegreeOfParallelism = maxDegree,
+                CancellationToken      = token
+            },
+            async (file, ct) => {
+                ct.ThrowIfCancellationRequested();
 
-        foreach (var file in files) {
-            token.ThrowIfCancellationRequested();
-            index++;
+                var mode = ResolveFileType(file);
+                var item = TryCreateImportItem(file);
 
-            Dispatcher.UIThread.Invoke(() => {
-                ProcessedFiles = index;
-                Status         = ImporterStatus.Scannen;
-                IsScanning     = true;
+                // -------------------------
+                // Statistik + Queue
+                // -------------------------
+                if (item != null) {
+                    items.Add(item);
+
+                    switch (mode) {
+                        case ImportMode.ZvF:
+                            Interlocked.Increment(ref stat.ZvF_New);
+                            break;
+                        case ImportMode.UeB:
+                            Interlocked.Increment(ref stat.UeB_New);
+                            break;
+                        case ImportMode.Fplo:
+                            Interlocked.Increment(ref stat.Fplo_New);
+                            break;
+                    }
+                }
+                else {
+                    switch (mode) {
+                        case ImportMode.ZvF:
+                            Interlocked.Increment(ref stat.ZvF_Imported);
+                            break;
+                        case ImportMode.UeB:
+                            Interlocked.Increment(ref stat.UeB_Imported);
+                            break;
+                        case ImportMode.Fplo:
+                            Interlocked.Increment(ref stat.Fplo_Imported);
+                            break;
+                    }
+                }
+
+                // -------------------------
+                // Fortschritt (throttled)
+                // -------------------------
+                var current = Interlocked.Increment(ref processed);
+
+                if (current % 10 == 0 || current == files.Count) {
+                    await Dispatcher.UIThread.InvokeAsync(() => {
+                        ProcessedFiles = current;
+                        Status         = ImporterStatus.Scannen;
+                        IsScanning     = true;
+                    });
+                }
             });
 
-            var item = TryCreateImportItem(file);
-            if (item != null)
-                items.Add(item);
-        }
-
         // 2️⃣ SORTIERUNG: älteste zuerst
-        items = items
+        var sortedItems = items
             .OrderBy(i => i.SortTimestamp)
             .ToList();
 
@@ -437,7 +499,7 @@ public partial class MultiFileImporterViewModel : ObservableObject {
         _importQueue.Clear();
 
         // 4️⃣ SORTIERT enqueuen
-        foreach (var item in items) {
+        foreach (var item in sortedItems) {
             _importQueue.Enqueue(item);
         }
 
@@ -447,6 +509,15 @@ public partial class MultiFileImporterViewModel : ObservableObject {
             OnPropertyChanged(nameof(CanStart));
         });
 
+        Dispatcher.UIThread.Invoke(() => {
+            _statusMessages.Success(
+                $"Gefundene Dateien: ZvF: {stat.ZvF_New} neu, {stat.ZvF_Imported} importiert, ÜB: {stat.UeB_New} neu, {stat.UeB_Imported} importiert, Fplo: {stat.Fplo_New} neu, {stat.Fplo_Imported} importiert"
+            );
+        });
+
+        Logger.Info(
+            $"Gefundene Dateien: ZvF: {stat.ZvF_New} neu, {stat.ZvF_Imported} importiert, ÜB: {stat.UeB_New} neu, {stat.UeB_Imported} importiert, Fplo: {stat.Fplo_New} neu, {stat.Fplo_Imported} importiert"
+        );
 
         LogDebugJson(
             "Queue-Inhalt nach Build",
@@ -463,93 +534,105 @@ public partial class MultiFileImporterViewModel : ObservableObject {
     private async Task WorkerLoopAsync(
         ImportThreadViewModel threadVm,
         CancellationToken     token) {
-        try {
-            while (!token.IsCancellationRequested &&
-                   _importQueue.TryDequeue(out var item)) {
-                var totalZuege     = 0;
-                var totalEntfallen = 0;
-                var doneZuege      = 0;
-                var doneEntfallen  = 0;
+        while (!token.IsCancellationRequested &&
+               _importQueue.TryDequeue(out var item)) {
+            var totalZuege     = 0;
+            var totalEntfallen = 0;
+            var doneZuege      = 0;
+            var doneEntfallen  = 0;
 
-                var progress = new Progress<ImportProgressInfo>(info => {
-                    Dispatcher.UIThread.Post(() => {
-                        threadVm.FileName = info.FileName;
-                        threadVm.Status   = ImportThreadStatus.Importieren;
+            var progress = new Progress<ImportProgressInfo>(info => {
+                Dispatcher.UIThread.Post(() => {
+                    threadVm.FileName      = info.FileName;
+                    threadVm.Status        = ImportThreadStatus.Importieren;
+                    threadVm.StatusMessage = info.Step;
 
-                        // -----------------------------
-                        // StatusMessage (Detail)
-                        // -----------------------------
-                        threadVm.StatusMessage = info.Step;
+                    threadVm.ThreadProgressText =
+                        $"{info.StepIndex} / {info.TotalSteps}";
 
-                        // -----------------------------
-                        // ThreadProgressText = Steps
-                        // -----------------------------
-                        threadVm.ThreadProgressText =
-                            $"{info.StepIndex} / {info.TotalSteps}";
+                    if (!info.SubIndex.HasValue || !info.SubTotal.HasValue)
+                        return;
 
-                        // -----------------------------
-                        // ProgressBar = ZÜGE + ENTFALLEN
-                        // -----------------------------
-                        if (!info.SubIndex.HasValue || !info.SubTotal.HasValue) return;
-                        // Initiale Phase erkennen
-                        if (info.Step.StartsWith("Upsert Züge")) {
-                            totalZuege = info.SubTotal.Value;
-                            doneZuege  = info.SubIndex.Value;
-                        }
-                        else if (info.Step.StartsWith("Upsert Entfallen")) {
-                            totalEntfallen = info.SubTotal.Value;
-                            doneEntfallen  = info.SubIndex.Value;
-                        }
+                    if (info.Step.StartsWith("Upsert Züge")) {
+                        totalZuege = info.SubTotal.Value;
+                        doneZuege  = info.SubIndex.Value;
+                    }
+                    else if (info.Step.StartsWith("Upsert Entfallen")) {
+                        totalEntfallen = info.SubTotal.Value;
+                        doneEntfallen  = info.SubIndex.Value;
+                    }
 
-                        var total = totalZuege + totalEntfallen;
-                        var done  = doneZuege  + doneEntfallen;
+                    var total = totalZuege + totalEntfallen;
+                    var done  = doneZuege  + doneEntfallen;
 
-                        if (total > 0) {
-                            threadVm.ThreadProgress =
-                                (int)(done * 100.0 / total);
-                        }
-                    });
+                    if (total > 0)
+                        threadVm.ThreadProgress = (int)(done * 100.0 / total);
                 });
+            });
 
-                await using var db = await _dbFactory.CreateDbContextAsync(token);
-                var importer = _importerFactory.GetImporter(_importerTyp);
-                await importer.ImportAsync(db, item, progress, token);
-                db.ChangeTracker.Clear();
+            try {
+                await using var db       = await _dbFactory.CreateDbContextAsync(token);
+                var             importer = _importerFactory.GetImporter(_importerTyp);
 
-                // Thread: Reset für nächste Datei
+                var fileKey = Path.GetFileName(item.FilePath);
+                var sem = FileLocks.GetOrAdd(
+                    fileKey,
+                    _ => new SemaphoreSlim(1, 1));
+
+                await sem.WaitAsync(token);
+                try {
+                    await importer.ImportAsync(db, item, progress, token);
+                    db.ChangeTracker.Clear();
+                }
+                finally {
+                    sem.Release();
+                    FileLocks.TryRemove(fileKey, out _);
+                }
+
+                // ✅ Erfolgreich verarbeitet
                 await Dispatcher.UIThread.InvokeAsync(() => {
                     threadVm.ThreadProgress     = 0;
                     threadVm.ThreadProgressText = string.Empty;
                 });
-
-                // Coordinator: Overall
+            }
+            catch (OperationCanceledException) {
+                // 🔑 globaler Abbruch
                 await Dispatcher.UIThread.InvokeAsync(() => {
-                    ProcessedFiles++;
-                    OnPropertyChanged(nameof(OverallProgress));
-                    OnPropertyChanged(nameof(OverallProgressText));
+                    threadVm.Status        = ImportThreadStatus.Abbruch;
+                    threadVm.StatusMessage = "Abgebrochen";
                 });
+                throw;
+            }
+            catch (Exception ex) {
+                // 🔴 Fehler NUR für diese Datei
+                Interlocked.Increment(ref _importErrorCount);
+
+                Logger.Error(ex,
+                    "Fehler beim Import der Datei {0}", item.FilePath);
+
+                await Dispatcher.UIThread.InvokeAsync(() => {
+                    threadVm.Status        = ImportThreadStatus.Fehler;
+                    threadVm.StatusMessage = ex.Message;
+                });
+
+                // 🔑 extrem wichtig: weiter mit nächster Datei
+                continue;
             }
 
+            // Coordinator: Overall (nur wenn Datei abgeschlossen)
             await Dispatcher.UIThread.InvokeAsync(() => {
-                threadVm.Status        = ImportThreadStatus.Beendet;
-                threadVm.FileName      = string.Empty;
-                threadVm.StatusMessage = "Keine Dateien mehr";
+                ProcessedFiles++;
+                OnPropertyChanged(nameof(OverallProgress));
+                OnPropertyChanged(nameof(OverallProgressText));
             });
         }
-        catch (OperationCanceledException) {
-            Dispatcher.UIThread.Post(() => {
-                threadVm.Status        = ImportThreadStatus.Abbruch;
-                threadVm.StatusMessage = "Abgebrochen";
-            });
-        }
-        catch (Exception ex) {
-            Dispatcher.UIThread.Post(() => {
-                threadVm.Status        = ImportThreadStatus.Fehler;
-                threadVm.StatusMessage = ex.Message;
-            });
 
-            Logger.Error(ex, "Fehler im Import-Worker");
-        }
+        // Thread ist fertig (Queue leer)
+        await Dispatcher.UIThread.InvokeAsync(() => {
+            threadVm.Status        = ImportThreadStatus.Beendet;
+            threadVm.FileName      = string.Empty;
+            threadVm.StatusMessage = "Keine Dateien mehr";
+        });
     }
 
     // =====================================================

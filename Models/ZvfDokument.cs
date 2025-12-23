@@ -82,7 +82,7 @@ public partial class ZvfDokument
     public virtual UjbauVorgang UjbauVorgangRefNavigation { get; set; } = null!;
 
     [InverseProperty("ZvfDokumentRefNavigation")]
-    public virtual ZvfDokumentStreckenabschnitte? ZvfDokumentStreckenabschnitte { get; set; }
+    public virtual ICollection<ZvfDokumentStreckenabschnitte> ZvfDokumentStreckenabschnitte { get; set; } = new List<ZvfDokumentStreckenabschnitte>();
 
     [InverseProperty("ZvfDokumentRefNavigation")]
     public virtual ICollection<ZvfDokumentZug> ZvfDokumentZug { get; set; } = new List<ZvfDokumentZug>();

@@ -71,7 +71,7 @@
                                         <PathIcon Width="16"
                                                   Height="16"
                                                   Foreground="Black"
-                                                  Data="M4 4H20V6H4zM4 9H20V11H4zM4 14H20V16H4z"/>
+                                                  Data="M4 4H20V6H4zM4 9H20V11H4zM4 14H20V16H4z" />
                                         <TextBlock Text="{Binding}" />
                                     </StackPanel>
 
@@ -109,7 +109,7 @@
             </Button>
 
         </Grid>
-        
+
         <!-- ================================================= -->
         <!-- VERTICAL SEPARATOR (MENU / CONTENT) -->
         <!-- ================================================= -->
@@ -142,9 +142,12 @@
             <Grid ColumnDefinitions="*,Auto">
 
                 <!-- Left -->
-                <TextBlock Text="{Binding StatusMessages.Message}"
-                           Foreground="Black"
-                           FontSize="12" />
+                <TextBlock
+                    Text="{Binding StatusMessages.Current.Text}"
+                    Foreground="{Binding StatusMessages.Current.Severity,
+                                Converter={StaticResource SeverityToBrush}}"
+                    FontSize="12"
+                    FontWeight="Bold" />
 
                 <!-- Right -->
                 <TextBlock Grid.Column="1"

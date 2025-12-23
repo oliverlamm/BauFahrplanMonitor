@@ -2,6 +2,8 @@ using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
 
+namespace BauFahrplanMonitor.Converter;
+
 public class BoolToCheckIconConverter : IValueConverter {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
         return value is true ? "" : "";

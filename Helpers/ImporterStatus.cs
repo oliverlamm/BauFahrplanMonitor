@@ -6,5 +6,6 @@ public enum ImporterStatus {
     Importieren,
     Abgeschlossen,
     Abbruch,
-    Fehler
+    Fehler,
+    AbgeschlossenMitFehlern
 }

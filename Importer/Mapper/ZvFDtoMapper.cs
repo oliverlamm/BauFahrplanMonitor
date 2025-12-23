@@ -1,22 +1,19 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using BauFahrplanMonitor.Importer.Dto.Shared;
 using BauFahrplanMonitor.Importer.Dto.ZvF;
 using BauFahrplanMonitor.Importer.Helper;
 using BauFahrplanMonitor.Importer.Interface;
 using BauFahrplanMonitor.Importer.Xml;
-using NLog;
 
 namespace BauFahrplanMonitor.Importer.Mapper;
 
 public sealed class ZvFDtoMapper : IZvFDtoMapper {
-    private static readonly Logger Logger =
-        LogManager.GetCurrentClassLogger();
-
     public ZvFXmlDocumentDto Map(ZvFExport export, string sourceFile) {
         if (export.Header == null)
             throw new InvalidOperationException("ZvFExport.Header fehlt");
@@ -31,7 +28,7 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
         // -------------------------------
         // Header (Shared)
         // -------------------------------
-        dto.Header.FileName        = export.Header.Filename ?? sourceFile;
+        dto.Header.FileName        = export.Header.Filename;
         dto.Header.Timestamp       = export.Header.Timestamp;
         dto.Header.Timestamp       = export.Header.Timestamp;
         dto.Header.FileName        = export.Header.Filename;
@@ -47,6 +44,8 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
         // -------------------------------
         // Dokument (Meta)
         // -------------------------------
+        var fileName = Path.GetFileName(sourceFile);
+        dto.Document.Dateiname           = fileName;
         dto.Document.Masterniederlassung = bm.Masterniederlassung ?? "";
         dto.Document.ExportTimestamp     = export.Header.Timestamp;
         dto.Document.Version.Major       = bm.Version?.Major ?? 0;
@@ -73,10 +72,7 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
         dto.Vorgang.IstQs      = bm.Qsbaumassnahme?.StartsWith($"Q") ?? false;
         dto.Vorgang.IstKs      = bm.Qsbaumassnahme?.StartsWith($"K") ?? false;
         dto.Vorgang.MasterFplo = bm.MasterFplo;
-        dto.Vorgang.FahrplanJahr =
-            FahrplanjahrHelper.FromDateRange(
-                dto.Document.BauDatumVon,
-                dto.Document.BauDatumBis);
+
 
         // -------------------------------
         // BBMN
@@ -92,7 +88,7 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
             .Select(b => b.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
-        
+
         // -------------------------------
         // Streckenabschnitte → SharedStreckeDto + JSON
         // -------------------------------
@@ -103,6 +99,17 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
         // -------------------------------
         MapZuege(bm, dto);
         MapEntfalleneZuege(bm, dto);
+
+
+        // Fahrplanjahr ermitteln
+        var fahrplanJahr = ResolveFahrplanjahr(dto);
+
+        if (fahrplanJahr == null) {
+            throw new InvalidOperationException(
+                $"Fahrplanjahr konnte nicht bestimmt werden (Datei {sourceFile})");
+        }
+
+        dto.Vorgang.FahrplanJahr = fahrplanJahr.Value;
 
         return dto;
     }
@@ -148,18 +155,6 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
                 effektiverVerkehrstag
             );
 
-            if (Logger.IsDebugEnabled) {
-                var json = JsonSerializer.Serialize(
-                    abw,
-                    new JsonSerializerOptions {
-                        WriteIndented          = true,
-                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                        Encoder                = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                    });
-
-                //Logger.Debug($"ZvF (Abw) nach Mapping ({zug.Zugnr}/{zug.Verkehrstag}):\n{json}");
-            }
-
             if (abw != null)
                 zugDto.Abweichungen.Add(abw);
 
@@ -175,8 +170,7 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
         if (entfallen == null) return;
 
         foreach (var e in entfallen) {
-            var (verkehrstag, tagwechsel) =
-                ParseVerkehrstag(e.Verkehrstag);
+            var verkehrstag = ParseVerkehrstag(e.Verkehrstag);
 
             dto.Document.Entfallen.Add(new ZvFZugEntfallenDto {
                 Zugnr           = e.Zugnr,
@@ -187,31 +181,102 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
         }
     }
 
-    private static (DateOnly Verkehrstag, int Tagwechsel)
-        ParseVerkehrstag(string raw) {
+    private static DateOnly ParseVerkehrstag(string raw) {
         if (string.IsNullOrWhiteSpace(raw))
-            throw new ArgumentException("Verkehrstag leer");
+            throw new FormatException("Verkehrstag leer");
 
-        // Normalfall: einzelnes Datum
-        if (DateOnly.TryParse(raw, out var single))
-            return (single, 0);
+        var input = raw.Trim();
 
-        // Sonderfall: dd./dd.MM.yy  -> Verkehrstag = erster Tag, Tagwechsel = +1
-        var m = Regex.Match(
-            raw,
-            @"^(?<d1>\d{2})\./(?<d2>\d{2})\.(?<m>\d{2})\.(?<y>\d{2})$");
+        string day;
+        string month;
+        string year;
 
-        if (!m.Success)
-            throw new FormatException($"Unbekanntes Verkehrstag-Format: '{raw}'");
+        if (input.Contains('/')) {
+            // z.B.:
+            // 31.05./01.06.25
+            // 28.02./01.03.25
+            // 24./25.01.25
 
-        var day1  = int.Parse(m.Groups["d1"].Value);
-        var month = int.Parse(m.Groups["m"].Value);
-        var year  = 2000 + int.Parse(m.Groups["y"].Value);
+            var parts = input.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
-        return (new DateOnly(year, month, day1), +1);
+            var left  = parts[0].Trim();  // "31.05." oder "24."
+            var right = parts[^1].Trim(); // "01.06.25" oder "25.01.25"
+
+            var rightParts = right.Split('.', StringSplitOptions.RemoveEmptyEntries);
+            if (rightParts.Length < 3)
+                throw new FormatException($"Unbekanntes Verkehrstag-Format: '{raw}'");
+
+            year = rightParts[2];
+
+            var leftParts = left.Split('.', StringSplitOptions.RemoveEmptyEntries);
+
+            day = leftParts[0];
+
+            // 🔑 linker Monat vorhanden?
+            if (leftParts.Length >= 2 && !string.IsNullOrWhiteSpace(leftParts[1])) {
+                month = leftParts[1];
+            }
+            else {
+                // Monat aus rechtem Teil übernehmen
+                month = rightParts[1];
+            }
+        }
+        else {
+            // Einfaches Datum: dd.MM.yy
+            var parts = input.Split('.', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 3)
+                throw new FormatException($"Unbekanntes Verkehrstag-Format: '{raw}'");
+
+            day   = parts[0];
+            month = parts[1];
+            year  = parts[2];
+        }
+
+        var normalized = $"{day}.{month}.{year}";
+
+        return DateOnly.TryParseExact(
+            normalized,
+            "dd.MM.yy",
+            CultureInfo.GetCultureInfo("de-DE"),
+            DateTimeStyles.None,
+            out var result)
+            ? result
+            : throw new FormatException($"Unbekanntes Verkehrstag-Format: '{raw}'");
     }
 
+    private static int? ResolveFahrplanjahr(ZvFXmlDocumentDto dto) {
+        // 1️⃣ Baudatum
+        var fy = FahrplanjahrHelper.FromDateRange(
+            dto.Document.BauDatumVon,
+            dto.Document.BauDatumBis);
 
+        if (fy != null)
+            return fy;
+
+        // 2️⃣ kleinster Verkehrstag aus Zügen
+        var minZugTag = dto.Document.ZuegeRaw?
+            .Select(z => z.Verkehrstag)
+            .Where(d => d != default)
+            .DefaultIfEmpty()
+            .Min();
+
+        if (minZugTag != default)
+            return FahrplanjahrHelper.FromDate(minZugTag.Value);
+
+        // 3️⃣ kleinster Verkehrstag aus Entfallen
+        var minEntfallTag = dto.Document.Entfallen?
+            .Select(e => e.Verkehrstag)
+            .Where(d => d != default)
+            .DefaultIfEmpty()
+            .Min();
+
+        if (minEntfallTag != default)
+            return FahrplanjahrHelper.FromDate(minEntfallTag.Value);
+
+        // ❌ nichts verwertbares vorhanden
+        return null;
+    }
+    
     private static void MapStreckenabschnitte(
         ZvFExportBaumassnahmenBaumassnahme bm,
         ZvFXmlDocumentDto                  dto) {
@@ -234,17 +299,8 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
                 Betriebsweise        = s.Betriebsweise,
                 Baubeginn            = s.Baubeginn,
                 Bauende              = s.Bauende,
-                ZeitraumUnterbrochen = s.ZeitraumUnterbrochen
+                ZeitraumUnterbrochen = s.ZeitraumUnterbrochen == "Ja"
             });
         }
-
-        // JSON erzeugen (für jsonb in zvf_dokument_streckenabschnitte)
-        var jsonOptions = new JsonSerializerOptions {
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            PropertyNamingPolicy   = JsonNamingPolicy.CamelCase,
-            WriteIndented          = false
-        };
-
-        dto.Document.StreckenJson = JsonSerializer.Serialize(dto.Document.Strecken, jsonOptions);
     }
 }

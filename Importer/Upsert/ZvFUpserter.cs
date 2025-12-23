@@ -35,9 +35,7 @@ public sealed class ZvFUpserter(
         UjBauDbContext                 db,
         ZvFXmlDocumentDto              dto,
         IProgress<UpsertProgressInfo>? progress,
-        CancellationToken              token)
-    {
-        
+        CancellationToken              token) {
         stats = new ZvFImportStats();
 
         // -------------------------------------------------
@@ -107,11 +105,11 @@ public sealed class ZvFUpserter(
             }
 
             db.ChangeTracker.AutoDetectChangesEnabled = true;
-            
+
             await db.SaveChangesAsync(token);
             await tx.CommitAsync(token);
             db.ChangeTracker.Clear();
-            
+
             return new ZvFUpsertResult {
                 DokumentRef = dokumentRef,
                 Stats       = stats
@@ -147,7 +145,20 @@ public sealed class ZvFUpserter(
                 .Where(x => x.ZvfDokumentRef == dokumentRef)
                 .ExecuteDeleteAsync(token);
 
-            foreach (var strecke in dto.Document.Strecken) {
+            var uniqueStrecken = dto.Document.Strecken
+                .GroupBy(s => new {
+                    s.StartBst,
+                    s.EndBst,
+                    s.Massnahme,
+                    s.Betriebsweise,
+                    s.Grund,
+                    Baubeginn = s.Baubeginn,
+                    Bauende   = s.Bauende
+                })
+                .Select(g => g.First())
+                .ToList();
+            
+            foreach (var strecke in uniqueStrecken) {
                 token.ThrowIfCancellationRequested();
 
                 var json = JsonSerializer.Serialize(
@@ -161,8 +172,16 @@ public sealed class ZvFUpserter(
 
                 db.ZvfDokumentStreckenabschnitte.Add(
                     new ZvfDokumentStreckenabschnitte {
-                        ZvfDokumentRef    = dokumentRef,
-                        Streckenabschnitt = json
+                        ZvfDokumentRef       = dokumentRef,
+                        StartBstRl100        = strecke.StartBst ?? string.Empty,
+                        EndBstRl100          = strecke.EndBst ?? string.Empty,
+                        Massnahme            = strecke.Massnahme ?? string.Empty,
+                        Betriebsweise        = strecke.Betriebsweise ?? string.Empty,
+                        Grund                = strecke.Grund ?? string.Empty,
+                        Baubeginn            = strecke.Baubeginn.Value,
+                        Bauende              = strecke.Bauende.Value,
+                        ZeitraumUnterbrochen = strecke.ZeitraumUnterbrochen,
+                        VzgStrecke           = strecke.Vzg
                     });
             }
         }
@@ -229,11 +248,37 @@ public sealed class ZvFUpserter(
         ZvFZugDto         zug,
         long              zugRef,
         CancellationToken token) {
-        foreach (var abw in zug.Abweichungen) {
-            token.ThrowIfCancellationRequested();
+        var grouped = zug.Abweichungen
+            .GroupBy(a => a.Regelungsart)
+            .Select(g => new ZvFZugAbweichung {
+                Zugnummer    = g.First().Zugnummer,
+                Verkehrstag  = g.First().Verkehrstag,
+                Regelungsart = g.Key,
 
+                // 🔑 fachliche Aggregation
+                JsonRaw = JsonSerializer.Serialize(
+                    g.Select(x => JsonDocument.Parse(x.JsonRaw).RootElement),
+                    new JsonSerializerOptions {
+                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                    }),
+
+                // Anchor: erster sinnvoller (oder null)
+                AnchorRl100 = g
+                    .Select(x => x.AnchorRl100)
+                    .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))
+            })
+            .ToList();
+
+        foreach (var abw in grouped) {
             await UpsertAbweichungAsync(db, abw, zugRef, token);
         }
+
+        Logger.Debug(
+            "Zug {0}/{1}: {2} Abweichungen → {3} aggregiert",
+            zug.Zugnummer,
+            zug.Verkehrstag,
+            zug.Abweichungen.Count,
+            grouped.Count);
     }
 
     // =====================================================================
@@ -275,7 +320,7 @@ public sealed class ZvFUpserter(
             .AsNoTracking()
             .FirstOrDefaultAsync(d =>
                     d.UjbauVorgangRef == vorgangRef &&
-                    d.Dateiname       == dto.Header.FileName,
+                    d.Dateiname       == dto.Document.Dateiname,
                 token);
 
         if (existing != null)
@@ -315,7 +360,7 @@ public sealed class ZvFUpserter(
             BaudatumVon = dto.Document.BauDatumVon,
             BaudatumBis = dto.Document.BauDatumBis,
             Allgemein   = dto.Document.AllgemeinText,
-            Dateiname   = dto.Header.FileName,
+            Dateiname   = dto.Document.Dateiname,
         };
 
         db.ZvfDokument.Add(doc);

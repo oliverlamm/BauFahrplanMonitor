@@ -314,7 +314,6 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.FploDokumentRefNavigation).WithMany(p => p.FploDokumentStreckenabschnitte)
-                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_fplo_dok_strabs_dok");
         });
 
@@ -475,7 +474,6 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.UebDokumentRefNavigation).WithMany(p => p.UebDokumentStreckenabschnitte)
-                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_ueb_dok_strabs_dok");
         });
 
@@ -545,6 +543,7 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.Id).HasDefaultValueSql("nextval('ujbaudb.zvf_vorgang_id_seq'::regclass)");
             entity.Property(e => e.IstKs).HasDefaultValue(false);
             entity.Property(e => e.IstQs).HasDefaultValue(false);
+            entity.Property(e => e.Kategorie).HasDefaultValueSql("'F'::character varying");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
         });
 
@@ -581,11 +580,12 @@ public partial class UjBauDbContext : DbContext {
         });
 
         modelBuilder.Entity<ZvfDokumentStreckenabschnitte>(entity => {
-            entity.HasKey(e => e.Id).HasName("zvf_dokument_streckenabschnitte_pkey");
+            entity.HasKey(e => e.Id).HasName("zvf_doc_strabs_pkey");
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
+            entity.Property(e => e.ZeitraumUnterbrochen).HasDefaultValue(false);
 
-            entity.HasOne(d => d.ZvfDokumentRefNavigation).WithOne(p => p.ZvfDokumentStreckenabschnitte)
+            entity.HasOne(d => d.ZvfDokumentRefNavigation).WithMany(p => p.ZvfDokumentStreckenabschnitte)
                 .HasConstraintName("zvf_dokument_streckenabschnitte_zvf_dokument_ref_fkey");
         });
 

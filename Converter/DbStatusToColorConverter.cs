@@ -3,7 +3,7 @@ using System.Globalization;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 
-namespace BauFahrplanMonitor.Helpers;
+namespace BauFahrplanMonitor.Converter;
 
 public class DbStatusToColorConverter : IValueConverter {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
