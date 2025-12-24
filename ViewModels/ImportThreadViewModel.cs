@@ -15,10 +15,9 @@ public class ImportThreadViewModel : ObservableObject {
     public ImportThreadStatus Status {
         get => _status;
         set {
-            if (SetProperty(ref _status, value)) {
-                OnPropertyChanged(nameof(StatusText));
-                OnPropertyChanged(nameof(StatusBrush));
-            }
+            if (!SetProperty(ref _status, value)) return;
+            OnPropertyChanged(nameof(StatusText));
+            OnPropertyChanged(nameof(StatusBrush));
         }
     }
 
@@ -26,13 +25,14 @@ public class ImportThreadViewModel : ObservableObject {
 
     public IBrush StatusBrush =>
         Status switch {
-            ImportThreadStatus.Bereit        => Brushes.Gray,
-            ImportThreadStatus.Importieren   => Brushes.DodgerBlue,
-            ImportThreadStatus.Abgeschlossen => Brushes.ForestGreen,
-            ImportThreadStatus.Fehler        => Brushes.IndianRed,
-            ImportThreadStatus.Abbruch       => Brushes.DarkOrange,
-            ImportThreadStatus.Beendet       => Brushes.DimGray,
-            _                                => Brushes.Gray
+            ImportThreadStatus.Bereit               => Brushes.Gray,
+            ImportThreadStatus.Importieren          => Brushes.DodgerBlue,
+            ImportThreadStatus.Abgeschlossen        => Brushes.ForestGreen,
+            ImportThreadStatus.Fehler               => Brushes.IndianRed,
+            ImportThreadStatus.Abbruch              => Brushes.DarkOrange,
+            ImportThreadStatus.Beendet              => Brushes.DimGray,
+            ImportThreadStatus.AbbruchnachException => Brushes.DarkRed,
+            _                                       => Brushes.Gray
         };
 
     // -------------------------------------------------

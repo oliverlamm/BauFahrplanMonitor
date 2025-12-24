@@ -51,6 +51,9 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
         dto.Document.Version.Major       = bm.Version?.Major ?? 0;
         dto.Document.Version.Minor       = bm.Version?.Minor ?? 0;
         dto.Document.Version.Sub         = bm.Version?.Sub   ?? 0;
+        dto.Document.Version.VersionNumeric = dto.Document.Version.Major * 1000 + 
+                                              dto.Document.Version.Minor * 100  +
+                                              dto.Document.Version.Sub;
         dto.Document.BauDatumVon = bm.BauDatumVon != null
             ? DateOnly.FromDateTime(bm.BauDatumVon.Value)
             : null;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace BauFahrplanMonitor.Importer.Dto.Shared;
 
@@ -101,5 +102,7 @@ public class SharedHeaderDto {
     /// <summary>
     /// Adresse (Straße, Hausnummer) des Absenders.
     /// </summary>
-    public string SenderAdresse { get; set; } = "";
+    public string SenderAdresse { get;    set; } = "";
+
+    public List<string> Empfaenger { get; set; } = [];
 }

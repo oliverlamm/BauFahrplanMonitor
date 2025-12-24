@@ -8,5 +8,9 @@ public sealed class UpsertProgressInfo {
 
 public enum UpsertPhase {
     Zuege,
-    Entfallen
+    Entfallen,
+    Sev,
+    Zurueckgehalten,
+    Zugparameter,
+    Haltausfall
 }

@@ -8,4 +8,5 @@ public interface IExtendedVorgangDto {
     /// auf die persistierte Vorgangsentität.
     /// </summary>
     void ApplyTo(UjbauVorgang entity);
+    void ApplyIfEmptyTo(UjbauVorgang vorgang);
 }

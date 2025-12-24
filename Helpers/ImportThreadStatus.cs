@@ -6,5 +6,6 @@ public enum ImportThreadStatus {
     Fehler,
     Abbruch,
     Beendet,
-    Abgeschlossen
+    Abgeschlossen,
+    AbbruchnachException
 }

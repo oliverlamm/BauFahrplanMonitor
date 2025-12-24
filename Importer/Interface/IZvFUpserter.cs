@@ -8,7 +8,7 @@ using BauFahrplanMonitor.Importer.Helper;
 namespace BauFahrplanMonitor.Importer.Interface;
 
 public interface IZvFUpserter {
-    Task<ZvFUpsertResult> UpsertAsync(
+    Task<UpsertResult> UpsertAsync(
         UjBauDbContext                 db,
         ZvFXmlDocumentDto              dto,
         IProgress<UpsertProgressInfo>? progress,

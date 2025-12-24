@@ -9,11 +9,13 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 using BauFahrplanMonitor.Data;
+using BauFahrplanMonitor.Helpers;
 using BauFahrplanMonitor.Importer.Dto.ZvF;
 using BauFahrplanMonitor.Importer.Helper;
 using BauFahrplanMonitor.Importer.Interface;
 using BauFahrplanMonitor.Models;
 using BauFahrplanMonitor.Resolver;
+using BauFahrplanMonitor.Services;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 
@@ -21,17 +23,18 @@ namespace BauFahrplanMonitor.Importer.Upsert;
 
 public sealed class ZvFUpserter(
     IDbContextFactory<UjBauDbContext> dbFactory,
-    SharedReferenceResolver           resolver)
-    : IZvFUpserter {
-    private static readonly Logger Logger =
-        LogManager.GetCurrentClassLogger();
-
+    SharedReferenceResolver           resolver,
+    ConfigService                     config)
+    : ImportUpserterBase(
+            config,
+            LogManager.GetCurrentClassLogger()),
+        IZvFUpserter {
     private ZvFImportStats stats = null!;
 
     // =====================================================================
     // ENTRYPOINT mit Progress
     // =====================================================================
-    public async Task<ZvFUpsertResult> UpsertAsync(
+    public async Task<UpsertResult> UpsertAsync(
         UjBauDbContext                 db,
         ZvFXmlDocumentDto              dto,
         IProgress<UpsertProgressInfo>? progress,
@@ -41,7 +44,7 @@ public sealed class ZvFUpserter(
         // -------------------------------------------------
         // PHASE A: Referenzen (kurz, sichtbar)
         // -------------------------------------------------
-        var vorgangRef = await resolver.ResolveOrCreateVorgangAsync(db, dto.Vorgang, token);
+        var vorgangRef = await resolver.ResolveOrCreateVorgangAsync(db, dto.Vorgang, ImportMode.ZvF, token);
         var senderRef  = await resolver.ResolveOrCreateSenderAsync(db, dto.Header, token);
 
         // 🔑 Sichtbarkeit für andere Threads
@@ -110,9 +113,9 @@ public sealed class ZvFUpserter(
             await tx.CommitAsync(token);
             db.ChangeTracker.Clear();
 
-            return new ZvFUpsertResult {
+            return new UpsertResult {
                 DokumentRef = dokumentRef,
-                Stats       = stats
+                ZvFStats    = stats
             };
         }
         catch (OperationCanceledException) {
@@ -121,10 +124,14 @@ public sealed class ZvFUpserter(
 
             throw;
         }
-        catch {
-            if (tx != null)
-                await tx.RollbackAsync(CancellationToken.None);
+        catch (Exception ex) {
+            if (tx == null) throw;
+            await tx.RollbackAsync(CancellationToken.None);
 
+            HandleException(ex, "ZvFUpsert", new {
+                    dto.Document.Dateiname,
+                    dto.Vorgang.MasterFplo
+                });
             throw;
         }
         finally {
@@ -157,7 +164,7 @@ public sealed class ZvFUpserter(
                 })
                 .Select(g => g.First())
                 .ToList();
-            
+
             foreach (var strecke in uniqueStrecken) {
                 token.ThrowIfCancellationRequested();
 
@@ -173,11 +180,11 @@ public sealed class ZvFUpserter(
                 db.ZvfDokumentStreckenabschnitte.Add(
                     new ZvfDokumentStreckenabschnitte {
                         ZvfDokumentRef       = dokumentRef,
-                        StartBstRl100        = strecke.StartBst ?? string.Empty,
-                        EndBstRl100          = strecke.EndBst ?? string.Empty,
-                        Massnahme            = strecke.Massnahme ?? string.Empty,
+                        StartBstRl100        = strecke.StartBst      ?? string.Empty,
+                        EndBstRl100          = strecke.EndBst        ?? string.Empty,
+                        Massnahme            = strecke.Massnahme     ?? string.Empty,
                         Betriebsweise        = strecke.Betriebsweise ?? string.Empty,
-                        Grund                = strecke.Grund ?? string.Empty,
+                        Grund                = strecke.Grund         ?? string.Empty,
                         Baubeginn            = strecke.Baubeginn.Value,
                         Bauende              = strecke.Bauende.Value,
                         ZeitraumUnterbrochen = strecke.ZeitraumUnterbrochen,

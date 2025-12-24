@@ -62,26 +62,28 @@ public partial class MultiFileImporterViewModel : ObservableObject {
 
     public IBrush StatusBrush =>
         Status switch {
-            ImporterStatus.Bereit                  => Brushes.Gray,
-            ImporterStatus.Scannen                 => Brushes.RoyalBlue,
-            ImporterStatus.Importieren             => Brushes.DodgerBlue,
-            ImporterStatus.Abgeschlossen           => Brushes.ForestGreen,
-            ImporterStatus.AbgeschlossenMitFehlern => Brushes.DarkOrange,
-            ImporterStatus.Abbruch                 => Brushes.DarkOrange,
-            ImporterStatus.Fehler                  => Brushes.IndianRed,
-            _                                      => Brushes.Gray
+            ImporterStatus.Bereit                    => Brushes.Gray,
+            ImporterStatus.Scannen                   => Brushes.RoyalBlue,
+            ImporterStatus.Importieren               => Brushes.DodgerBlue,
+            ImporterStatus.Abgeschlossen             => Brushes.ForestGreen,
+            ImporterStatus.AbgeschlossenMitFehlern   => Brushes.DarkOrange,
+            ImporterStatus.Abbruch                   => Brushes.Red,
+            ImporterStatus.Fehler                    => Brushes.IndianRed,
+            ImporterStatus.AbgeschlossenMitException => Brushes.DarkRed,
+            _                                        => Brushes.Gray
         };
 
     public string StatusText =>
         Status switch {
-            ImporterStatus.Bereit                  => "Bereit",
-            ImporterStatus.Scannen                 => "Scanne…",
-            ImporterStatus.Importieren             => "Importiere…",
-            ImporterStatus.Abgeschlossen           => "Abgeschlossen",
-            ImporterStatus.AbgeschlossenMitFehlern => "Abgeschlossen mit Fehlern",
-            ImporterStatus.Abbruch                 => "Abbruch",
-            ImporterStatus.Fehler                  => "Fehler",
-            _                                      => "Unbekannt"
+            ImporterStatus.Bereit                    => "Bereit",
+            ImporterStatus.Scannen                   => "Scanne…",
+            ImporterStatus.Importieren               => "Importiere…",
+            ImporterStatus.Abgeschlossen             => "Abgeschlossen",
+            ImporterStatus.AbgeschlossenMitFehlern   => "Abgeschlossen mit Fehlern",
+            ImporterStatus.AbgeschlossenMitException => "Exception",
+            ImporterStatus.Abbruch                   => "Abbruch",
+            ImporterStatus.Fehler                    => "Fehler",
+            _                                        => "Unbekannt"
         };
 
     public string StatusColor {
@@ -375,12 +377,17 @@ public partial class MultiFileImporterViewModel : ObservableObject {
                 _statusMessages.Success("Erfolgreich importiert");
             }
 
-            // 🔄 Cache neu aufbauen, da DB sich geändert hat
+            // 🔄 Cache NUR bei regulärem Import neu aufbauen
             await BuildImportCacheAsync();
-            Status = ImporterStatus.Abgeschlossen;
-            _statusMessages.Success("Import erfolgreich abgeschlossen");
+        }
+        catch (StopAfterExceptionException) {
+            // 🛑 kontrollierter Debug-Abbruch
+            Status = ImporterStatus.AbgeschlossenMitException;
+            _statusMessages.Warning(
+                "Import nach erster Exception abgebrochen (Debug)");
         }
         catch (OperationCanceledException) {
+            // 🛑 Benutzer- oder globaler Abbruch
             Status = ImporterStatus.Abbruch;
             _statusMessages.Warning("Import wurde abgebrochen");
         }
@@ -603,19 +610,34 @@ public partial class MultiFileImporterViewModel : ObservableObject {
                 });
                 throw;
             }
+            catch (StopAfterExceptionException) {
+                Logger.Fatal(
+                    "StopAfterException aktiv → Import & Scan werden gestoppt");
+
+                _importCts?.Cancel();
+                _scanCts?.Cancel();
+
+                await Dispatcher.UIThread.InvokeAsync(() => {
+                    threadVm.Status = ImportThreadStatus.AbbruchnachException;
+                    threadVm.StatusMessage =
+                        "Abbruch nach erster Exception (Debug)";
+                });
+
+                return; // ✅ sauberer Thread-Abbruch
+            }
             catch (Exception ex) {
-                // 🔴 Fehler NUR für diese Datei
                 Interlocked.Increment(ref _importErrorCount);
 
-                Logger.Error(ex,
-                    "Fehler beim Import der Datei {0}", item.FilePath);
+                Logger.Error(
+                    ex,
+                    "Fehler beim Import der Datei {0}",
+                    item.FilePath);
 
                 await Dispatcher.UIThread.InvokeAsync(() => {
                     threadVm.Status        = ImportThreadStatus.Fehler;
                     threadVm.StatusMessage = ex.Message;
                 });
 
-                // 🔑 extrem wichtig: weiter mit nächster Datei
                 continue;
             }
 
@@ -627,7 +649,7 @@ public partial class MultiFileImporterViewModel : ObservableObject {
             });
         }
 
-        // Thread ist fertig (Queue leer)
+        // Thread ist fertig (Queue leer oder globaler Abbruch)
         await Dispatcher.UIThread.InvokeAsync(() => {
             threadVm.Status        = ImportThreadStatus.Beendet;
             threadVm.FileName      = string.Empty;

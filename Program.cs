@@ -8,11 +8,11 @@ using BauFahrplanMonitor.Importer.Mapper;
 using BauFahrplanMonitor.Importer.Upsert;
 using BauFahrplanMonitor.Importer.Xml;
 using BauFahrplanMonitor.Resolver;
-using Microsoft.Extensions.DependencyInjection;
 using BauFahrplanMonitor.Services;
 using BauFahrplanMonitor.ViewModels;
 using BauFahrplanMonitor.Views;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NLog;
 
 namespace BauFahrplanMonitor;
@@ -22,78 +22,79 @@ internal class Program {
 
     public static void Main(string[] args) {
         // NLog-Konfiguration laden
-        var logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "BauFahrplanMonitor", "logs");
+        var logDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "BauFahrplanMonitor",
+            "logs");
 
-        if (!Directory.Exists(logDir)) {
-            Directory.CreateDirectory(logDir);
-        }
+        Directory.CreateDirectory(logDir);
 
-        LogManager.Setup()
-            .LoadConfigurationFromFile("nlog.config");
+        // Optional: nlog.config sicher aus BaseDirectory laden
+        var nlogPath = Path.Combine(AppContext.BaseDirectory, "nlog.config");
+        LogManager.Setup().LoadConfigurationFromFile(nlogPath);
 
         var log = LogManager.GetCurrentClassLogger();
         log.Info("BauFahrplanMonitor gestartet");
 
         var services = new ServiceCollection();
 
-        // Registrierung von ConfigService und DatabaseService
-        services.AddSingleton<ConfigService>();   // Registriere ConfigService
-        
         // ======================================================
-        // DB / INFRASTRUKTUR
+        // CONFIG / DB / INFRASTRUKTUR
         // ======================================================
-        var configService = new ConfigService();
-        services.AddDbContextFactory<UjBauDbContext>(options => {
-            var cs = configService.BuildConnectionString();
+        services.AddSingleton<ConfigService>();
+
+        services.AddDbContextFactory<UjBauDbContext>((sp, options) => {
+            var cfg = sp.GetRequiredService<ConfigService>();
+            var cs  = cfg.BuildConnectionString();
+
             options.UseNpgsql(cs, npg => npg.UseNetTopologySuite());
         });
 
         services.AddSingleton<DatabaseService>();
 
-        // Registrierung des StatusMessageService
-        services.AddSingleton<StatusMessageService>();  // Registriere StatusMessageService
+        // ======================================================
+        // UI / SERVICES
+        // ======================================================
+        services.AddSingleton<StatusMessageService>();
+        services.AddSingleton<NavigationService>();
 
-        // Weitere ViewModels und Views
         services.AddSingleton<StatusPageViewModel>();
         services.AddSingleton<StatusPageView>();
-        services.AddSingleton<NavigationService>();
         services.AddSingleton<MainWindowViewModel>();
-        
-        // --------------------------------------------------
-        // Shared Reference Resolver
-        // --------------------------------------------------
+
+        // ======================================================
+        // Shared Reference Resolver / Caches
+        // ======================================================
         services.AddSingleton<SharedReferenceResolver>();
-        services.AddDbContextFactory<UjBauDbContext>();
+        services.AddSingleton<ZvFZugCache>();
 
-        services.AddSingleton<ZvFZugCache>(); 
-
-        
+        // ======================================================
+        // Importer
+        // ======================================================
         services.AddSingleton<NetzfahrplanImporter>();
-        
-        // --------------------------------------------------
-        // ZvF Import – Core
-        // --------------------------------------------------
+
+        // ZvF Import
         services.AddSingleton<IZvFExportXmlLoader, ZvFExportXmlLoader>();
         services.AddSingleton<IZvFDtoMapper, ZvFDtoMapper>();
         services.AddSingleton<IZvFUpserter, ZvFUpserter>();
 
-        // --------------------------------------------------
+        // ÜB Import
+        services.AddSingleton<IUeBUpserter, UeBUpserter>();
+        services.AddSingleton<IUeBDtoMapper, UeBDtoMapper>();
+
         // Importer selbst
-        // --------------------------------------------------
         services.AddSingleton<ZvFExportImporter>();
-
-
         services.AddSingleton<IFileImporterFactory, FileImporterFactory>();
-        
-        // Erstelle den ServiceProvider
-        var serviceProvider = services.BuildServiceProvider();
-        Services = serviceProvider;
 
-        // Starte die Avalonia App
+        Services = services.BuildServiceProvider(
+            new ServiceProviderOptions {
+                ValidateOnBuild = true,
+                ValidateScopes  = true
+            });
+
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
-
 
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()

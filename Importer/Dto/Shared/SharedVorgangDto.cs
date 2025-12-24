@@ -1,4 +1,7 @@
-﻿namespace BauFahrplanMonitor.Importer.Dto.Shared;
+﻿using BauFahrplanMonitor.Importer.Helper;
+using BauFahrplanMonitor.Models;
+
+namespace BauFahrplanMonitor.Importer.Dto.Shared;
 
 /// <summary>
 /// Gemeinsames Vorgangs-DTO für alle Importer.
@@ -14,7 +17,7 @@
 /// Es enthält ausschließlich die **fachlich relevanten Schlüssel**
 /// zur Vorgangsermittlung und -anlage.
 /// </remarks>
-public class SharedVorgangDto {
+public class SharedVorgangDto  : IExtendedVorgangDto{
 
     /// <summary>
     /// Master-FPLO-Nummer des Vorgangs.
@@ -46,7 +49,7 @@ public class SharedVorgangDto {
     /// <remarks>
     /// Wird typischerweise:
     ///  - aus Dokumentdaten abgeleitet
-    ///  - über <see cref="ujBauDBTool.Import.Shared.Helper.FahrplanjahrHelper"/>
+    ///  - über <see cref="FahrplanjahrHelper"/>
     /// bestimmt
     ///
     /// Kann <c>null</c> sein, wenn:
@@ -54,4 +57,15 @@ public class SharedVorgangDto {
     ///  - Legacy-Daten importiert werden
     /// </remarks>
     public int? FahrplanJahr { get; set; }
+    
+    public void ApplyTo(UjbauVorgang v) {
+        v.Kategorie = Kategorie;
+    }
+
+    public void ApplyIfEmptyTo(UjbauVorgang v) {
+        if (string.IsNullOrWhiteSpace(v.Kategorie)
+            && !string.IsNullOrWhiteSpace(Kategorie)) {
+            v.Kategorie = Kategorie;
+        }
+    }
 }

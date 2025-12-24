@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using BauFahrplanMonitor.Data;
+using BauFahrplanMonitor.Helpers;
 using BauFahrplanMonitor.Importer.Dto.Shared;
 using BauFahrplanMonitor.Importer.Helper;
 using BauFahrplanMonitor.Models;
@@ -206,6 +207,7 @@ public class SharedReferenceResolver {
     public async Task<long> ResolveOrCreateVorgangAsync(
         UjBauDbContext    db,
         SharedVorgangDto  dto,
+        ImportMode        importMode,
         CancellationToken token) {
         ArgumentNullException.ThrowIfNull(dto);
 
@@ -234,7 +236,6 @@ public class SharedReferenceResolver {
             if (_vorgangCache.TryGetValue(cacheKey, out var cachedAfterLock))
                 return cachedAfterLock;
 
-            // 🔍 DB Lookup (vollständig!)
             var vorgang = await db.UjbauVorgang
                 .FirstOrDefaultAsync(v =>
                         v.VorgangNr    == dto.MasterFplo &&
@@ -247,17 +248,24 @@ public class SharedReferenceResolver {
                 vorgang = new UjbauVorgang {
                     VorgangNr    = dto.MasterFplo,
                     Fahrplanjahr = dto.FahrplanJahr,
-                    Kategorie    = string.IsNullOrWhiteSpace(dto.Kategorie) ? "A" : dto.Kategorie
+                    Kategorie    = string.IsNullOrWhiteSpace(dto.Kategorie)
+                        ? "A"
+                        : dto.Kategorie
                 };
 
                 db.UjbauVorgang.Add(vorgang);
                 isNew = true;
             }
-
-            // Erweiterungen
-            if (dto is IExtendedVorgangDto extended)
-                extended.ApplyTo(vorgang);
-
+            
+            if (dto is IExtendedVorgangDto extended) {
+                if (isNew || importMode != ImportMode.UeB) {
+                    extended.ApplyTo(vorgang);
+                }
+                else {
+                    extended.ApplyIfEmptyTo(vorgang);
+                }
+            }
+            
             try {
                 await db.SaveChangesAsync(token);
                 db.Entry(vorgang).State = EntityState.Unchanged;
@@ -634,9 +642,6 @@ public class SharedReferenceResolver {
         return raw;
     }
     
-    // =====================================================================
-    // HELPER
-    // =====================================================================
     public async Task WarmUpRegionCacheAsync(
         UjBauDbContext    db,
         CancellationToken token)
@@ -665,4 +670,5 @@ public class SharedReferenceResolver {
 
     public int RegionCacheSize => _regionCache.Count;
     public RegionCacheStats GetRegionStats() => _regionStats;
+    
 }
