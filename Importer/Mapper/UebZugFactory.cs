@@ -1,7 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using BauFahrplanMonitor.Importer.Dto.Ueb;
 using BauFahrplanMonitor.Importer.Helper;
 using BauFahrplanMonitor.Importer.Xml;
@@ -13,147 +13,144 @@ public static class UebZugFactory {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
     public static UebZugFactoryResult Build(UebDocumentDto document) {
-        var zugMap     = new Dictionary<UebZugKey, UebZugDto>();
-        var regelungen = new Dictionary<UebZugKey, List<UebRegelungDto>>();
+        var zugMap =
+            new Dictionary<UebZugKey, UebZugDto>();
 
-        // =================================================
-        // PHASE 1 – ALLE <zug> EINLESEN (Primärquelle)
-        // =================================================
+        var regelungen =
+            new Dictionary<UebZugKey,
+                Dictionary<UebRegelungsKey, UebRegelungDto>>();
+
+        // -------------------------------------------------
+        // 1️⃣ ZÜGE aus <zug>
+        // -------------------------------------------------
         foreach (var zug in document.Zuege) {
-            if (zug.Zugnummer <= 0 || zug.Verkehrstag == default) {
-                Logger.Warn(
-                    "ÜB-Factory: Ungültiger <zug> übersprungen: Zug={0}, VT={1}",
-                    zug.Zugnummer,
-                    zug.Verkehrstag);
-                continue;
-            }
-
             var key = new UebZugKey(zug.Zugnummer, zug.Verkehrstag);
 
             zugMap[key]     = zug;
-            regelungen[key] = [];
+            regelungen[key] = new Dictionary<UebRegelungsKey, UebRegelungDto>();
 
-            Logger.Debug(
-                "ÜB-Factory: <zug> übernommen: Zug={0}/{1}, Abschnitt={2}",
-                zug.Zugnummer,
-                zug.Verkehrstag,
-                zug.FploAbschnitt);
-
-            // Komplettausfall-Regelung direkt aus <zug>
-            if (!IsKomplettausfall(zug)) continue;
-            var reg = CreateKomplettausfallRegelung(zug);
-            AddOrMergeRegelung(regelungen[key], reg, key);
+            AddBasisFploAbschnittRegelung(
+                regelungen, key, zug);
         }
 
-        // =================================================
-        // PHASE 2 – SEV AUSWERTEN (NUR Regelungen!)
-        // =================================================
+        // -------------------------------------------------
+        // 2️⃣ SEV / Ersatzzüge
+        // -------------------------------------------------
         foreach (var sev in document.Sev) {
-            if (sev.ZugNr <= 0 || sev.Verkehrstag == null) {
-                Logger.Warn(
-                    "ÜB-Factory: Ungültiger <sev> übersprungen: Zug={0}, VT={1}",
-                    sev.ZugNr,
-                    sev.Verkehrstag);
+            if (sev.Verkehrstag is null)
                 continue;
-            }
 
             var key = new UebZugKey(sev.ZugNr, sev.Verkehrstag.Value);
 
-            // Falls kein <zug> existiert → Minimalzug aus SEV
             if (!zugMap.TryGetValue(key, out var zug)) {
-                Logger.Info(
-                    "ÜB-Factory: Zug nur aus <sev> bekannt → Minimalzug: Zug={0}/{1}",
-                    sev.ZugNr,
-                    sev.Verkehrstag);
-
                 zug             = CreateZugFromSev(sev);
                 zugMap[key]     = zug;
-                regelungen[key] = [];
+                regelungen[key] = new Dictionary<UebRegelungsKey, UebRegelungDto>();
+
+                AddBasisFploAbschnittRegelung(
+                    regelungen, key, zug);
             }
 
-            // Komplettausfall schlägt SEV
-            if (IsKomplettausfall(zug)) {
-                Logger.Debug(
-                    "ÜB-Factory: SEV ignoriert (Ausfall): Zug={0}/{1}",
-                    zug.Zugnummer,
-                    zug.Verkehrstag);
-                continue;
-            }
+            // ➕ SEV-Regelung (Teilausfall)
+            AddRegelung(
+                regelungen,
+                key,
+                CreateSevDetailRegelung(sev));
 
-            // -------- Teilausfall-Regelung --------
-            var teilAusfall = CreateTeilAusfallRegelung(sev);
-            AddOrMergeRegelung(regelungen[key], teilAusfall, key);
-
-            // -------- KEIN impliziter Ersatzzug! --------
-            if (sev.Ersatzzug == null)
+            // -----------------------------
+            // Ersatzzug
+            // -----------------------------
+            if (sev.Ersatzzug is not { } ez)
                 continue;
 
-            // Ersatzzug NUR wenn explizit vorhanden
-            var ez = sev.Ersatzzug;
+            var ezKey = new UebZugKey(
+                ez.Zugnummer,
+                ez.Verkehrstag);
 
-            if (ez.Zugnummer <= 0) {
-                Logger.Warn(
-                    "ÜB-Factory: <ersatzzug> ohne Zugnummer ignoriert (SEV-Zug={0}/{1})",
-                    sev.ZugNr,
-                    sev.Verkehrstag);
+            if (zugMap.ContainsKey(ezKey))
                 continue;
-            }
 
-            var ezVt = ez.Verkehrstag == default
-                ? sev.Verkehrstag.Value
-                : ez.Verkehrstag;
+            var ersatzZug = CreateZugFromErsatzzug(sev);
 
-            var ek = new UebZugKey(ez.Zugnummer, ezVt);
+            zugMap[ezKey]     = ersatzZug;
+            regelungen[ezKey] = new Dictionary<UebRegelungsKey, UebRegelungDto>();
 
-            // Nur anlegen, wenn kein <zug> existiert
-            if (!zugMap.ContainsKey(ek)) {
-                Logger.Info(
-                    "ÜB-Factory: Ersatzzug ohne eigenes <zug> → Minimalzug: Zug={0}/{1}",
-                    ez.Zugnummer,
-                    ezVt);
-
-                var ersatzZug = CreateZugFromErsatzzug(sev);
-                ersatzZug.Zugnummer   = ez.Zugnummer;
-                ersatzZug.Verkehrstag = ezVt;
-
-                zugMap[ek]     = ersatzZug;
-                regelungen[ek] = [];
-            }
-            else {
-                Logger.Debug(
-                    "ÜB-Factory: Ersatzzug später als <zug> definiert → kein Duplikat: Zug={0}/{1}",
-                    ez.Zugnummer,
-                    ezVt);
-            }
+            AddBasisFploAbschnittRegelung(
+                regelungen, ezKey, ersatzZug);
         }
 
-        Logger.Info(
-            "ÜB-Factory abgeschlossen: Zuege={0}, RegelungsKeys={1}",
-            zugMap.Count,
-            regelungen.Count);
+        // -------------------------------------------------
+        // DEBUG
+        // -------------------------------------------------
+        if (Logger.IsDebugEnabled) {
+            Logger.Debug(
+                "ÜB-Factory RESULT\n{Json}",
+                ToDebugJson(new {
+                    Zuege = zugMap.Values,
+                    Regelungen = regelungen.ToDictionary(
+                        z => $"{z.Key.ZugNr}/{z.Key.Verkehrstag}",
+                        z => z.Value.Values)
+                }));
+        }
 
         return new UebZugFactoryResult {
-            Zuege      = zugMap.Values.ToList(),
-            Regelungen = regelungen
+            Zuege = zugMap.Values.ToList(),
+            Regelungen = regelungen.ToDictionary(
+                x => x.Key,
+                x => x.Value.Values.ToList())
         };
     }
 
     // =====================================================================
     // Regelungen
     // =====================================================================
-    private static UebRegelungDto CreateKomplettausfallRegelung(UebZugDto zug) =>
-        new() {
-            Art         = "Ausfall",
-            AnchorRl100 = zug.Regelweg?.Abgangsbahnhof?.Ds100
+
+    private static void AddBasisFploAbschnittRegelung(
+        Dictionary<UebZugKey,
+            Dictionary<UebRegelungsKey, UebRegelungDto>> map,
+        UebZugKey zugKey,
+        UebZugDto zug) {
+        var anchor = zug.FploAbschnitt switch {
+            "Ausfall" => zug.Regelweg?.Abgangsbahnhof?.Ds100,
+
+            _ => zug.Knotenzeiten?
+                .OrderBy(k => k.RelativLage)
+                .FirstOrDefault()
+                ?.BahnhofDs100
         };
 
-    private static UebRegelungDto CreateTeilAusfallRegelung(UebSevDto sev) =>
+        if (string.IsNullOrWhiteSpace(anchor))
+            return;
+
+        AddRegelung(
+            map,
+            zugKey,
+            new UebRegelungDto {
+                Art         = zug.FploAbschnitt,
+                AnchorRl100 = anchor,
+                JsonRaw     = NormalizeJson(string.Empty)
+            });
+    }
+
+    private static UebRegelungDto CreateSevDetailRegelung(UebSevDto sev) =>
         new() {
-            Art         = "Teilausfall",
+            Art         = "SEV",
             AnchorRl100 = sev.AusfallVonDs100,
-            JsonRaw     = JsonSerializer.Serialize(sev)
+            BisRl100    = sev.EndDs100,
+            JsonRaw     = NormalizeJson(JsonSerializer.Serialize(sev))
         };
 
+    private static void AddRegelung(
+        Dictionary<UebZugKey,
+            Dictionary<UebRegelungsKey, UebRegelungDto>> map,
+        UebZugKey      zugKey,
+        UebRegelungDto dto) {
+        var rKey = new UebRegelungsKey(
+            dto.Art,
+            dto.AnchorRl100);
+
+        map[zugKey][rKey] = dto; // 🔑 erzwingt Eindeutigkeit
+    }
 
     // =====================================================================
     // Zug-Erzeugung
@@ -182,29 +179,19 @@ public static class UebZugFactory {
         };
     }
 
-
-    private static void AddOrMergeRegelung(
-        List<UebRegelungDto> list,
-        UebRegelungDto       neu,
-        UebZugKey            key) {
-        if (neu == null || string.IsNullOrWhiteSpace(neu.AnchorRl100))
-            return;
-
-        if (list.Any(r =>
-                r.Art         == neu.Art &&
-                r.AnchorRl100 == neu.AnchorRl100)) {
-            Logger.Debug(
-                "ÜB-Factory: Doppelte Regelung ignoriert: Zug={0}/{1}, Art={2}, Anker={3}",
-                key.ZugNr,
-                key.Verkehrstag,
-                neu.Art,
-                neu.AnchorRl100);
-            return;
-        }
-
-        list.Add(neu);
+    private static string? NormalizeJson(string? json) {
+        return string.IsNullOrWhiteSpace(json) ? null : json;
     }
 
-    private static bool IsKomplettausfall(UebZugDto zug) =>
-        string.Equals(zug.FploAbschnitt, "Ausfall", StringComparison.OrdinalIgnoreCase);
+
+    private static string ToDebugJson(object obj) =>
+        JsonSerializer.Serialize(
+            obj,
+#pragma warning disable CA1869
+            new JsonSerializerOptions {
+#pragma warning restore CA1869
+                WriteIndented          = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                Encoder                = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            });
 }
