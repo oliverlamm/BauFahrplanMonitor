@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -29,7 +28,7 @@ public sealed class ZvFUpserter(
             config,
             LogManager.GetCurrentClassLogger()),
         IZvFUpserter {
-    private ZvFImportStats stats = null!;
+    private ZvFImportStats _stats = null!;
 
     // =====================================================================
     // ENTRYPOINT mit Progress
@@ -39,7 +38,7 @@ public sealed class ZvFUpserter(
         ZvFXmlDocumentDto              dto,
         IProgress<UpsertProgressInfo>? progress,
         CancellationToken              token) {
-        stats = new ZvFImportStats();
+        _stats = new ZvFImportStats();
 
         // -------------------------------------------------
         // PHASE A: Referenzen (kurz, sichtbar)
@@ -104,7 +103,7 @@ public sealed class ZvFUpserter(
                     });
                 }
 
-                await UpsertEntfallenAsync(db, e, dokumentRef, token);
+                await UpsertEntfallenAsync(db, e, dokumentRef);
             }
 
             db.ChangeTracker.AutoDetectChangesEnabled = true;
@@ -115,7 +114,7 @@ public sealed class ZvFUpserter(
 
             return new UpsertResult {
                 DokumentRef = dokumentRef,
-                ZvFStats    = stats
+                ZvFStats    = _stats
             };
         }
         catch (OperationCanceledException) {
@@ -129,9 +128,9 @@ public sealed class ZvFUpserter(
             await tx.RollbackAsync(CancellationToken.None);
 
             HandleException(ex, "ZvFUpsert", new {
-                    dto.Document.Dateiname,
-                    dto.Vorgang.MasterFplo
-                });
+                dto.Document.Dateiname,
+                dto.Vorgang.MasterFplo
+            });
             throw;
         }
         finally {
@@ -159,8 +158,8 @@ public sealed class ZvFUpserter(
                     s.Massnahme,
                     s.Betriebsweise,
                     s.Grund,
-                    Baubeginn = s.Baubeginn,
-                    Bauende   = s.Bauende
+                    s.Baubeginn,
+                    s.Bauende
                 })
                 .Select(g => g.First())
                 .ToList();
@@ -168,14 +167,10 @@ public sealed class ZvFUpserter(
             foreach (var strecke in uniqueStrecken) {
                 token.ThrowIfCancellationRequested();
 
-                var json = JsonSerializer.Serialize(
-                    strecke,
-#pragma warning disable CA1869
-                    new JsonSerializerOptions {
-#pragma warning restore CA1869
-                        DefaultIgnoreCondition =
-                            JsonIgnoreCondition.WhenWritingNull
-                    });
+                if (strecke.Baubeginn == null || strecke.Bauende == null)
+                    throw new InvalidOperationException(
+                        $"Streckenabschnitt ohne Bauzeit (DokRef={dokumentRef}, " +
+                        $"Start={strecke.StartBst}, Ende={strecke.EndBst})");
 
                 db.ZvfDokumentStreckenabschnitte.Add(
                     new ZvfDokumentStreckenabschnitte {
@@ -291,11 +286,10 @@ public sealed class ZvFUpserter(
     // =====================================================================
     // Entfallen 
     // =====================================================================
-    private async Task UpsertEntfallenAsync(
+    private Task UpsertEntfallenAsync(
         UjBauDbContext     db,
         ZvFZugEntfallenDto e,
-        long               dokumentRef,
-        CancellationToken  token) {
+        long               dokumentRef) {
         var entity = new ZvfDokumentZugEntfallen {
             ZvfDokumentRef = dokumentRef,
             Zugnr          = (int)e.Zugnr,
@@ -304,8 +298,9 @@ public sealed class ZvFUpserter(
             Art            = e.RegelungsartAlt
         };
 
-        stats.EntfallenInserted++;
+        _stats.EntfallenInserted++;
         db.ZvfDokumentZugEntfallen.Add(entity);
+        return Task.CompletedTask;
 
         // ❗ KEIN SaveChanges
         // ❗ KEIN AnyAsync
@@ -336,17 +331,17 @@ public sealed class ZvFUpserter(
         // -------------------------------------------------
         // Region auflösen
         // -------------------------------------------------
-        if (string.IsNullOrWhiteSpace(dto.Document.Masterniederlassung))
+        if (string.IsNullOrWhiteSpace(dto.Document.MasterRegion))
             throw new InvalidOperationException("Masterniederlassung fehlt");
 
         var regionRef = await resolver.ResolveRegionAsync(
             db,
-            dto.Document.Masterniederlassung,
+            dto.Document.MasterRegion,
             token);
 
         if (regionRef <= 0)
             throw new InvalidOperationException(
-                $"Region '{dto.Document.Masterniederlassung}' konnte nicht aufgelöst werden");
+                $"Region '{dto.Document.MasterRegion}' konnte nicht aufgelöst werden");
 
         // -------------------------------------------------
         // Create
@@ -452,7 +447,7 @@ public sealed class ZvFUpserter(
                 Bedarf        = zug.Bedarf,
                 Sonderzug     = zug.Sonder,
             };
-            stats.ZuegeInserted++;
+            _stats.ZuegeInserted++;
 
             db.ZvfDokumentZug.Add(entity);
             await db.SaveChangesAsync(token);
@@ -463,26 +458,23 @@ public sealed class ZvFUpserter(
         // -------------------------------------------------
         // 4) UPDATE (nur bei echten Änderungen)
         // -------------------------------------------------
-        var changed = false;
-
-        changed |= SetIfDifferent(existing.Zugbez,    zug.Zugbez,    v => existing.Zugbez    = v);
-        changed |= SetIfDifferent(existing.Aenderung, zug.Aenderung, v => existing.Aenderung = v);
-        changed |= SetIfDifferent(existing.RegelwegLinie, zug.Regelweg?.LinienNr ?? string.Empty,
+        SetIfDifferent(existing.Zugbez,    zug.Zugbez,    v => existing.Zugbez    = v);
+        SetIfDifferent(existing.Aenderung, zug.Aenderung, v => existing.Aenderung = v);
+        SetIfDifferent(existing.RegelwegLinie, zug.Regelweg?.LinienNr ?? string.Empty,
             v => existing.RegelwegLinie = v);
-        changed |= SetIfDifferent(existing.Klv,       zug.Klv,         v => existing.Klv       = v);
-        changed |= SetIfDifferent(existing.Skl,       zug.Skl,         v => existing.Skl       = v);
-        changed |= SetIfDifferent(existing.Bza,       zug.Bza,         v => existing.Bza       = v);
-        changed |= SetIfDifferent(existing.Bemerkung, zug.Bemerkungen, v => existing.Bemerkung = v);
-        changed |= SetIfDifferent(existing.Bedarf,    zug.Bedarf,      v => existing.Bedarf    = v);
-        changed |= SetIfDifferent(existing.Sonderzug, zug.Sonder,      v => existing.Sonderzug = v);
+        SetIfDifferent(existing.Klv,       zug.Klv,         v => existing.Klv       = v);
+        SetIfDifferent(existing.Skl,       zug.Skl,         v => existing.Skl       = v);
+        SetIfDifferent(existing.Bza,       zug.Bza,         v => existing.Bza       = v);
+        SetIfDifferent(existing.Bemerkung, zug.Bemerkungen, v => existing.Bemerkung = v);
+        SetIfDifferent(existing.Bedarf,    zug.Bedarf,      v => existing.Bedarf    = v);
+        SetIfDifferent(existing.Sonderzug, zug.Sonder,      v => existing.Sonderzug = v);
 
         // FK-Refs
-        changed |= SetIfDifferent(existing.KundeRef,             kundeRef,     v => existing.KundeRef             = v);
-        changed |= SetIfDifferent(existing.RegelwegAbgangBstRef, abgangBstRef, v => existing.RegelwegAbgangBstRef = v);
-        changed |= SetIfDifferent(existing.RegelwegZielBstRef,   zielBstRef,   v => existing.RegelwegZielBstRef   = v);
+        SetIfDifferent(existing.KundeRef,             kundeRef,     v => existing.KundeRef             = v);
+        SetIfDifferent(existing.RegelwegAbgangBstRef, abgangBstRef, v => existing.RegelwegAbgangBstRef = v);
+        SetIfDifferent(existing.RegelwegZielBstRef,   zielBstRef,   v => existing.RegelwegZielBstRef   = v);
 
-        stats.ZuegeUpdated++;
-        // ❌ kein SaveChanges hier!
+        _stats.ZuegeUpdated++;
         return existing.Id;
     }
 
@@ -506,8 +498,14 @@ public sealed class ZvFUpserter(
 
         if (ankerBstRef is null or <= 0) {
             Logger.Warn(
-                "ZvF Abweichung ohne gültigen AnkerBstRef (AnchorRl100='{0}')",
-                abw.AnchorRl100);
+                "Regelung ohne RL100-Anker erkannt | Art={Art}, Zug={Zug}, Tag={Tag}, AnchorRl100='{Ab}', Json={Json}",
+                abw.Regelungsart,
+                abw.Zugnummer,
+                abw.Verkehrstag.ToString("yyyy-MM-dd"),
+                abw.AnchorRl100,
+                abw.JsonRaw
+            );
+
         }
 
         var entity = new ZvfDokumentZugAbweichung {
@@ -517,7 +515,7 @@ public sealed class ZvFUpserter(
             AbBstRef          = ankerBstRef
         };
 
-        stats.AbweichungenInserted++;
+        _stats.AbweichungenInserted++;
         db.ZvfDokumentZugAbweichung.Add(entity);
         // ❗ KEIN SaveChanges hier
         // ❗ UniqueConstraint + zentraler SaveChanges reichen aus
@@ -529,14 +527,11 @@ public sealed class ZvFUpserter(
     private static bool IsUniqueViolation(DbUpdateException ex)
         => ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
-    private static bool SetIfDifferent<T>(
-        T         current,
-        T         next,
-        Action<T> setter) {
-        if (EqualityComparer<T>.Default.Equals(current, next))
-            return false;
+    private static void SetIfDifferent<T>(T current,
+        T                                   next,
+        Action<T>                           setter) {
+        if (EqualityComparer<T>.Default.Equals(current, next)) return;
 
         setter(next);
-        return true;
     }
 }

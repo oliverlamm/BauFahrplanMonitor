@@ -41,7 +41,7 @@ public class SharedDocumentDto {
     /// (z. B. Niederlassung / Bereich),
     /// die für das Dokument federführend ist.
     /// </remarks>
-    public string Masterniederlassung { get; set; } = "";
+    public string MasterRegion { get; set; } = "";
 
     /// <summary>
     /// Zeitpunkt, zu dem das Dokument exportiert wurde.

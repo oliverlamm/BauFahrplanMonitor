@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
+using BauFahrplanMonitor.Importer.Dto.Shared;
 using BauFahrplanMonitor.Importer.Dto.Ueb;
 using BauFahrplanMonitor.Importer.Helper;
 using BauFahrplanMonitor.Importer.Interface;
@@ -27,8 +28,7 @@ public sealed class UeBUpserter(
     SharedReferenceResolver           resolver,
     ConfigService                     config)
     : ImportUpserterBase(config, LogManager.GetCurrentClassLogger()), IUeBUpserter {
-    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-
+    
     private UeBImportStats Stats { get; set; } = new();
 
     // =====================================================================
@@ -59,7 +59,7 @@ public sealed class UeBUpserter(
 
         try {
             var dokumentRef = await ResolveOrInsertDokumentAsync(db, dto, vorgangRef, senderRef, token);
-            await UpsertStreckenabschnitteAsync(dto, db, dokumentRef, token);
+            await UpsertStreckenabschnitteAsync(dto, token, db, dokumentRef);
             var factoryResult = UebZugFactory.Build(dto.Document);
 
             Stats.SevsGelesen              += factoryResult.SevsGelesen;
@@ -147,19 +147,58 @@ public sealed class UeBUpserter(
                 token);
 
         var kundeRef = await ResolveKundeAsync(db, zug, dto, token);
+        var regelwegAbBstRef =
+            await resolver.ResolveOrCreateBetriebsstelleAsync(db, zug.Regelweg?.Abgangsbahnhof?.Ds100, token);
 
+        var regelwegZielBstRef =
+            await resolver.ResolveOrCreateBetriebsstelleAsync(db, zug.Regelweg?.Zielbahnhof?.Ds100, token);
+        
         if (existing != null) {
-            existing.KundeRef = kundeRef;
+            existing.KundeRef            = kundeRef;
+            existing.Bedarf              = zug.Bedarf;
+            existing.KundeRef            = kundeRef;
+            existing.Zugbez              = zug.Zugbez;
+            existing.Zuggat              = zug.ZugGattung.ToString();
+            existing.Sicherheitsrelevant = zug.IstSicherheitsrelevant;
+            existing.Lauterzug           = zug.LauterZug;
+            existing.Vmax                = zug.Vmax;
+            existing.Tfz                 = zug.Tfzf;
+            existing.Last                = zug.Last;
+            existing.Laenge              = zug.Laenge;
+            existing.Brems               = zug.Bremssystem;
+            existing.Ebula               = zug.Ebula;
+            existing.Skl                 = zug.Skl;
+            existing.Klv                 = zug.Klv;
+            existing.Bemerkung           = zug.Bemerkungen;
+            existing.RegelwegLinie       = zug.Regelweg?.LinienNr ?? string.Empty;
+            existing.RegelwegAbBstRef    = regelwegAbBstRef;
+            existing.RegelwegZielBstRef  = regelwegZielBstRef;
             Stats.ZuegeUpdated++;
             return existing.Id;
         }
 
         var entity = new UebDokumentZug {
-            UebDokumentRef = dokumentRef,
-            Zugnr          = zug.Zugnummer,
-            Verkehrstag    = zug.Verkehrstag,
-            Bedarf         = zug.Bedarf,
-            KundeRef       = kundeRef
+            UebDokumentRef      = dokumentRef,
+            Zugnr               = zug.Zugnummer,
+            Verkehrstag         = zug.Verkehrstag,
+            Bedarf              = zug.Bedarf,
+            KundeRef            = kundeRef,
+            Zugbez              = zug.Zugbez,
+            Zuggat              = zug.ZugGattung.ToString(),
+            Sicherheitsrelevant = zug.IstSicherheitsrelevant,
+            Lauterzug           = zug.LauterZug,
+            Vmax                = zug.Vmax,
+            Tfz                 = zug.Tfzf,
+            Last                = zug.Last,
+            Laenge              = zug.Laenge,
+            Brems               = zug.Bremssystem,
+            Ebula               = zug.Ebula,
+            Skl                 = zug.Skl,
+            Klv                 = zug.Klv,
+            Bemerkung           = zug.Bemerkungen,
+            RegelwegLinie       = zug.Regelweg?.LinienNr ?? string.Empty,
+            RegelwegAbBstRef    = regelwegAbBstRef,
+            RegelwegZielBstRef  = regelwegZielBstRef
         };
 
         db.UebDokumentZug.Add(entity);
@@ -181,7 +220,7 @@ public sealed class UeBUpserter(
             return await resolver.ResolveOrCreateKundeAsync(
                 db, zug.Betreiber, token);
 
-        var empfaenger = dto.Header?.Empfaenger;
+        var empfaenger = dto.Header.Empfaenger;
         if (empfaenger is { Count: 1 }) {
             var kbez = empfaenger[0];
             var id = await db.BasisKunde
@@ -225,17 +264,17 @@ public sealed class UeBUpserter(
         // -------------------------------------------------
         // Region auflösen
         // -------------------------------------------------
-        if (string.IsNullOrWhiteSpace(dto.Document.Masterniederlassung))
+        if (string.IsNullOrWhiteSpace(((SharedDocumentDto)dto.Document).MasterRegion))
             throw new InvalidOperationException("Masterniederlassung fehlt");
 
         var regionRef = await resolver.ResolveRegionAsync(
             db,
-            dto.Document.Masterniederlassung,
+            ((SharedDocumentDto)dto.Document).MasterRegion,
             token);
 
         if (regionRef <= 0)
             throw new InvalidOperationException(
-                $"Region '{dto.Document.Masterniederlassung}' konnte nicht aufgelöst werden");
+                $"Region '{((SharedDocumentDto)dto.Document).MasterRegion}' konnte nicht aufgelöst werden");
 
         // -------------------------------------------------
         // Create
@@ -282,13 +321,49 @@ public sealed class UeBUpserter(
     // =====================================================================
     // STRECKEN
     // =====================================================================
-    private async Task UpsertStreckenabschnitteAsync(
-        UebXmlDocumentDto dto,
-        UjBauDbContext    db,
-        long              dokumentRef,
-        CancellationToken token) {
-        // bewusst leer – ÜB nutzt aktuell keine Streckenabschnitte
-        await Task.CompletedTask;
+    private static async Task UpsertStreckenabschnitteAsync(UebXmlDocumentDto dto, CancellationToken token,
+        UjBauDbContext                                                        db,  long              dokumentRef) {
+        if (dto.Document.Strecken is { Count: > 0 }) {
+            // Alte Einträge für dieses Dokument entfernen
+            // (Dokument ist die einzige Identität)
+            await db.UebDokumentStreckenabschnitte
+                .Where(x => x.UebDokumentRef == dokumentRef)
+                .ExecuteDeleteAsync(token);
+
+            var uniqueStrecken = dto.Document.Strecken
+                .GroupBy(s => new {
+                    s.StartBst,
+                    s.EndBst,
+                    s.Massnahme,
+                    s.Betriebsweise,
+                    s.Grund,
+                    s.Baubeginn,
+                    s.Bauende
+                })
+                .Select(g => g.First())
+                .ToList();
+
+            foreach (var strecke in uniqueStrecken) {
+                token.ThrowIfCancellationRequested();
+                
+                if (strecke.Baubeginn == null || strecke.Bauende == null)
+                    throw new InvalidOperationException(
+                        $"Streckenabschnitt ohne Bauzeit (DokRef={dokumentRef}, " +
+                        $"Start={strecke.StartBst}, Ende={strecke.EndBst})");
+                
+                db.UebDokumentStreckenabschnitte.Add(
+                    new UebDokumentStreckenabschnitte {
+                        UebDokumentRef = dokumentRef,
+                        StartBstRl100   = strecke.StartBst      ?? string.Empty,
+                        EndBstRl100     = strecke.EndBst        ?? string.Empty,
+                        Massnahme       = strecke.Massnahme     ?? string.Empty,
+                        Betriebsweise   = strecke.Betriebsweise ?? string.Empty,
+                        Grund           = strecke.Grund         ?? string.Empty,
+                        Baubeginn       = strecke.Baubeginn.Value,
+                        Bauende         = strecke.Bauende.Value
+                    });
+            }
+        }
     }
 
     // =====================================================================
@@ -334,7 +409,6 @@ public sealed class UeBUpserter(
         UebRegelungDto    regelung,
         long              zugRef,
         CancellationToken token) {
-        
         var ankerBstRef =
             await resolver.ResolveOrCreateBetriebsstelleAsync(
                 db, regelung.AnchorRl100!, token);
@@ -349,8 +423,8 @@ public sealed class UeBUpserter(
 
         if (entity != null) {
             // 🔁 MERGE
-            entity.Regelung  ??= regelung.JsonRaw;
-            
+            entity.Regelung ??= regelung.JsonRaw;
+
             return;
         }
 

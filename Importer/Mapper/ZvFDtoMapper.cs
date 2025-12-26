@@ -46,7 +46,7 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
         // -------------------------------
         var fileName = Path.GetFileName(sourceFile);
         dto.Document.Dateiname           = fileName;
-        dto.Document.Masterniederlassung = bm.Masterniederlassung ?? "";
+        dto.Document.MasterRegion = bm.Masterniederlassung ?? "";
         dto.Document.ExportTimestamp     = export.Header.Timestamp;
         dto.Document.Version.Major       = bm.Version?.Major ?? 0;
         dto.Document.Version.Minor       = bm.Version?.Minor ?? 0;

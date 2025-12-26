@@ -26,7 +26,6 @@ public class SharedReferenceResolver {
     // Dokument-Locks (Key: Vorgang + Dateiname)
     // ----------------------------------------------
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> VorgangLocks  = new();
-    private static readonly ConcurrentDictionary<string, SemaphoreSlim> DokumentLocks = new();
 
     private static readonly ConcurrentDictionary<(string Name, string Vorname, string Mail), SemaphoreSlim>
         SenderLocks = new();
@@ -36,6 +35,7 @@ public class SharedReferenceResolver {
     // =====================================================================
 
     private readonly ConcurrentDictionary<string, long> _regionCache = new();
+
     private readonly ConcurrentDictionary<(string Name, string Vorname, string Mail), long>
         _senderCache = new();
 
@@ -85,10 +85,7 @@ public class SharedReferenceResolver {
             Mail: Norm(header.SenderMail)
         );
 
-        LogStart(
-            "[Sender.ResolveOrCreate]",
-            "name='{0}', vorname='{1}', mail='{2}', file='{3}'",
-            key.Name, key.Vorname, key.Mail, header.FileName);
+        LogStart("[Sender.ResolveOrCreate]", "name='{0}', vorname='{1}', mail='{2}', file='{3}'", key.Name, key.Vorname, key.Mail, header.FileName);
 
         // -------------------------------------------------
         // Fast Path: Cache vor Lock
@@ -103,7 +100,6 @@ public class SharedReferenceResolver {
         await sem.WaitAsync(token);
 
         try {
-            // 🔁 ZWINGEND: Cache nach Lock erneut prüfen
             if (_senderCache.TryGetValue(key, out cachedId))
                 return cachedId;
 
@@ -112,19 +108,20 @@ public class SharedReferenceResolver {
             // -------------------------------------------------
             var sender = await db.UjbauSender.FirstOrDefaultAsync(
                 s =>
-                    ((s.Name    ?? "").Trim().ToLower()) == key.Name    &&
-                    ((s.Vorname ?? "").Trim().ToLower()) == key.Vorname &&
-                    ((s.Email   ?? "").Trim().ToLower()) == key.Mail,
+                    (s.Name    ?? "").Trim().ToLower() == key.Name    &&
+                    (s.Vorname ?? "").Trim().ToLower() == key.Vorname &&
+                    (s.Email   ?? "").Trim().ToLower() == key.Mail,
                 token);
 
-            var isNew = false;
+            var isNew     = false;
+            var isChanged = false;
 
             if (sender == null) {
                 // CREATE (null-safe)
                 sender = new UjbauSender {
-                    Name      = (header.SenderName    ?? "").Trim(),
-                    Vorname   = (header.SenderVorname ?? "").Trim(),
-                    Email     = (header.SenderMail    ?? "").Trim(),
+                    Name      = (header.SenderName).Trim(),
+                    Vorname   = (header.SenderVorname).Trim(),
+                    Email     = (header.SenderMail).Trim(),
                     Abteilung = header.SenderAbteilung,
                     Telefon   = header.SenderTelefon,
                     Strasse   = header.SenderAdresse,
@@ -136,31 +133,25 @@ public class SharedReferenceResolver {
                 isNew = true;
             }
             else {
-                // UPDATE (nur echte Änderungen)
-                var changed = false;
-
-                changed |= UpdateIfDifferent(sender.Abteilung, header.SenderAbteilung, v => sender.Abteilung = v);
-                changed |= UpdateIfDifferent(sender.Telefon,   header.SenderTelefon,   v => sender.Telefon   = v);
-                changed |= UpdateIfDifferent(sender.Strasse,   header.SenderAdresse,   v => sender.Strasse   = v);
-                changed |= UpdateIfDifferent(sender.Stadt,     header.SenderStadt,     v => sender.Stadt     = v);
+                
+                var s = sender;
+                isChanged |= UpdateIfDifferent(sender.Abteilung, header.SenderAbteilung, v => s.Abteilung = v);
+                isChanged |= UpdateIfDifferent(sender.Telefon,   header.SenderTelefon,   v => s.Telefon   = v);
+                isChanged |= UpdateIfDifferent(sender.Strasse,   header.SenderAdresse,   v => s.Strasse   = v);
+                isChanged |= UpdateIfDifferent(sender.Stadt,     header.SenderStadt,     v => s.Stadt     = v);
 
                 // UpdateIfDifferent ist nur für string → PLZ explizit
                 if (sender.Plz != header.SenderPlz) {
                     sender.Plz = header.SenderPlz;
-                    changed    = true;
+                    isChanged  = true;
                 }
 
-                if (changed) {
-                    Logger.Info(
-                        "[Sender] aktualisiert: {0} {1} <{2}> id={3}",
+                if (isChanged) {
+                    Logger.Info("[Sender] aktualisiert: {0} {1} <{2}> id={3}",
                         sender.Name, sender.Vorname, sender.Email, sender.Id);
                 }
                 else {
-                    LogHit(
-                        "[Sender.ResolveOrCreate]",
-                        "NoChange",
-                        "{0} {1} <{2}> → {3}",
-                        sender.Name, sender.Vorname, sender.Email, sender.Id);
+                    LogHit("[Sender.ResolveOrCreate]", "NoChange", "{0} {1} <{2}> → {3}", sender.Name, sender.Vorname, sender.Email, sender.Id);
                 }
             }
 
@@ -168,17 +159,19 @@ public class SharedReferenceResolver {
             // Persist + Unique-Catch
             // -------------------------------------------------
             try {
-                await db.SaveChangesAsync(token);
-                // 🔒 sicherstellen, dass nichts offen bleibt
-                db.Entry(sender).State = EntityState.Unchanged;
+                if (isNew || isChanged) {
+                    await db.SaveChangesAsync(token);
+                    db.Entry(sender).State = EntityState.Unchanged;
+                }
+
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex)) {
                 // anderer Thread war schneller → Re-Read
                 sender = await db.UjbauSender.SingleAsync(
                     s =>
-                        ((s.Name    ?? "").Trim().ToLower()) == key.Name    &&
-                        ((s.Vorname ?? "").Trim().ToLower()) == key.Vorname &&
-                        ((s.Email   ?? "").Trim().ToLower()) == key.Mail,
+                        (s.Name    ?? "").Trim().ToLower() == key.Name    &&
+                        (s.Vorname ?? "").Trim().ToLower() == key.Vorname &&
+                        (s.Email   ?? "").Trim().ToLower() == key.Mail,
                     token);
             }
 
@@ -188,10 +181,8 @@ public class SharedReferenceResolver {
             _senderCache[key] = sender.Id;
 
             if (isNew) {
-                LogCreated(
-                    "[Sender]",
-                    "angelegt: {0} {1} <{2}> → id={3}",
-                    sender.Name, sender.Vorname, sender.Email, sender.Id);
+                LogCreated("[Sender]", "angelegt: {0} {1} <{2}> → id={3}", sender.Name, sender.Vorname, sender.Email,
+                    sender.Id);
             }
 
             return sender.Id;
@@ -248,7 +239,7 @@ public class SharedReferenceResolver {
                 vorgang = new UjbauVorgang {
                     VorgangNr    = dto.MasterFplo,
                     Fahrplanjahr = dto.FahrplanJahr,
-                    Kategorie    = string.IsNullOrWhiteSpace(dto.Kategorie)
+                    Kategorie = string.IsNullOrWhiteSpace(dto.Kategorie)
                         ? "A"
                         : dto.Kategorie
                 };
@@ -256,7 +247,7 @@ public class SharedReferenceResolver {
                 db.UjbauVorgang.Add(vorgang);
                 isNew = true;
             }
-            
+
             if (dto is IExtendedVorgangDto extended) {
                 if (isNew || importMode != ImportMode.UeB) {
                     extended.ApplyTo(vorgang);
@@ -265,7 +256,7 @@ public class SharedReferenceResolver {
                     extended.ApplyIfEmptyTo(vorgang);
                 }
             }
-            
+
             try {
                 await db.SaveChangesAsync(token);
                 db.Entry(vorgang).State = EntityState.Unchanged;
@@ -281,13 +272,9 @@ public class SharedReferenceResolver {
             _vorgangCache[cacheKey] = vorgang.Id;
 
             if (isNew)
-                LogCreated("[Vorgang]",
-                    "angelegt: masterFplo={0}, fahrplanJahr={1} → id={2}",
-                    dto.MasterFplo, dto.FahrplanJahr, vorgang.Id);
+                LogCreated("[Vorgang]", "angelegt: masterFplo={0}, fahrplanJahr={1} → id={2}", dto.MasterFplo, dto.FahrplanJahr, vorgang.Id);
             else
-                LogHit("[Vorgang.ResolveOrCreate]",
-                    "Resolved",     "{0}/{1} → {2}",
-                    dto.MasterFplo, dto.FahrplanJahr, vorgang.Id);
+                LogHit("[Vorgang.ResolveOrCreate]", "Resolved", "{0}/{1} → {2}", dto.MasterFplo, dto.FahrplanJahr, vorgang.Id);
 
             return vorgang.Id;
         }
@@ -308,11 +295,7 @@ public class SharedReferenceResolver {
             ? "UNKNOWN"
             : kundeCode.Trim();
 
-        LogStart(
-            "[Kunde.ResolveOrCreate]",
-            "kundeCode='{0}' key='{1}'",
-            kundeCode,
-            key);
+        LogStart("[Kunde.ResolveOrCreate]", "kundeCode='{0}' key='{1}'", kundeCode, key);
 
         // -------------------------
         // Cache
@@ -348,20 +331,13 @@ public class SharedReferenceResolver {
 
             _kundeCache[key] = kunde.Id;
 
-            LogCreated(
-                "[Kunde]",
-                "angelegt: '{0}' → id={1}",
-                key,
-                kunde.Id);
+            LogCreated("[Kunde]", "angelegt: '{0}' → id={1}", key, kunde.Id);
 
             return kunde.Id;
         }
         catch (DbUpdateException ex) {
             // Race condition: anderer Thread war schneller
-            Logger.Warn(
-                ex,
-                "[Kunde] INSERT Race: '{0}' → Re-Read",
-                key);
+            Logger.Warn(ex, "[Kunde] INSERT Race: '{0}' → Re-Read", key);
 
             var id = await db.BasisKunde
                 .Where(k => k.Kdnnr == key)
@@ -370,12 +346,7 @@ public class SharedReferenceResolver {
 
             _kundeCache[key] = id;
 
-            LogHit(
-                "[Kunde.ResolveOrCreate]",
-                "RaceWinner",
-                "{0} → {1}",
-                key,
-                id);
+            LogHit("[Kunde.ResolveOrCreate]", "RaceWinner", "{0} → {1}", key, id);
 
             return id;
         }
@@ -466,10 +437,7 @@ public class SharedReferenceResolver {
 
         _bstCache[key] = bst.Id;
 
-        Logger.Warn(
-            "[Bst] Betriebsstelle angelegt: RL100='{0}', id={1}",
-            key,
-            bst.Id);
+        Logger.Warn("[Bst] Betriebsstelle angelegt: RL100='{0}', id={1}", key, bst.Id);
 
         return bst.Id;
     }
@@ -620,7 +588,7 @@ public class SharedReferenceResolver {
     public bool TryRegisterBbmn(long vorgangRef, string bbmn)
         => _bbmnCache.TryAdd((vorgangRef, bbmn), 0);
 
-    internal static string NormalizeRegionKey(string? raw) {
+    private static string NormalizeRegionKey(string? raw) {
         if (string.IsNullOrWhiteSpace(raw))
             return "";
 
@@ -641,18 +609,16 @@ public class SharedReferenceResolver {
 
         return raw;
     }
-    
+
     public async Task WarmUpRegionCacheAsync(
         UjBauDbContext    db,
-        CancellationToken token)
-    {
+        CancellationToken token) {
         var regions = await db.BasisRegion
             .AsNoTracking()
             .Select(r => new { r.Id, r.Kbez, r.Bezeichner, r.Langname })
             .ToListAsync(token);
 
-        foreach (var r in regions)
-        {
+        foreach (var r in regions) {
             if (!string.IsNullOrWhiteSpace(r.Kbez))
                 _regionCache.TryAdd(NormalizeRegionKey(r.Kbez), r.Id);
 
@@ -668,7 +634,6 @@ public class SharedReferenceResolver {
             RegionCacheSize);
     }
 
-    public int RegionCacheSize => _regionCache.Count;
+    public int              RegionCacheSize  => _regionCache.Count;
     public RegionCacheStats GetRegionStats() => _regionStats;
-    
 }

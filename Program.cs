@@ -81,6 +81,10 @@ internal class Program {
         // ÜB Import
         services.AddSingleton<IUeBUpserter, UeBUpserter>();
         services.AddSingleton<IUeBDtoMapper, UeBDtoMapper>();
+        
+        // Fplo Import
+        services.AddSingleton<IFploUpserter, FploUpserter>();
+        services.AddSingleton<IFploDtoMapper, FploDtoMapper>();
 
         // Importer selbst
         services.AddSingleton<ZvFExportImporter>();

@@ -1,6 +1,3 @@
 - Anzeige Name und Version in der Fusszeile
 - SingleImporter
 - NetzfahrplanImporter neu
-- MultiFileImporter:
-    - Linie unter Filter
-    - Icons in Start und Stop

@@ -7,6 +7,4 @@ public class FploHaltausfallDto {
     public DateOnly? Verkehrstag            { get; set; }
     public string?   ErsatzHaltDs100        { get; set; }
     public string?   AusfallenderHaltDs100  { get; set; }
-    public long?     ErsatzHaltBstRef       { get; set; }
-    public long?     AusfallenderHaltBstRef { get; set; }
 }

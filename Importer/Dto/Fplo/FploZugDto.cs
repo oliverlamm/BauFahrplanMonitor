@@ -18,4 +18,5 @@ public class FploZugDto : SharedZugDto {
     public string?                  FploAbschnitt          { get; set; } = "";
     public bool                     IstVorplan             { get; set; } = false;
     public List<FploZugFahrplanDto> Fahrplan               { get; set; } = [];
+    public bool                     IstErsatzzug            { get; set; } = false;
 }
