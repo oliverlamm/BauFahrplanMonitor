@@ -25,7 +25,7 @@ public class SharedReferenceResolver {
     // ----------------------------------------------
     // Dokument-Locks (Key: Vorgang + Dateiname)
     // ----------------------------------------------
-    private static readonly ConcurrentDictionary<string, SemaphoreSlim> VorgangLocks  = new();
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> VorgangLocks = new();
 
     private static readonly ConcurrentDictionary<(string Name, string Vorname, string Mail), SemaphoreSlim>
         SenderLocks = new();
@@ -85,7 +85,8 @@ public class SharedReferenceResolver {
             Mail: Norm(header.SenderMail)
         );
 
-        LogStart("[Sender.ResolveOrCreate]", "name='{0}', vorname='{1}', mail='{2}', file='{3}'", key.Name, key.Vorname, key.Mail, header.FileName);
+        LogStart("[Sender.ResolveOrCreate]", "name='{0}', vorname='{1}', mail='{2}', file='{3}'", key.Name, key.Vorname,
+            key.Mail,                        header.FileName);
 
         // -------------------------------------------------
         // Fast Path: Cache vor Lock
@@ -133,7 +134,6 @@ public class SharedReferenceResolver {
                 isNew = true;
             }
             else {
-                
                 var s = sender;
                 isChanged |= UpdateIfDifferent(sender.Abteilung, header.SenderAbteilung, v => s.Abteilung = v);
                 isChanged |= UpdateIfDifferent(sender.Telefon,   header.SenderTelefon,   v => s.Telefon   = v);
@@ -151,7 +151,8 @@ public class SharedReferenceResolver {
                         sender.Name, sender.Vorname, sender.Email, sender.Id);
                 }
                 else {
-                    LogHit("[Sender.ResolveOrCreate]", "NoChange", "{0} {1} <{2}> → {3}", sender.Name, sender.Vorname, sender.Email, sender.Id);
+                    LogHit("[Sender.ResolveOrCreate]", "NoChange", "{0} {1} <{2}> → {3}", sender.Name, sender.Vorname,
+                        sender.Email,                  sender.Id);
                 }
             }
 
@@ -163,7 +164,6 @@ public class SharedReferenceResolver {
                     await db.SaveChangesAsync(token);
                     db.Entry(sender).State = EntityState.Unchanged;
                 }
-
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex)) {
                 // anderer Thread war schneller → Re-Read
@@ -272,9 +272,11 @@ public class SharedReferenceResolver {
             _vorgangCache[cacheKey] = vorgang.Id;
 
             if (isNew)
-                LogCreated("[Vorgang]", "angelegt: masterFplo={0}, fahrplanJahr={1} → id={2}", dto.MasterFplo, dto.FahrplanJahr, vorgang.Id);
+                LogCreated("[Vorgang]", "angelegt: masterFplo={0}, fahrplanJahr={1} → id={2}", dto.MasterFplo,
+                    dto.FahrplanJahr,   vorgang.Id);
             else
-                LogHit("[Vorgang.ResolveOrCreate]", "Resolved", "{0}/{1} → {2}", dto.MasterFplo, dto.FahrplanJahr, vorgang.Id);
+                LogHit("[Vorgang.ResolveOrCreate]", "Resolved", "{0}/{1} → {2}", dto.MasterFplo, dto.FahrplanJahr,
+                    vorgang.Id);
 
             return vorgang.Id;
         }
@@ -478,30 +480,13 @@ public class SharedReferenceResolver {
     // =====================================================================
     public async Task<long> ResolveBst2StrAsync(
         UjBauDbContext    db,
-        string?           bst,
-        long?             vzgNr,
+        long              bstRef,
+        long              strRef,
         string?           kmL   = null,
         CancellationToken token = default) {
-        LogStart("[Bst2Str.Resolve]", "bstRef={0}, vzgNr={1}, kmL='{2}'", bst, vzgNr, kmL);
+        LogStart("[Bst2Str.Resolve]", "bstRef={0}, vzgNr={1}, kmL='{2}'", bstRef, strRef, kmL);
 
-        if (string.IsNullOrWhiteSpace(bst) || vzgNr == null) {
-            Logger.Warn("[Bst2Str] Ungültige Parameter bstRef={0}, vzgNr={1} → 0", bst, vzgNr);
-            return 0;
-        }
-
-        var bstRef = await ResolveOrCreateBetriebsstelleAsync(db, bst, token);
-        if (bstRef <= 0) {
-            Logger.Warn("[Bst2Str] Bst nicht auflösbar (Ds100={0}) → 0", bst);
-            return 0;
-        }
-
-        var streckeRef = await ResolveStreckeAsync(db, vzgNr);
-        if (streckeRef <= 0) {
-            Logger.Warn("[Bst2Str] Strecke nicht auflösbar (vzgNr={0}) → 0", vzgNr);
-            return 0;
-        }
-
-        var key = $"{bstRef}|{streckeRef}";
+        var key = $"{bstRef}|{strRef}";
 
         if (_bst2StrCache.TryGetValue(key, out var cached)) {
             LogHit("[Bst2Str.Resolve]", "Cache", "{0} → {1}", key, cached);
@@ -509,7 +494,7 @@ public class SharedReferenceResolver {
         }
 
         var existing = await db.BasisBetriebsstelle2strecke
-            .FirstOrDefaultAsync(x => x.BstRef == bstRef && x.StreckeRef == streckeRef, token);
+            .FirstOrDefaultAsync(x => x.BstRef == bstRef && x.StreckeRef == strRef, token);
 
         if (existing != null) {
             _bst2StrCache[key] = existing.Id;
@@ -519,10 +504,9 @@ public class SharedReferenceResolver {
 
         var neu = new BasisBetriebsstelle2strecke {
             BstRef            = bstRef,
-            StreckeRef        = streckeRef,
+            StreckeRef        = strRef,
             KmL               = string.IsNullOrWhiteSpace(kmL) ? null : kmL,
             IstBasisDatensatz = false,
-            UpdatedAt         = DateTime.Now
         };
 
         db.BasisBetriebsstelle2strecke.Add(neu);
@@ -540,7 +524,7 @@ public class SharedReferenceResolver {
             Logger.Warn(ex, "[Bst2Str] INSERT Race → Re-Read: {0}", key);
 
             var winner = await db.BasisBetriebsstelle2strecke
-                .FirstOrDefaultAsync(x => x.BstRef == bstRef && x.StreckeRef == streckeRef, token);
+                .FirstOrDefaultAsync(x => x.BstRef == bstRef && x.StreckeRef == strRef, token);
 
             var id = winner?.Id ?? 0;
             _bst2StrCache[key] = id;

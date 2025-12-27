@@ -1,7 +1,7 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using BauFahrplanMonitor.Services;
-using System.Collections.ObjectModel;
 using BauFahrplanMonitor.Helpers;
 using NLog;
 
@@ -13,6 +13,7 @@ public partial class MainWindowViewModel : ObservableObject {
 
     private readonly NavigationService    _navigationService;
     private readonly StatusMessageService _statusMessages;
+    private readonly ConfigService        _config;
 
     public NavigationService    Navigation     { get; }
     public StatusMessageService StatusMessages { get; }
@@ -35,6 +36,12 @@ public partial class MainWindowViewModel : ObservableObject {
         Logger.Info("Bereit");
         ShowStatus();
     }
+    
+    public string AppInfo =>
+        string.IsNullOrWhiteSpace(_config.Effective.System.Version)
+            ? _config.Effective.System.Name
+            : $"{_config.Effective.System.Name} v{_config.Effective.System.Version}";
+
 
     [RelayCommand]
     private void ShowStatus() {

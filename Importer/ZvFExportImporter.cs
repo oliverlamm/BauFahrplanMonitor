@@ -197,10 +197,10 @@ public sealed class ZvFExportImporter(
                 stopwatch.Stop();
 
                 Logger.Info(
-                    "ZvF-Import abgeschlossen: Datei='{0}', Dauer={1:mm\\:ss\\.fff}, {2}",
-                    Path.GetFileName(filePath),
+                    "ZvF-Import abgeschlossen: Datei={Datei}, Dauer={Dauer}, {Summary}",
+                    dto.Document.Dateiname,
                     stopwatch.Elapsed,
-                    stats);
+                    stats.ToSummaryString());
             }
             catch (StopAfterExceptionException) {
                 // 🔑 kontrollierter Abbruch → NICHT als Fehler loggen
@@ -339,10 +339,10 @@ public sealed class ZvFExportImporter(
                 stopwatch.Stop();
 
                 Logger.Info(
-                    "ÜB-Import abgeschlossen: Datei='{0}', Dauer={1:mm\\:ss\\.fff}, {2}",
-                    Path.GetFileName(filePath),
+                    "ÜB-Import abgeschlossen: Datei={Datei}, Dauer={Dauer}, {Summary}",
+                    dto.Document.Dateiname,
                     stopwatch.Elapsed,
-                    stats);
+                    stats.ToSummaryString());
             }
             catch (StopAfterExceptionException) {
                 // 🔑 kontrollierter Abbruch → NICHT als Fehler loggen
@@ -475,10 +475,10 @@ public sealed class ZvFExportImporter(
                 stopwatch.Stop();
 
                 Logger.Info(
-                    "Fplo-Import abgeschlossen: Datei='{0}', Dauer={1:mm\\:ss\\.fff}, {2}",
-                    Path.GetFileName(filePath),
+                    "Fplo-Import abgeschlossen: Datei={Datei}, Dauer={Dauer}, {Summary}",
+                    dto.Document.Dateiname,
                     stopwatch.Elapsed,
-                    stats);
+                    stats.ToSummaryString());
             }
             catch (StopAfterExceptionException) {
                 // 🔑 kontrollierter Abbruch → NICHT als Fehler loggen

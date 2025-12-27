@@ -72,10 +72,7 @@ public sealed class FploUpserter(
                 var factoryResult = FploZugFactory.Build(dto.Document);
 
                 Stats.SevsGelesen              += factoryResult.SevsGelesen;
-                Stats.SevsMitErsatzzug         += factoryResult.SevsMitErsatzzug;
-                Stats.ZuegeAusSevErzeugt       += factoryResult.ZuegeAusSevErzeugt;
-                Stats.ErsatzzuegeAusSevErzeugt += factoryResult.ErsatzzuegeAusSevErzeugt;
-
+                
                 var total = factoryResult.Zuege.Count;
                 var index = 0;
 
@@ -311,12 +308,10 @@ public sealed class FploUpserter(
                 .FirstOrDefaultAsync(token);
 
             if (id > 0) {
-                Stats.SevKundeRefFallbackHeader++;
                 return id;
             }
         }
 
-        Stats.SevKundeRefFallbackZero++;
         return 0;
     }
 
@@ -500,8 +495,6 @@ public sealed class FploUpserter(
                 AnkerBstRef        = ankerBstRef,
                 Regelung           = regelung.JsonRaw
             });
-
-        Stats.RegelungenInserted++;
     }
 
     // =====================================================================

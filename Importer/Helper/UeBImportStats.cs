@@ -6,27 +6,14 @@ public sealed class UeBImportStats {
     public long ZuegeInserted { get; set; }
     public long ZuegeUpdated  { get; set; }
 
-    public long KnotenzeitenInserted { get; set; }
+    public long SevsGelesen { get; set; }
 
-    public long RegelungenInserted { get; set; }
+    public long ZuegeGesamt => ZuegeInserted + ZuegeUpdated;
 
-    // --- ÜB-spezifisch / SEV ---
-    public long SevsGelesen      { get; set; } // Anzahl <sev> Einträge im Dokument
-    public long SevsMitErsatzzug { get; set; } // wie viele <sev> enthalten <ersatzzug>
+    public string ToSummaryString() =>
+        $"Züge={ZuegeGesamt}, SEV={SevsGelesen}";
 
-    public long ZuegeAusSevErzeugt { get; set; } // Primärzüge, die nur aus SEV entstanden
-
-    public long
-        ErsatzzuegeAusSevErzeugt { get; set; } // Ersatzzüge, die aus SEV entstanden (nicht schon im <zug>-Block)
-
-    public long SezKundeRefFallbackZero   { get; set; } // SEV-Zug ohne Betreiber -> KundeRef=0
-    public int  SevKundeRefFallbackHeader { get; set; }
-    public int  SevKundeRefFallbackZero   { get; set; }
-
-    public override string ToString()
-        => $"Dok={Dokumente}, Z+={ZuegeInserted}, Z~={ZuegeUpdated}, "                     +
-           $"Knoten+={KnotenzeitenInserted}, Reg+={RegelungenInserted}, "                  +
-           $"SEV={SevsGelesen} (mitErsatzzug={SevsMitErsatzzug}), "                        +
-           $"ZugAusSEV={ZuegeAusSevErzeugt}, ErsatzzugAusSEV={ErsatzzuegeAusSevErzeugt}, " +
-           $"KundeRef(SEV)={SezKundeRefFallbackZero}, SEVFallbackHeader={SevKundeRefFallbackHeader}, SEVFallback={SevKundeRefFallbackZero}";
+    public override string ToString() =>
+        $"Dok={Dokumente}, Z+={ZuegeInserted}, Z~={ZuegeUpdated}, " +
+        $"SEV={SevsGelesen}, ...";
 }

@@ -38,6 +38,7 @@
                             CornerRadius="3">
 
                             <TextBlock
+                                x:Name="Icon"
                                 FontFamily="{StaticResource FontAwesomeSolid}"
                                 FontSize="14"
                                 HorizontalAlignment="Center"
@@ -50,7 +51,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-
+        
         <Style Selector="RadioButton.importer-radio">
             <Setter Property="Template">
                 <Setter.Value>
@@ -81,6 +82,15 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+        <!-- unchecked = rot -->
+        <Style Selector="CheckBox.icon-check TextBlock#Icon">
+            <Setter Property="Foreground" Value="#E53935"/>
+        </Style>
+
+        <!-- checked = grün -->
+        <Style Selector="CheckBox.icon-check[IsChecked=true] TextBlock#Icon">
+            <Setter Property="Foreground" Value="#43A047"/>
         </Style>
         
         <!-- ========================= -->
