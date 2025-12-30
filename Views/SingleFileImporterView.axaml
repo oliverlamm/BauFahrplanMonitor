@@ -1,223 +1,260 @@
 <UserControl
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:BauFahrplanMonitor.ViewModels"
+    xmlns:controls="clr-namespace:BauFahrplanMonitor.Views.Controls"
     x:Class="BauFahrplanMonitor.Views.SingleFileImporterView">
 
-    <ScrollViewer>
-        <StackPanel Margin="16" Spacing="16">
+    <!-- ================================================= -->
+    <!-- ROOT -->
+    <!-- ================================================= -->
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto"
+          Margin="16"
+          RowSpacing="12">
 
-            <!-- ========================= -->
-            <!-- HEADER -->
-            <!-- ========================= -->
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Text="{Binding Title}"
-                           FontSize="18"
-                           FontWeight="SemiBold" />
+        <!-- ================================= -->
+        <!-- HEADER -->
+        <!-- ================================= -->
+        <Grid Grid.Row="0"
+              ColumnDefinitions="*,Auto"
+              VerticalAlignment="Center">
 
-                <Border Grid.Column="1"
-                        Padding="8,3"
-                        CornerRadius="10"
-                        BorderBrush="#E0E0E0"
-                        Background="{Binding StatusBrush}">
-                    <TextBlock Text="{Binding StatusText}"
-                               FontWeight="Bold"
-                               Foreground="White"
-                               Margin="12,0,12,0"
-                               FontSize="12" />
-                </Border>
-            </Grid>
+            <!-- LINKS: Titel -->
+            <TextBlock
+                Text="{Binding Title}"
+                FontSize="16"
+                FontWeight="SemiBold"
+                VerticalAlignment="Center" />
 
-            <!-- ========================= -->
-            <!-- Datei -->
-            <!-- ========================= -->
-            <StackPanel Spacing="6">
-                <TextBlock Text="Datei:"
-                           FontWeight="SemiBold" />
-
-                <Grid ColumnDefinitions="*,Auto">
-                    <TextBox Text="{Binding ImportFile}"
-                             IsReadOnly="True" />
-
-                    <Button Grid.Column="1"
-                            Margin="8,0,0,0"
-                            Command="{Binding SelectFile}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock
-                                FontFamily="{StaticResource FontAwesomeSolid}"
-                                Text=""
-                                HorizontalAlignment="Right"
-                                FontSize="16" Margin="0,0,8,0" />
-                            <TextBlock Text="Scannen" />
-                        </StackPanel>
-                    </Button>
-                </Grid>
-            </StackPanel>
-
-            <!-- ========================= -->
-            <!-- FILTER + ACTIONS -->
-            <!-- ========================= -->
-            <Grid ColumnDefinitions="*,Auto"
-                  VerticalAlignment="Center"
-                  Margin="0,0,0,12">
-
-                <!-- FILTER (links, kann leer sein) -->
-                <StackPanel Orientation="Horizontal"
-                            Spacing="12"
-                            IsVisible="{Binding ShowFilters}">
-
-                    <RadioButton Content="Alle"
-                                 GroupName="ImporterFilter"
-                                 Classes="importer-radio"
-                                 IsChecked="{Binding FilterAll}" />
-
-                    <RadioButton Content="ZvF"
-                                 GroupName="ImporterFilter"
-                                 Classes="importer-radio"
-                                 IsChecked="{Binding FilterZvF}" />
-
-                    <RadioButton Content="ÜB"
-                                 GroupName="ImporterFilter"
-                                 Classes="importer-radio"
-                                 IsChecked="{Binding FilterÜB}" />
-
-                    <RadioButton Content="Fplo"
-                                 GroupName="ImporterFilter"
-                                 Classes="importer-radio"
-                                 IsChecked="{Binding FilterFplo}" />
-                </StackPanel>
-
-                <!-- BUTTONS (rechts, bleiben IMMER gleich) -->
-                <StackPanel Grid.Column="1"
-                            Orientation="Horizontal"
-                            Spacing="8"
-                            HorizontalAlignment="Right">
-
-                    <Button
-                        Margin="8,0,0,0"
-                        IsEnabled="{Binding CanStart}"
-                        Command="{Binding StartCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock
-                                FontFamily="{StaticResource FontAwesomeSolid}"
-                                Text="&#xF04B;"
-                                HorizontalAlignment="Right"
-                                FontSize="16" Margin="0,0,8,0" />
-                            <TextBlock Text="Start" />
-                        </StackPanel>
-                    </Button>
-                    <Button
-                        Margin="8,0,0,0"
-                        IsEnabled="{Binding CanStop}"
-                        Command="{Binding StopCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock
-                                FontFamily="{StaticResource FontAwesomeSolid}"
-                                Text="&#xF04D;"
-                                HorizontalAlignment="Right"
-                                FontSize="16" Margin="0,0,8,0" />
-                            <TextBlock Text="Stop" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-            </Grid>
-            <!-- Dünne Trennlinie -->
-            <Border Height="1"
-                    Margin="0,0,0,0"
-                    Background="#E0E0E0" />
-
-            <!-- ========================= -->
-            <!-- GESAMTFORTSCHRITT -->
-            <!-- ========================= -->
-            <StackPanel Spacing="6">
-                <Grid ColumnDefinitions="*,Auto">
-                    <!-- Links -->
-                    <TextBlock Text="Gesamtfortschritt"
-                               FontWeight="SemiBold"
-                               VerticalAlignment="Center" />
-
-                    <!-- Rechts -->
-                    <TextBlock Text="{Binding OverallProgressText}"
-                               Grid.Column="1"
-                               HorizontalAlignment="Right"
-                               VerticalAlignment="Center" />
-                </Grid>
-
-                <ProgressBar Minimum="0"
-                             Maximum="1"
-                             Value="{Binding OverallProgress}" />
-
-                <!-- Dünne Trennlinie -->
-                <Border Height="1"
-                        Margin="0,6,0,0"
-                        Background="#E0E0E0" />
-            </StackPanel>
-
-            <!-- ========================= -->
-            <!-- THREADS -->
-            <!-- ========================= -->
+            <!-- RECHTS: Status Pill -->
             <Border
-                CornerRadius="8"
-                BorderBrush="#E0E0E0"
-                BorderThickness="1"
-                Padding="16"
-                Margin="0,8,0,0">
+                Grid.Column="1"
+                Background="{Binding StatusBrush}"
+                CornerRadius="12"
+                Padding="10,2"
+                VerticalAlignment="Center">
 
-                <Grid ColumnDefinitions="2*,Auto,2*"
-                      RowDefinitions="Auto,Auto">
+                <TextBlock
+                    Text="{Binding StatusText}"
+                    FontSize="12"
+                    Foreground="White" />
+            </Border>
 
-                    <!-- Header links -->
-                    <TextBlock
-                        Text="{Binding WorkerIndex, StringFormat=Thread {0}}"
-                        FontWeight="SemiBold"
-                        FontSize="14" />
+        </Grid>
 
-                    <!-- Status Badge -->
-                    <Border Grid.Column="1"
-                            Background="#F0F0F0"
-                            CornerRadius="6"
-                            Padding="8,2"
-                            HorizontalAlignment="Center">
+        <!-- ================================= -->
+        <!-- DATEI -->
+        <!-- ================================= -->
+        <StackPanel Grid.Row="1"
+                    Spacing="6">
+
+            <!-- Zeile 1: Label -->
+            <TextBlock
+                Text="Datei:"
+                FontWeight="SemiBold" />
+
+            <!-- Zeile 2: TextBox + Button -->
+            <Grid ColumnDefinitions="*,Auto"
+                  ColumnSpacing="12">
+
+                <!-- Textbox -->
+                <TextBox
+                    Text="{Binding ImportFile}"
+                    IsReadOnly="True"
+                    Watermark="Keine Datei ausgewählt"
+                    VerticalContentAlignment="Center" />
+
+                <!-- Öffnen-Button mit Icon + Text -->
+                <Button
+                    Grid.Column="1"
+                    Command="{Binding SelectFileCommand}">
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock
-                            Text="{Binding StatusText}"
-                            FontSize="12" />
-                    </Border>
-
-                    <!-- Statistik Titel -->
-                    <TextBlock Grid.Column="2"
-                               Text="Statistik"
-                               FontWeight="SemiBold"
-                               FontSize="14" />
-
-                    <!-- Linke Spalte: Fortschritt -->
-                    <StackPanel Grid.Row="1"
-                                Spacing="6">
-                        <TextBlock
-                            Text="Warte auf Start"
-                            Foreground="#777" />
-
-                        <TextBlock
-                            Text="{Binding ProgressText}"
-                            FontSize="12" />
+                            FontFamily="{StaticResource FontAwesomeSolid}"
+                            Text="&#xF07C;" /> <!-- folder-open -->
+                        <TextBlock Text="Öffnen" />
                     </StackPanel>
 
-                    <!-- Rechte Spalte: Statistik -->
-                    <ItemsControl Grid.Row="1"
-                                  Grid.Column="2"
-                                  Items="{Binding Statistics}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="{Binding Key}"
-                                               Foreground="#555" />
-                                    <TextBlock Text="{Binding Value}"
-                                               Grid.Column="1"
-                                               FontWeight="SemiBold" />
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </Grid>
-            </Border>
+                </Button>
+            </Grid>
+
         </StackPanel>
-    </ScrollViewer>
+
+        <!-- ================================= -->
+        <!-- START / STOP -->
+        <!-- ================================= -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+
+            <!-- Start -->
+            <Button
+                Command="{Binding StartCommand}"
+                IsEnabled="{Binding CanStart}">
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock
+                        FontFamily="{StaticResource FontAwesomeSolid}"
+                        Text="&#xF04B;" /> <!-- play -->
+                    <TextBlock Text="Start" />
+                </StackPanel>
+
+            </Button>
+
+            <!-- Stopp -->
+            <Button
+                Command="{Binding StopCommand}"
+                IsEnabled="{Binding CanStop}">
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock
+                        FontFamily="{StaticResource FontAwesomeSolid}"
+                        Text="&#xF04D;" /> <!-- stop -->
+                    <TextBlock Text="Stopp" />
+                </StackPanel>
+
+            </Button>
+
+        </StackPanel>
+
+        <!-- ================================================= -->
+        <!-- OVERALL PROGRESS -->
+        <!-- ================================================= -->
+        <StackPanel Grid.Row="3"
+                    Spacing="6">
+
+            <Border Height="1"
+                    Background="#444"
+                    Opacity="0.6" />
+
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock
+                    Text="Gesamtfortschritt"
+                    FontWeight="SemiBold" />
+
+                <TextBlock
+                    Grid.Column="1"
+                    Text="{Binding ProgressPercentText}"
+                    Foreground="#777" />
+            </Grid>
+
+            <ProgressBar
+                Value="{Binding OverallProgress}"
+                Maximum="1"
+                Height="6" />
+
+            <TextBlock
+                Text="{Binding OverallProgressText}"
+                Foreground="#777"
+                FontSize="12" />
+
+            <Border Height="1"
+                    Background="#444"
+                    Opacity="0.6" />
+        </StackPanel>
+
+        <!-- ================================================= -->
+        <!-- THREADS -->
+        <!-- ================================================= -->
+        <ScrollViewer Grid.Row="4"
+                      VerticalScrollBarVisibility="Auto">
+
+            <ItemsControl ItemsSource="{Binding Threads}">
+                <ItemsControl.ItemTemplate>
+
+                    <DataTemplate>
+
+                        <!-- ========================= -->
+                        <!-- THREAD CARD -->
+                        <!-- ========================= -->
+                        <Border
+                            CornerRadius="8"
+                            BorderBrush="#E0E0E0"
+                            BorderThickness="1"
+                            Background="#FAFAFA"
+                            Padding="16"
+                            Margin="0,12,0,0">
+
+                            <Grid ColumnDefinitions="*,*,*"
+                                  RowDefinitions="Auto,Auto">
+
+                                <!-- HEADER -->
+                                <Grid Grid.Row="0"
+                                      Grid.ColumnSpan="3"
+                                      ColumnDefinitions="*,Auto,*"
+                                      VerticalAlignment="Center">
+
+                                    <!-- Links: Thread + Pill -->
+                                    <Grid Grid.Column="0"
+                                          ColumnDefinitions="Auto,Auto"
+                                          ColumnSpacing="12">
+
+                                        <TextBlock
+                                            Text="{Binding WorkerIndex, StringFormat=Thread {0}}"
+                                            FontWeight="SemiBold"
+                                            FontSize="14" />
+
+                                        <Border
+                                            Background="{Binding StatusBrush}"
+                                            CornerRadius="10"
+                                            Padding="10,2">
+
+                                            <TextBlock
+                                                Text="{Binding StatusText}"
+                                                FontSize="12"
+                                                Foreground="White" />
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- Rechts: Statistik -->
+                                    <TextBlock
+                                        Grid.Column="2"
+                                        Text="Statistik"
+                                        FontWeight="SemiBold" />
+                                </Grid>
+
+                                <!-- BODY LINKS -->
+                                <StackPanel Grid.Row="1"
+                                            Grid.Column="0"
+                                            Margin="0,8,0,0"
+                                            Spacing="6">
+
+                                    <TextBlock
+                                        Text="{Binding StatusText}"
+                                        Foreground="#777" />
+
+                                    <TextBlock
+                                        Text="{Binding ProgressText}"
+                                        Foreground="Black"
+                                        FontSize="12" />
+                                </StackPanel>
+
+                                <!-- BODY RECHTS -->
+                                <StackPanel Grid.Row="1"
+                                            Grid.Column="2"
+                                            Margin="0,8,0,0"
+                                            Spacing="6">
+
+                                    <ItemsControl ItemsSource="{Binding Statistics}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <controls:StatRow
+                                                    Label="{Binding Key}"
+                                                    Value="{Binding Value}" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
+                            </Grid>
+                        </Border>
+
+                    </DataTemplate>
+
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
 </UserControl>
