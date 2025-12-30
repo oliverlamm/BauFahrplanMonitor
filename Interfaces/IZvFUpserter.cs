@@ -5,7 +5,7 @@ using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Importer.Dto.ZvF;
 using BauFahrplanMonitor.Importer.Helper;
 
-namespace BauFahrplanMonitor.Importer.Interface;
+namespace BauFahrplanMonitor.Interfaces;
 
 public interface IZvFUpserter {
     Task<UpsertResult> UpsertAsync(

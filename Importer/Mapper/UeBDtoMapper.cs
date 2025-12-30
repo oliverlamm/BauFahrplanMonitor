@@ -5,8 +5,8 @@ using System.Linq;
 using BauFahrplanMonitor.Importer.Dto.Shared;
 using BauFahrplanMonitor.Importer.Dto.Ueb;
 using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Interface;
 using BauFahrplanMonitor.Importer.Xml;
+using BauFahrplanMonitor.Interfaces;
 
 namespace BauFahrplanMonitor.Importer.Mapper;
 

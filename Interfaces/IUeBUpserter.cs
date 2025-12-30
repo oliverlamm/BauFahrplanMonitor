@@ -5,7 +5,7 @@ using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Importer.Dto.Ueb;
 using BauFahrplanMonitor.Importer.Helper;
 
-namespace BauFahrplanMonitor.Importer.Interface;
+namespace BauFahrplanMonitor.Interfaces;
 
 public interface IUeBUpserter {
     Task<UpsertResult> UpsertAsync(

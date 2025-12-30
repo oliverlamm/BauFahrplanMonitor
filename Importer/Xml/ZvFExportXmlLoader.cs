@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Xml.Serialization;
-using BauFahrplanMonitor.Importer.Interface;
+using BauFahrplanMonitor.Interfaces;
 
 namespace BauFahrplanMonitor.Importer.Xml;
 

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using BauFahrplanMonitor.Importer.Dto.Shared;
+using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Models;
 
 namespace BauFahrplanMonitor.Importer.Dto.ZvF;

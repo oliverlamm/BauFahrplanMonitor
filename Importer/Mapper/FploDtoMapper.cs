@@ -6,8 +6,8 @@ using System.Text.RegularExpressions;
 using BauFahrplanMonitor.Importer.Dto.Fplo;
 using BauFahrplanMonitor.Importer.Dto.Shared;
 using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Interface;
 using BauFahrplanMonitor.Importer.Xml;
+using BauFahrplanMonitor.Interfaces;
 using NLog;
 
 namespace BauFahrplanMonitor.Importer.Mapper;

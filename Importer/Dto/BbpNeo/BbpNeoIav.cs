@@ -65,4 +65,6 @@ public sealed class BbpNeoIav {
     ///  - niemals <c>null</c>
     /// </remarks>
     public List<BbpNeoIavBetroffenheit> Betroffenheiten { get; init; } = [];
+    
+    public bool IstBetroffen { get; set; } = false;
 }

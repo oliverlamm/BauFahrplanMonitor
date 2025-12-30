@@ -1,6 +1,6 @@
 using System.Xml.Linq;
 
-namespace BauFahrplanMonitor.Importer.Interface;
+namespace BauFahrplanMonitor.Interfaces;
 
 public interface IXmlLoader {
     XDocument Load(string filePath);

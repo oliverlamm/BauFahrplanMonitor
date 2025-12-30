@@ -3,13 +3,12 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
 using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Interface;
+using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Resolver;
 using BauFahrplanMonitor.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -28,24 +27,23 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
     private readonly IDbContextFactory<UjBauDbContext> _dbFactory;
     private readonly SharedReferenceResolver           _resolver;
     private readonly ImporterTyp                       _importerTyp;
-    private readonly Window                            _owner;
+    private readonly IFileDialogService                _fileDialog;
 
     private CancellationTokenSource? _cts;
 
     // =====================================================
     // Header
     // =====================================================
-    public string Title { get; }
-
-    private ImporterStatus _status = ImporterStatus.Bereit;
+    public  string                    Title      { get; }
+    public  ImportStatisticsViewModel Statistics { get; }
+    private ImporterStatus            _status = ImporterStatus.Bereit;
 
     public ImporterStatus Status {
         get => _status;
         private set {
-            if (SetProperty(ref _status, value)) {
-                OnPropertyChanged(nameof(StatusText));
-                OnPropertyChanged(nameof(StatusBrush));
-            }
+            if (!SetProperty(ref _status, value)) return;
+            OnPropertyChanged(nameof(StatusText));
+            OnPropertyChanged(nameof(StatusBrush));
         }
     }
 
@@ -85,39 +83,62 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
     // =====================================================
     // Progress (Overall = Maßnahmen)
     // =====================================================
-    private int _totalItems;
 
-    public int TotalItems {
-        get => _totalItems;
-        private set {
-            SetProperty(ref _totalItems, value);
-            OnPropertyChanged(nameof(OverallProgress));
-            OnPropertyChanged(nameof(OverallProgressText));
-        }
-    }
+    [ObservableProperty] private int processedItems;
 
-    private int _processedItems;
+    [ObservableProperty] private int totalItems;
 
-    public int ProcessedItems {
-        get => _processedItems;
-        private set {
-            SetProperty(ref _processedItems, value);
-            OnPropertyChanged(nameof(OverallProgress));
-            OnPropertyChanged(nameof(OverallProgressText));
-        }
-    }
-
+    /// <summary>
+    /// Fortschritt 0.0 – 1.0 (für ProgressBar)
+    /// </summary>
     public double OverallProgress =>
-        TotalItems == 0 ? 0 : (double)ProcessedItems / TotalItems;
+        TotalItems > 0
+            ? (double)ProcessedItems / TotalItems
+            : 0;
 
+    /// <summary>
+    /// Fortschritt in Prozent (0–100)
+    /// </summary>
+    public int OverallProgressPercent =>
+        TotalItems > 0
+            ? (int)Math.Round((double)ProcessedItems / TotalItems * 100)
+            : 0;
+
+    /// <summary>
+    /// Textdarstellung, z. B. "36 %"
+    /// </summary>
+    public string ProgressPercentText =>
+        $"{OverallProgressPercent} %";
+
+    /// <summary>
+    /// Textdarstellung, z. B. "50 / 140"
+    /// </summary>
     public string OverallProgressText =>
         $"{ProcessedItems:N0} / {TotalItems:N0}";
+
+    // =====================================================
+    // Property-Change Hooks (CommunityToolkit)
+    // =====================================================
+
+    partial void OnProcessedItemsChanged(int value) {
+        OnPropertyChanged(nameof(OverallProgress));
+        OnPropertyChanged(nameof(OverallProgressPercent));
+        OnPropertyChanged(nameof(ProgressPercentText));
+        OnPropertyChanged(nameof(OverallProgressText));
+    }
+
+    partial void OnTotalItemsChanged(int value) {
+        OnPropertyChanged(nameof(OverallProgress));
+        OnPropertyChanged(nameof(OverallProgressPercent));
+        OnPropertyChanged(nameof(ProgressPercentText));
+        OnPropertyChanged(nameof(OverallProgressText));
+    }
 
     // =====================================================
     // Threads
     // =====================================================
     public ObservableCollection<ImportWorkerViewModel> Threads { get; }
-        = new();
+        = [];
 
     // =====================================================
     // UI State
@@ -140,18 +161,16 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
 
     public bool CanStop => IsRunning;
 
-    public bool ShowFilters => _importerTyp == ImporterTyp.ZvFExport;
-
     // =====================================================
     // ctor
     // =====================================================
     public SingleFileImporterViewModel(
-        Window                            owner,
         ConfigService                     config,
         StatusMessageService              statusMessages,
         IFileImporterFactory              importerFactory,
         IDbContextFactory<UjBauDbContext> dbFactory,
         SharedReferenceResolver           resolver,
+        IFileDialogService                fileDialog,
         ImporterTyp                       importerTyp,
         string                            title) {
         _config          = config;
@@ -160,37 +179,40 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
         _dbFactory       = dbFactory;
         _resolver        = resolver;
         _importerTyp     = importerTyp;
-        _owner           = owner;
+        _fileDialog      = fileDialog;
 
         Title = title;
-
+        Statistics = importerTyp switch {
+            ImporterTyp.BBPNeo => new BbpNeoStatisticsViewModel(),
+            _                  => throw new NotSupportedException(importerTyp.ToString())
+        };
         CreateWorkers();
     }
 
     private void CreateWorkers() {
         Threads.Clear();
 
-        var count = _config.Effective.Allgemein.ImportThreads;
-        if (_config.Effective.Allgemein.Debugging)
-            count = 1;
+        var worker = new ImportWorkerViewModel(1) {
+            Status = ImportThreadStatus.Bereit
+        };
 
-        for (var i = 1; i <= count; i++)
-            Threads.Add(new ImportWorkerViewModel(i));
+        Threads.Add(worker);
     }
+
 
     // =====================================================
     // Commands
     // =====================================================
     [RelayCommand]
     private async Task SelectFile() {
-        var dlg = new OpenFileDialog {
-            Title         = "Importdatei auswählen",
-            AllowMultiple = false
-        };
 
-        var result = await dlg.ShowAsync(_owner);
-        if (result?.Length > 0)
-            ImportFile = result[0];
+        var file = await _fileDialog.OpenFileAsync(_importerTyp);
+        if (file is null)
+            return;
+
+        ImportFile = file;
+
+        await PrepareImportAsync(file);
     }
 
     [RelayCommand]
@@ -200,14 +222,20 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
 
         IsRunning = true;
         Status    = ImporterStatus.Importieren;
+        var worker = Threads[0];
+        worker.ResetTiming(); // neu
+
+        Statistics.Reset();
 
         _cts = new CancellationTokenSource();
 
-        TotalItems     = 0;
         ProcessedItems = 0;
 
         try {
-            await using var db = await _dbFactory.CreateDbContextAsync(_cts.Token);
+            await using var db =
+                await _dbFactory.CreateDbContextAsync(_cts.Token);
+
+            // Cache-Warmup wie im MultiFileImport
             await _resolver.WarmUpRegionCacheAsync(db, _cts.Token);
 
             var importer = _importerFactory.GetImporter(_importerTyp);
@@ -219,19 +247,55 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
 
             var progress = new Progress<ImportProgressInfo>(info => {
                 Dispatcher.UIThread.Post(() => {
-                    TotalItems     = info.TotalItems;
+                    // OVERALL
                     ProcessedItems = info.ProcessedItems;
+                    if (info.TotalItems > 0)
+                        TotalItems = info.TotalItems;
 
-                    var worker = Threads[info.WorkerIndex - 1];
-                    worker.Status = ImportThreadStatus.Importieren;
-                    worker.Total  = info.WorkerTotal;
-                    worker.Done   = info.WorkerDone;
+                    // PIPELINE-WORKER (immer einer!)
+                    var worker = Threads[0];
 
-                    worker.UpdateStat("Anzahl Maßnahmen",  info.MeasuresDone);
+                    if (worker is {
+                            IsFinal: false,
+                            Status: ImportThreadStatus.Bereit
+                        })
+                        worker.Status = ImportThreadStatus.Importieren;
+
+                    worker.Done  = info.ProcessedItems;
+                    worker.Total = info.TotalItems;
+
+                    // ==============================
+                    // STATISTIK (Importer-Fakten)
+                    // ==============================
+                    worker.UpdateStat("Anzahl Maßnahmen", info.MeasuresDone);
                     worker.UpdateStat("Anzahl Regelungen", info.Regelungen);
-                    worker.UpdateStat("Anzahl BvE",        info.BvE);
-                    worker.UpdateStat("Anzahl APS",        info.APS);
-                    worker.UpdateStat("Anzahl IAV",        info.IAV);
+                    worker.UpdateStat("Anzahl BvE", info.BvE);
+                    worker.UpdateStat("Anzahl APS", info.APS);
+                    worker.UpdateStat("Anzahl IAV", info.IAV);
+
+                    // Pipeline-Metriken (Weg B)
+                    worker.UpdateStat("Queue-Größe", info.QueueDepth);
+                    worker.UpdateStat("Consumer aktiv", info.ActiveConsumers);
+                    worker.UpdateStat("Consumer gesamt", info.TotalConsumers);
+
+                    // ==============================
+                    // ETA (UI-abgeleitet)
+                    // ==============================
+                    if (worker.Done < 3 || worker.Total <= 0)
+                        return;
+                    var elapsed = DateTime.UtcNow - worker.StartTime!.Value;
+
+                    if (!(elapsed.TotalSeconds >= 1))
+                        return;
+                    var rate = worker.Done / elapsed.TotalSeconds;
+
+                    if (!(rate > 0))
+                        return;
+                    var remaining = worker.Total - worker.Done;
+                    var eta       = TimeSpan.FromSeconds(remaining / rate);
+
+                    worker.UpdateStat("ETA", eta.ToString(@"hh\:mm\:ss"));
+                    worker.UpdateStat("Durchsatz", rate.ToString("N1") + " /s");
                 });
             });
 
@@ -242,7 +306,10 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
         }
         catch (OperationCanceledException) {
             Status = ImporterStatus.Abbruch;
+
+            Dispatcher.UIThread.Post(() => { Threads[0].Status = ImportThreadStatus.Abbruch; });
         }
+
         catch (Exception ex) {
             Logger.Error(ex);
             Status = ImporterStatus.Fehler;
@@ -257,5 +324,42 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
     [RelayCommand]
     private void Stop() {
         _cts?.Cancel();
+    }
+
+    private async Task PrepareImportAsync(string file) {
+
+        // Reset
+        TotalItems     = 0;
+        ProcessedItems = 0;
+
+        if (_importerTyp != ImporterTyp.BBPNeo)
+            return;
+
+        try {
+            var importer = _importerFactory.GetImporter(_importerTyp);
+
+            if (importer is not IBbpNeoImporter bbpNeo)
+                return;
+
+            var header = await bbpNeo.ReadHeaderAsync(file);
+
+            await Dispatcher.UIThread.InvokeAsync(() => {
+                TotalItems     = header.AnzMas;
+                ProcessedItems = 0;
+
+                foreach (var worker in Threads) {
+                    worker.Total  = header.AnzMas;
+                    worker.Done   = 0;
+                    worker.Status = ImportThreadStatus.Bereit;
+                }
+
+                Statistics.Reset();
+            });
+        }
+        catch (Exception ex) {
+            Logger.Error(ex);
+            _statusMessages.Error("Header der Datei konnte nicht gelesen werden.");
+            ImportFile = null;
+        }
     }
 }

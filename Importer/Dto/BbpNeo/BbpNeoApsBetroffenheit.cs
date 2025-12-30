@@ -141,4 +141,6 @@ public sealed class BbpNeoApsBetroffenheit {
     /// Die Liste ist niemals <c>null</c>.
     /// </remarks>
     public List<BbpNeoMoeglicheZaRaw> MoeglicheZAs { get; set; } = [];
+
+    public bool IstBetroffen { get; set; } = false;
 }

@@ -114,4 +114,6 @@ public sealed class BbpNeoIavBetroffenheit {
     /// Freitext-Kommentar zur IAV-Betroffenheit.
     /// </summary>
     public string? Kommentar { get; set; }
+
+    public bool IstBetroffen { get; set; } = false;
 }

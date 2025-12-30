@@ -1,0 +1,23 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="BauFahrplanMonitor.Views.Controls.StatRow">
+
+    <Grid ColumnDefinitions="Auto,*"
+          ColumnSpacing="12">
+
+        <!-- Label -->
+        <TextBlock
+            Text="{Binding Label, RelativeSource={RelativeSource AncestorType=UserControl}}"
+            Foreground="#555"
+            VerticalAlignment="Center" />
+
+        <!-- Value -->
+        <TextBlock
+            Grid.Column="1"
+            Text="{Binding Value, RelativeSource={RelativeSource AncestorType=UserControl}}"
+            FontWeight="SemiBold"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center" />
+    </Grid>
+</UserControl>

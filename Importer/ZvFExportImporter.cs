@@ -11,7 +11,6 @@ using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
 using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Interface;
 using BauFahrplanMonitor.Importer.Mapper;
 using BauFahrplanMonitor.Services;
 using Microsoft.EntityFrameworkCore;

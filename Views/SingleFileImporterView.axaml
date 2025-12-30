@@ -177,65 +177,52 @@
                             Padding="16"
                             Margin="0,12,0,0">
 
-                            <Grid ColumnDefinitions="*,*,*"
-                                  RowDefinitions="Auto,Auto">
+                            <Grid
+                                ColumnDefinitions="*,*,*"
+                                RowDefinitions="Auto,Auto"
+                                ColumnSpacing="16"
+                                RowSpacing="8">
 
-                                <!-- HEADER -->
-                                <Grid Grid.Row="0"
-                                      Grid.ColumnSpan="3"
-                                      ColumnDefinitions="*,Auto,*"
-                                      VerticalAlignment="Center">
+                                <!-- ================================= -->
+                                <!-- HEADER LINKS: Thread + Pill (ROW 0) -->
+                                <!-- ================================= -->
+                                <StackPanel
+                                    Grid.Row="0"
+                                    Grid.Column="0"
+                                    Orientation="Horizontal"
+                                    Spacing="12"
+                                    VerticalAlignment="Center">
 
-                                    <!-- Links: Thread + Pill -->
-                                    <Grid Grid.Column="0"
-                                          ColumnDefinitions="Auto,Auto"
-                                          ColumnSpacing="12">
+                                    <TextBlock
+                                        Text="{Binding WorkerIndex, StringFormat=Thread {0}}"
+                                        FontWeight="SemiBold"
+                                        FontSize="14" />
+
+                                    <Border
+                                        Background="{Binding StatusBrush}"
+                                        CornerRadius="10"
+                                        Padding="10,2">
 
                                         <TextBlock
-                                            Text="{Binding WorkerIndex, StringFormat=Thread {0}}"
-                                            FontWeight="SemiBold"
-                                            FontSize="14" />
+                                            Text="{Binding StatusText}"
+                                            FontSize="12"
+                                            Foreground="White" />
+                                    </Border>
 
-                                        <Border
-                                            Background="{Binding StatusBrush}"
-                                            CornerRadius="10"
-                                            Padding="10,2">
-
-                                            <TextBlock
-                                                Text="{Binding StatusText}"
-                                                FontSize="12"
-                                                Foreground="White" />
-                                        </Border>
-                                    </Grid>
-
-                                    <!-- Rechts: Statistik -->
-                                    <TextBlock
-                                        Grid.Column="2"
-                                        Text="Statistik"
-                                        FontWeight="SemiBold" />
-                                </Grid>
-
-                                <!-- BODY LINKS -->
-                                <StackPanel Grid.Row="1"
-                                            Grid.Column="0"
-                                            Margin="0,8,0,0"
-                                            Spacing="6">
-
-                                    <TextBlock
-                                        Text="{Binding StatusText}"
-                                        Foreground="#777" />
-
-                                    <TextBlock
-                                        Text="{Binding ProgressText}"
-                                        Foreground="Black"
-                                        FontSize="12" />
                                 </StackPanel>
 
-                                <!-- BODY RECHTS -->
-                                <StackPanel Grid.Row="1"
-                                            Grid.Column="2"
-                                            Margin="0,8,0,0"
-                                            Spacing="6">
+                                <!-- ================================= -->
+                                <!-- RECHTS: STATISTIK (ROW 0–1) -->
+                                <!-- ================================= -->
+                                <StackPanel
+                                    Grid.Row="0"
+                                    Grid.RowSpan="2"
+                                    Grid.Column="2"
+                                    Spacing="8">
+
+                                    <TextBlock
+                                        Text="Statistik"
+                                        FontWeight="SemiBold" />
 
                                     <ItemsControl ItemsSource="{Binding Statistics}">
                                         <ItemsControl.ItemTemplate>
@@ -246,13 +233,31 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+
+                                </StackPanel>
+
+                                <!-- ================================= -->
+                                <!-- BODY LINKS (ROW 1) -->
+                                <!-- ================================= -->
+                                <StackPanel
+                                    Grid.Row="1"
+                                    Grid.Column="0"
+                                    Spacing="6">
+
+                                    <TextBlock
+                                        Text="Anzahl Maßnahmen"
+                                        Foreground="#777" />
+
+                                    <TextBlock
+                                        Text="{Binding ProgressText}"
+                                        FontSize="12" />
+
                                 </StackPanel>
 
                             </Grid>
                         </Border>
 
                     </DataTemplate>
-
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>

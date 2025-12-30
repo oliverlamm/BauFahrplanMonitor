@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BauFahrplanMonitor.Importer.Dto.BbpNeo;
 
-namespace BauFahrplanMonitor.Importer.Interface;
+namespace BauFahrplanMonitor.Interfaces;
 
 /// <summary>
 /// Streaming-Loader für BBPNeo-XML-Dateien.

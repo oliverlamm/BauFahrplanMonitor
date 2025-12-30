@@ -4,8 +4,11 @@
     <option name="projectPerEditor">
       <map>
         <entry key="App.axaml" value="BauFahrplanMonitor.csproj" />
+        <entry key="Views/Control/StatRow.axaml" value="BauFahrplanMonitor.csproj" />
+        <entry key="Views/Controls/StatRow.axaml" value="BauFahrplanMonitor.csproj" />
         <entry key="Views/MainWindow.axaml" value="BauFahrplanMonitor.csproj" />
         <entry key="Views/MultiFileImporterView.axaml" value="BauFahrplanMonitor.csproj" />
+        <entry key="Views/SingleFileImporterView.axaml" value="BauFahrplanMonitor.csproj" />
         <entry key="Views/StatusPageView.axaml" value="BauFahrplanMonitor.csproj" />
       </map>
     </option>

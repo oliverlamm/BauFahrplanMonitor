@@ -8,6 +8,7 @@ using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
 using BauFahrplanMonitor.Importer.Dto.Shared;
 using BauFahrplanMonitor.Importer.Helper;
+using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Models;
 using Microsoft.EntityFrameworkCore;
 using NLog;
@@ -524,13 +525,32 @@ public class SharedReferenceResolver {
             Logger.Warn(ex, "[Bst2Str] INSERT Race → Re-Read: {0}", key);
 
             var winner = await db.BasisBetriebsstelle2strecke
-                .FirstOrDefaultAsync(x => x.BstRef == bstRef && x.StreckeRef == strRef, token);
+                .FirstOrDefaultAsync(
+                    x => x.BstRef == bstRef && x.StreckeRef == strRef,
+                    token);
 
-            var id = winner?.Id ?? 0;
-            _bst2StrCache[key] = id;
+            if (winner != null) {
+                _bst2StrCache[key] = winner.Id;
 
-            LogHit("[Bst2Str.Resolve]", "RaceWinner", "{0} → {1}", key, id);
-            return id;
+                LogHit(
+                    "[Bst2Str.Resolve]",
+                    "RaceWinner",
+                    "{0} → {1}",
+                    key,
+                    winner.Id);
+
+                return winner.Id;
+            }
+
+            // ❗ DAS ist wichtig:
+            // Kein Datensatz → kein Race → echter Fehler
+            Logger.Error(
+                ex,
+                "[Bst2Str.Resolve] FK-Race ohne Gewinner: bstRef={0}, strRef={1}",
+                bstRef,
+                strRef);
+
+            throw;
         }
     }
 

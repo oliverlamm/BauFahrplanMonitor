@@ -8,8 +8,8 @@ using System.Text.Json.Serialization;
 using BauFahrplanMonitor.Importer.Dto.Shared;
 using BauFahrplanMonitor.Importer.Dto.ZvF;
 using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Interface;
 using BauFahrplanMonitor.Importer.Xml;
+using BauFahrplanMonitor.Interfaces;
 
 namespace BauFahrplanMonitor.Importer.Mapper;
 

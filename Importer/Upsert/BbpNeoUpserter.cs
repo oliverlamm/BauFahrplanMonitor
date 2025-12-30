@@ -1,73 +1,98 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Importer.Dto.BbpNeo;
-using BauFahrplanMonitor.Importer.Interface;
+using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Models;
 using BauFahrplanMonitor.Resolver;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using NLog;
 
 namespace BauFahrplanMonitor.Importer.Upsert;
 
-public sealed class BbpNeoUpserter : IBbpNeoUpsertService {
-    private readonly ILogger<BbpNeoUpserter> _logger;
-    private readonly SharedReferenceResolver _resolver;
-
-    public BbpNeoUpserter(
-        ILogger<BbpNeoUpserter> logger,
-        SharedReferenceResolver resolver) {
-        _logger   = logger;
-        _resolver = resolver;
-    }
+public sealed class BbpNeoUpserter(SharedReferenceResolver resolver) : IBbpNeoUpserter {
+    private static readonly Logger                  Logger    = LogManager.GetCurrentClassLogger();
 
     // =====================================================================
     // ENTRY
     // =====================================================================
     public async Task UpsertMassnahmeWithChildrenAsync(
         UjBauDbContext        db,
-        BbpNeoMassnahme       massnahme,
+        BbpNeoMassnahme       domain,
         IReadOnlyList<string> warnings,
+        Action                onRegelungUpserted,
+        Action                onBveUpserted,
+        Action                onApsUpserted,
+        Action                onIavUpserted,
         CancellationToken     token) {
         token.ThrowIfCancellationRequested();
 
-        using var scope = _logger.BeginScope(new Dictionary<string, object> {
-            ["Importer"] = "BBPNeo",
-            ["MasId"]    = massnahme.MasId
-        });
+        // 🔑 Import-Optimierung (einmalig, hier ok)
+        db.ChangeTracker.AutoDetectChangesEnabled = false;
+
+        Logger.Info(
+            "[BBPNeo.Upsert] ▶ Maßnahme START: MasNr={MasNr}",
+            domain.MasId);
 
         // -------------------------------------------------
-        // Warnungen aus dem Normalizer
+        // MASSNAHME
         // -------------------------------------------------
-        foreach (var w in warnings) {
-            _logger.LogWarning("BBPNeo Normalizer-Warnung: {Warning}", w);
-        }
+        Logger.Info("ENTER UpsertMassnahmeAsync");
+        var masEntity = await UpsertMassnahmeAsync(db, domain, token);
+        await db.SaveChangesAsync(token);
+        db.ChangeTracker.Clear();
+        Logger.Info("EXIT  UpsertMassnahmeAsync");
 
-        try {
-            _logger.LogDebug("Upsert Maßnahme gestartet");
-            var masEntity = await UpsertMassnahmeAsync(db, massnahme, token);
+        // -------------------------------------------------
+        // REGELUNGEN + CHILDREN
+        // -------------------------------------------------
+        foreach (var regelung in domain.Regelungen) {
+            token.ThrowIfCancellationRequested();
 
-            foreach (var regelung in massnahme.Regelungen) {
-                await UpsertRegelungAsync(db, masEntity.Id, regelung, token);
+            Logger.Info("ENTER UpsertRegelungAsync");
+            var regEntityId = await UpsertRegelungAsync(db, masEntity.Id, regelung, token);
+            await db.SaveChangesAsync(token);
+            db.ChangeTracker.Clear();
+            Logger.Info("EXIT  UpsertRegelungAsync");
+            
+            onRegelungUpserted();
+
+            // -------------------------
+            // BVE / APS / IAV
+            // -------------------------
+            foreach (var bve in regelung.Bven) {
+                token.ThrowIfCancellationRequested();
+
+                var bveId = await UpsertBveAsync(db, regEntityId, bve, token);
+                await db.SaveChangesAsync(token);
+                db.ChangeTracker.Clear();
+                onBveUpserted();
+
+                if (bve.Aps?.Betroffenheit == true) {
+                    await UpsertApsAsync(db, bveId, bve.Aps, token);
+                    await db.SaveChangesAsync(token);
+                    db.ChangeTracker.Clear();
+                    onApsUpserted();
+                }
+
+                if (bve.Iav?.Betroffenheit == true) {
+                    await UpsertIavAsync(db, bveId, bve.Iav, token);
+                    await db.SaveChangesAsync(token);
+                    db.ChangeTracker.Clear();
+                    onIavUpserted();
+                }
             }
+        }
 
-            _logger.LogDebug("Upsert Maßnahme abgeschlossen");
-        }
-        catch (OperationCanceledException) {
-            _logger.LogInformation("Upsert Maßnahme abgebrochen");
-            throw;
-        }
-        catch (Exception ex) {
-            _logger.LogError(
-                ex,
-                "Fehler beim Upsert der Maßnahme");
-            throw;
-        }
+        Logger.Info(
+            "[BBPNeo.Upsert] ✔ Maßnahme READY (SaveChanges ausstehend): MasNr={MasNr}",
+            domain.MasId);
     }
-
+    
     // =====================================================================
     // MASSNAHME
     // =====================================================================
@@ -85,11 +110,11 @@ public sealed class BbpNeoUpserter : IBbpNeoUpsertService {
             db.Add(entity);
         }
 
-        var bstVon = await _resolver.ResolveOrCreateBetriebsstelleAsync(db, mas.MasVonBstDs100, token);
-        var bstBis = await _resolver.ResolveOrCreateBetriebsstelleAsync(db, mas.MasBisBstDs100, token);
-        var strVon = await _resolver.ResolveStreckeAsync(db, mas.MasVonVzG);
-        var strBis = await _resolver.ResolveStreckeAsync(db, mas.MasBisVzG);
-        
+        var bstVon = await resolver.ResolveOrCreateBetriebsstelleAsync(db, mas.MasVonBstDs100, token);
+        var bstBis = await resolver.ResolveOrCreateBetriebsstelleAsync(db, mas.MasBisBstDs100, token);
+        var strVon = await resolver.ResolveStreckeAsync(db, mas.MasVonVzG);
+        var strBis = await resolver.ResolveStreckeAsync(db, mas.MasBisVzG);
+
         entity.Aktiv            = mas.Aktiv;
         entity.MasBeginn        = mas.Beginn    ?? DateTime.MinValue;
         entity.MasEnde          = mas.Ende      ?? DateTime.MinValue;
@@ -98,19 +123,18 @@ public sealed class BbpNeoUpserter : IBbpNeoUpsertService {
         entity.ArtDerArbeit     = mas.ArtDerArbeit;
         entity.Genehmigung      = mas.Genehmigung;
         entity.AnforderungBbzr  = mas.AnforderungBbzr;
-        entity.MasVonBst2strRef = await _resolver.ResolveBst2StrAsync(db, bstVon, strVon, token: token);
-        entity.MasBisBst2strRef = await _resolver.ResolveBst2StrAsync(db, bstBis, strBis, token: token);
+        entity.MasVonBst2strRef = await resolver.ResolveBst2StrAsync(db, bstVon, strVon, token: token);
+        entity.MasBisBst2strRef = await resolver.ResolveBst2StrAsync(db, bstBis, strBis, token: token);
         entity.MasVonKmL        = mas.MasVonKmL;
         entity.MasBisKmL        = mas.MasBisKmL;
 
-        await db.SaveChangesAsync(token);
         return entity;
     }
 
     // =====================================================================
     // REGELUNG
     // =====================================================================
-    private async Task UpsertRegelungAsync(
+    private async Task<long> UpsertRegelungAsync(
         UjBauDbContext    db,
         long              masRef,
         BbpNeoRegelung    reg,
@@ -126,10 +150,10 @@ public sealed class BbpNeoUpserter : IBbpNeoUpsertService {
             db.Add(entity);
         }
 
-        var bstVon = await _resolver.ResolveOrCreateBetriebsstelleAsync(db, reg.VonBstDs100, token);
-        var bstBis = await _resolver.ResolveOrCreateBetriebsstelleAsync(db, reg.BisBstDs100, token);
-        var strVon = await _resolver.ResolveStreckeAsync(db, reg.VonVzG);
-        var strBis = await _resolver.ResolveStreckeAsync(db, reg.BisVzG);
+        var bstVon = await resolver.ResolveOrCreateBetriebsstelleAsync(db, reg.VonBstDs100, token);
+        var bstBis = await resolver.ResolveOrCreateBetriebsstelleAsync(db, reg.BisBstDs100, token);
+        var strVon = await resolver.ResolveStreckeAsync(db, reg.VonVzG);
+        var strBis = await resolver.ResolveStreckeAsync(db, reg.BisVzG);
 
         entity.Aktiv         = reg.Aktiv;
         entity.Beginn        = reg.Beginn   ?? DateTime.MinValue;
@@ -141,20 +165,20 @@ public sealed class BbpNeoUpserter : IBbpNeoUpsertService {
         entity.RegelungLang  = reg.RegelungLang;
         entity.Durchgehend   = reg.Durchgehend  ?? false;
         entity.Schichtweise  = reg.Schichtweise ?? false;
-        entity.Bst2strVonRef = await _resolver.ResolveBst2StrAsync(db, bstVon, strVon, token: token);
-        entity.Bst2strBisRef = await _resolver.ResolveBst2StrAsync(db, bstBis, strBis, token: token);
-
-        await db.SaveChangesAsync(token);
+        entity.Bst2strVonRef = await resolver.ResolveBst2StrAsync(db, bstVon, strVon, token: token);
+        entity.Bst2strBisRef = await resolver.ResolveBst2StrAsync(db, bstBis, strBis, token: token);
 
         foreach (var bve in reg.Bven) {
             await UpsertBveAsync(db, entity.Id, bve, token);
         }
+
+        return entity.Id;
     }
 
     // =====================================================================
     // BVE
     // =====================================================================
-    private async Task UpsertBveAsync(
+    private async Task<long> UpsertBveAsync(
         UjBauDbContext    db,
         long              regRef,
         BbpNeoBve         dto,
@@ -183,40 +207,21 @@ public sealed class BbpNeoUpserter : IBbpNeoUpsertService {
         bve.GueltigkeitEffektiveVerkehrstage =
             dto.GueltigkeitEffektiveVerkehrstage;
 
-        if (!string.IsNullOrWhiteSpace(dto.VonBstDs100) && dto.VonVzG.HasValue) {
-            var bst = await _resolver.ResolveOrCreateBetriebsstelleAsync(db, dto.VonBstDs100, token);
+        var bstVonRef = await resolver.ResolveOrCreateBetriebsstelleAsync(db, dto.VonBstDs100, token);
+        var strVonRef = await resolver.ResolveStreckeAsync(db, dto.VonVzG);
+        bve.Bst2strVonRef = await resolver.ResolveBst2StrAsync(db, bstVonRef, strVonRef, token: token);
+        var bstBisRef = await resolver.ResolveOrCreateBetriebsstelleAsync(db, dto.BisBstDs100, token);
+        var strBisRef = await resolver.ResolveStreckeAsync(db, dto.BisVzG);
+        bve.Bst2strBisRef = await resolver.ResolveBst2StrAsync(db, bstBisRef, strBisRef, token: token);
 
-            if (bst > 0) {
-                bve.Bst2strVonRef = await _resolver.ResolveBst2StrAsync(db, bst, dto.VonVzG.Value, token: token);
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(dto.BisBstDs100) && dto.BisVzG.HasValue) {
-            var bst =
-                await _resolver.ResolveOrCreateBetriebsstelleAsync(db, dto.BisBstDs100, token);
-
-            if (bst > 0) {
-                bve.Bst2strBisRef = await _resolver.ResolveBst2StrAsync(db, bst, dto.BisVzG.Value, token: token);
-            }
-        }
 
         bve.ApsBetroffenheit     = dto.Aps != null;
         bve.ApsBeschreibung      = dto.Aps?.Beschreibung;
         bve.ApsFreiVonFahrzeugen = dto.Aps?.FreiVonFahrzeugen ?? false;
-        bve.IavBetroffenheit = dto.Iav != null;
-        bve.IavBeschreibung  = dto.Iav?.Beschreibung;
+        bve.IavBetroffenheit     = dto.Iav != null;
+        bve.IavBeschreibung      = dto.Iav?.Beschreibung;
 
-        await db.SaveChangesAsync(token);
-
-        if (dto.Aps != null) {
-            await UpsertApsAsync(db, bve.Id, dto.Aps, token);
-        }
-
-        if (dto.Iav != null) {
-            foreach (var iav in dto.Iav.Betroffenheiten) {
-                await UpsertIavAsync(db, bve.Id, iav, token);
-            }
-        }
+        return bve.Id;
     }
 
     // =====================================================================
@@ -227,7 +232,13 @@ public sealed class BbpNeoUpserter : IBbpNeoUpsertService {
         long              bveRef,
         BbpNeoAps         aps,
         CancellationToken token) {
+
         foreach (var dto in aps.Betroffenheiten) {
+
+            // 🔑 FACHLICHER FILTER
+            if (!dto.IstBetroffen)
+                continue;
+
             if (string.IsNullOrWhiteSpace(dto.Uuid))
                 continue;
 
@@ -255,19 +266,20 @@ public sealed class BbpNeoUpserter : IBbpNeoUpsertService {
             entity.EinschraenkungBefahrbarkeitSe = dto.EinschraenkungBefahrbarkeitSe;
             entity.Kommentar                     = dto.Kommentar;
             entity.AbFahrplanjahr                = dto.AbFahrplanjahr;
-            entity.BstRef                        = await _resolver.ResolveOrCreateBetriebsstelleAsync(db, dto.BstDs100, token);
 
-            entity.MoeglicheZa = dto.MoeglicheZAs is { Count: > 0 }
+            entity.BstRef = await resolver.ResolveOrCreateBetriebsstelleAsync(
+                db, dto.BstDs100, token);
+
+            entity.MoeglicheZa =
+                dto.MoeglicheZAs is { Count: > 0 }
                     ? JsonSerializer.Serialize(
                         dto.MoeglicheZAs,
-#pragma warning disable CA1869
                         new JsonSerializerOptions {
-#pragma warning restore CA1869
                             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                         })
                     : string.Empty;
-            
-            await db.SaveChangesAsync(token);
+
+
         }
     }
 
@@ -275,40 +287,52 @@ public sealed class BbpNeoUpserter : IBbpNeoUpsertService {
     // IAV
     // =====================================================================
     private async Task UpsertIavAsync(
-        UjBauDbContext         db,
-        long                   bveRef,
-        BbpNeoIavBetroffenheit dto,
-        CancellationToken      token) {
-        if (string.IsNullOrWhiteSpace(dto.VertragNr))
-            return;
+        UjBauDbContext    db,
+        long              bveRef,
+        BbpNeoIav         iav,
+        CancellationToken token) {
 
-        var entity = await db.BbpneoMassnahmeRegelungBveIav
-            .FirstOrDefaultAsync(
-                x => x.BbpneoMassnahmeRegelungBveRef == bveRef &&
-                     x.VertragNr                     == dto.VertragNr,
-                token);
+        foreach (var dto in iav.Betroffenheiten) {
+            // 🔑 FACHLICHER FILTER
+            if (!dto.IstBetroffen)
+                return;
 
-        if (entity == null) {
-            entity = new BbpneoMassnahmeRegelungBveIav {
-                BbpneoMassnahmeRegelungBveRef = bveRef,
-                VertragNr                     = dto.VertragNr
-            };
-            db.Add(entity);
+            if (string.IsNullOrWhiteSpace(dto.VertragNr))
+                return;
+
+            var entity = await db.BbpneoMassnahmeRegelungBveIav
+                .FirstOrDefaultAsync(
+                    x => x.BbpneoMassnahmeRegelungBveRef == bveRef &&
+                         x.VertragNr                     == dto.VertragNr,
+                    token);
+
+            if (entity == null) {
+                entity = new BbpneoMassnahmeRegelungBveIav {
+                    BbpneoMassnahmeRegelungBveRef = bveRef,
+                    VertragNr                     = dto.VertragNr
+                };
+                db.Add(entity);
+            }
+
+            var bstRef = await resolver.ResolveOrCreateBetriebsstelleAsync(
+                db, dto.BstDs100, token);
+
+            var strRef = await resolver.ResolveStreckeAsync(
+                db, dto.VzgStrecke);
+
+            var bst2StrRef = await resolver.ResolveBst2StrAsync(
+                db, bstRef, strRef, token: token);
+
+            entity.Kunde                         = dto.Kunde;
+            entity.Anschlussgrenze               = dto.Anschlussgrenze;
+            entity.Oberleitung                   = dto.Oberleitung    ?? false;
+            entity.OberleitungAus                = dto.OberleitungAus ?? false;
+            entity.EinschraenkungBedienbarkeitIa = dto.EinschraenkungBedienbarkeitIA;
+            entity.Kommentar                     = dto.Kommentar;
+            entity.Bst2strRef                    = bst2StrRef;
+            entity.VertragArt                    = dto.VertragArt;
+            entity.VertragStatus                 = dto.VertragStatus;
+
         }
-
-        var bstRef = await _resolver.ResolveOrCreateBetriebsstelleAsync(db, dto.BstDs100, token);
-        var strRef = await _resolver.ResolveStreckeAsync(db, dto.VzgStrecke);
-
-        entity.Kunde                         = dto.Kunde;
-        entity.Anschlussgrenze               = dto.Anschlussgrenze;
-        entity.Oberleitung                   = dto.Oberleitung    ?? false;
-        entity.OberleitungAus                = dto.OberleitungAus ?? false;
-        entity.EinschraenkungBedienbarkeitIa = dto.EinschraenkungBedienbarkeitIA;
-        entity.Kommentar                     = dto.Kommentar;
-        entity.Bst2strRef                    = await _resolver.ResolveBst2StrAsync(db, bstRef, strRef, token: token);
-        entity.VertragArt                    = dto.VertragArt;
-        entity.VertragStatus                 = dto.VertragStatus;
-
-        await db.SaveChangesAsync(token);
     }
 }

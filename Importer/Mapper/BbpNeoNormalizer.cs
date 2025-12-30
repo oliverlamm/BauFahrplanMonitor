@@ -207,7 +207,7 @@ public static class BbpNeoNormalizer {
             Aps = raw.Aps != null
                 ? NormalizeAps(raw.Aps)
                 : null,
-
+            
             Iav = raw.Iav != null
                 ? NormalizeIav(raw.Iav)
                 : null
@@ -221,9 +221,10 @@ public static class BbpNeoNormalizer {
     /// <summary>
     /// Normalisiert eine IAV-Struktur.
     /// </summary>
-    private static BbpNeoIav NormalizeIav(
-        BbpNeoIavRaw raw) {
+    private static BbpNeoIav NormalizeIav(BbpNeoIavRaw raw) {
 
+        var iavIstBetroffen = ParseBool(raw.Betroffenheit);
+        
         return new BbpNeoIav {
             Betroffenheit = ParseBool(raw.Betroffenheit),
             Beschreibung = raw.Beschreibung ?? string.Empty,
@@ -231,17 +232,18 @@ public static class BbpNeoNormalizer {
             Betroffenheiten = raw.Betroffenheiten
                 .Where(b => !string.IsNullOrWhiteSpace(b.VertragNr))
                 .Select(b => new BbpNeoIavBetroffenheit {
-                    VertragNr = b.VertragNr!,
-                    Kunde = b.Kunde,
+                    VertragNr       = b.VertragNr!,
+                    IstBetroffen    = iavIstBetroffen,
+                    Kunde           = b.Kunde,
                     Anschlussgrenze = b.Anschlussgrenze,
-                    VertragArt = b.VertragArt,
-                    VertragStatus = b.VertragStatus,
-                    Oberleitung = ParseBool(b.Oberleitung),
-                    OberleitungAus = ParseBool(b.OberleitungAus),
+                    VertragArt      = b.VertragArt,
+                    VertragStatus   = b.VertragStatus,
+                    Oberleitung     = ParseBool(b.Oberleitung),
+                    OberleitungAus  = ParseBool(b.OberleitungAus),
                     EinschraenkungBedienbarkeitIA =
                         b.EinschraenkungBedienbarkeitIA,
-                    Kommentar = b.Kommentar,
-                    BstDs100 = b.Betriebsstelle,
+                    Kommentar  = b.Kommentar,
+                    BstDs100   = b.Betriebsstelle,
                     VzgStrecke = ParseLong(b.VzGStrecke)
                 })
                 .ToList()
@@ -255,9 +257,10 @@ public static class BbpNeoNormalizer {
     /// <summary>
     /// Normalisiert eine APS-Struktur.
     /// </summary>
-    private static BbpNeoAps NormalizeAps(
-        BbpNeoApsRaw raw) {
+    private static BbpNeoAps NormalizeAps(BbpNeoApsRaw raw) {
 
+        var apsIstBetroffen = ParseBool(raw.Betroffenheit);
+        
         return new BbpNeoAps {
             Betroffenheit = ParseBool(raw.Betroffenheit),
             Beschreibung = raw.Beschreibung ?? string.Empty,
@@ -266,19 +269,20 @@ public static class BbpNeoNormalizer {
             Betroffenheiten = raw.Betroffenheiten
                 .Where(b => !string.IsNullOrWhiteSpace(b.Uuid))
                 .Select(b => new BbpNeoApsBetroffenheit {
-                    Uuid = b.Uuid!,
-                    BstDs100 = b.Ds100,
-                    Gleis = b.GleisNr,
-                    PrimaereKat = b.PrimaereKategorie,
-                    SekundaerKat = b.SekundaereKategorie,
-                    Oberleitung = ParseBool(b.Oberleitung),
-                    OberleitungAus = ParseBool(b.OberleitungAus),
+                    Uuid             = b.Uuid!,
+                    IstBetroffen     = apsIstBetroffen,
+                    BstDs100         = b.Ds100,
+                    Gleis            = b.GleisNr,
+                    PrimaereKat      = b.PrimaereKategorie,
+                    SekundaerKat     = b.SekundaereKategorie,
+                    Oberleitung      = ParseBool(b.Oberleitung),
+                    OberleitungAus   = ParseBool(b.OberleitungAus),
                     TechnischerPlatz = b.TechnischerPlatz,
-                    ArtDerAnbindung = b.ArtDerAnbindung,
+                    ArtDerAnbindung  = b.ArtDerAnbindung,
                     EinschraenkungBefahrbarkeitSe =
                         b.EinschraenkungBefahrbarkeitSE,
-                    Kommentar = b.Kommentar,
-                    MoeglicheZAs = b.MoeglicheZA,
+                    Kommentar      = b.Kommentar,
+                    MoeglicheZAs   = b.MoeglicheZA,
                     AbFahrplanjahr = ParseShort(b.AbFahrplanjahr)
                 })
                 .ToList()

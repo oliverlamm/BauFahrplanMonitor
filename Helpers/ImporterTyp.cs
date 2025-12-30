@@ -2,5 +2,7 @@ namespace BauFahrplanMonitor.Helpers;
 
 public enum ImporterTyp {
     Direkt,
-    ZvFExport
+    ZvFExport,
+    BBPNeo,
+    OsbBob
 }

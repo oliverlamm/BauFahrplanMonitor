@@ -43,4 +43,19 @@ public class NavigationService : ObservableObject {
 
         CurrentViewModel = view;
     }
+    
+    public void ShowSingleFileImporter(ImporterTyp importerTyp, string title) {
+        Logger.Info($"Navigiere zu SingleFileImporter: {importerTyp}, {title}");
+        var vm = ActivatorUtilities.CreateInstance<SingleFileImporterViewModel>(
+            _provider,
+            importerTyp,
+            title
+        );
+
+        var view = new SingleFileImporterView {
+            DataContext = vm
+        };
+
+        CurrentViewModel = view;
+    }
 }

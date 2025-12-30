@@ -69,6 +69,13 @@ public partial class MainWindowViewModel : ObservableObject {
                     "ZvF / ÜB / Fplo Import"
                 );
                 break;
+            
+            case "BBPNeo":
+                Navigation.ShowSingleFileImporter(
+                    ImporterTyp.BBPNeo,
+                    "BBPNeo Import"
+                );
+                break;
 
             default:
                 StatusMessages.Warning($"Importer noch nicht implementiert: {name}");

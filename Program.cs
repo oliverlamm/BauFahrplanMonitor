@@ -3,10 +3,10 @@ using System.IO;
 using Avalonia;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Importer;
-using BauFahrplanMonitor.Importer.Interface;
 using BauFahrplanMonitor.Importer.Mapper;
 using BauFahrplanMonitor.Importer.Upsert;
 using BauFahrplanMonitor.Importer.Xml;
+using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Resolver;
 using BauFahrplanMonitor.Services;
 using BauFahrplanMonitor.ViewModels;
@@ -57,7 +57,7 @@ internal class Program {
         // ======================================================
         services.AddSingleton<StatusMessageService>();
         services.AddSingleton<NavigationService>();
-
+        services.AddSingleton<IFileDialogService, FileDialogService>();
         services.AddSingleton<StatusPageViewModel>();
         services.AddSingleton<StatusPageView>();
         services.AddSingleton<MainWindowViewModel>();
@@ -86,6 +86,16 @@ internal class Program {
         services.AddSingleton<IFploUpserter, FploUpserter>();
         services.AddSingleton<IFploDtoMapper, FploDtoMapper>();
 
+        // BBPNeo – Infrastruktur
+        services.AddTransient<IBbpNeoXmlStreamingLoader, BbpNeoXmlStreamingLoader>();
+        services.AddTransient<IBbpNeoUpserter, BbpNeoUpserter>();
+
+        // BBPNeo – Importer selbst
+        services.AddTransient<BbpNeoImporter>();
+        
+        // OsbBoB Import
+        //services.AddTransient<OsbBobImporter>();
+        
         // Importer selbst
         services.AddSingleton<ZvFExportImporter>();
         services.AddSingleton<IFileImporterFactory, FileImporterFactory>();

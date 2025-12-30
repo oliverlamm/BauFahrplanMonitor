@@ -1,6 +1,6 @@
 using BauFahrplanMonitor.Models;
 
-namespace BauFahrplanMonitor.Importer.Dto.Shared;
+namespace BauFahrplanMonitor.Interfaces;
 
 public interface IExtendedVorgangDto {
     /// <summary>

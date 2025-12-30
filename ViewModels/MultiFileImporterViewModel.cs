@@ -15,7 +15,7 @@ using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
 using BauFahrplanMonitor.Importer.Dto;
 using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Interface;
+using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Resolver;
 using BauFahrplanMonitor.Services;
 using CommunityToolkit.Mvvm.ComponentModel;

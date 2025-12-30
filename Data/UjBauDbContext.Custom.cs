@@ -125,11 +125,15 @@ public partial class UjBauDbContext {
         // Connection String bauen
         // ------------------------------------------------------
         var cs =
-            $"Host={db.Host};" +
-            $"Port={db.Port};" +
-            $"Database={db.Database};" +
-            $"Username={db.User};" +
-            $"Password={db.Password}";
+            $"Host={db.Host};"                      +
+            $"Port={db.Port};"                      +
+            $"Database={db.Database};"              +
+            $"Username={db.User};"                  +
+            $"Password={db.Password};"              +
+            $"Application Name=BauFahrplanMonitor;" + // 🔑 wichtig
+            $"Maximum Pool Size=50;"                + // 🔑 wichtig
+            $"Timeout=15;"                          +
+            $"Command Timeout=120;";
 
         // ------------------------------------------------------
         // EF Core konfigurieren
@@ -138,7 +142,12 @@ public partial class UjBauDbContext {
 
         optionsBuilder.UseNpgsql(
             cs,
-            o => o.UseNetTopologySuite());
+            o => {
+                o.UseNetTopologySuite();
+
+                // 🔑 Performance: Batch Inserts / Updates
+                o.MaxBatchSize(100);
+            });
 
         // ------------------------------------------------------
         // Optionales SQL-Logging
