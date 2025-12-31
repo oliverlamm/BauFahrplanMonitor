@@ -69,7 +69,7 @@ public static class BbpNeoNormalizer {
 
         var warnings = new List<string>();
 
-        if( string.IsNullOrWhiteSpace(raw.MasId) )
+        if (string.IsNullOrWhiteSpace(raw.MasId))
             warnings.Add("MasId fehlt");
 
         // ---------------------------------------------------------
@@ -86,21 +86,21 @@ public static class BbpNeoNormalizer {
         var massnahme = new BbpNeoMassnahme {
             MasId = raw.MasId
                     ?? throw new Exception("MasId darf nicht leer sein, Abbruch"),
-            Aktiv = ParseBool(raw.Aktiv),
-            Beginn = ParseDateTime(raw.MasBeginn, "MasBeginn", warnings),
-            Ende = ParseDateTime(raw.MasEnde, "MasEnde", warnings),
-            Anmeldung = ParseDateOnly(raw.Anmeldung,"Anmeldung", warnings),
-            Genehmigung = raw.Genehmigung,
-            AnforderungBbzr = ParseDateOnly(raw.DatumAuftragBBZR,"AnforderungBbzr",warnings),
-            ArtDerArbeit = raw.ArtDerArbeiten ?? string.Empty,
-            Arbeiten = raw.Arbeiten ?? string.Empty,
-            RegionRef = ParseLong(raw.RegionId),
-            MasVonBstDs100 = raw.MasBstVonRil100,
-            MasBisBstDs100 = raw.MasBstBisRil100,
-            MasVonVzG = ParseLong(raw.VzGStrecke),
-            MasBisVzG = ParseLong(raw.VzGStreckeBis),
-            MasVonKmL = raw.MasKmVon,
-            MasBisKmL = raw.MasKmBis,
+            Aktiv           = ParseBool(raw.Aktiv),
+            Beginn          = ParseDateTime(raw.MasBeginn, "MasBeginn", warnings),
+            Ende            = ParseDateTime(raw.MasEnde, "MasEnde", warnings),
+            Anmeldung       = ParseDateOnly(raw.Anmeldung, "Anmeldung", warnings),
+            Genehmigung     = raw.Genehmigung,
+            AnforderungBbzr = ParseDateOnly(raw.DatumAuftragBBZR, "AnforderungBbzr", warnings),
+            ArtDerArbeit    = raw.ArtDerArbeiten ?? string.Empty,
+            Arbeiten        = raw.Arbeiten       ?? string.Empty,
+            RegionId        = ParseLong(raw.RegionId),
+            MasVonBstDs100  = raw.MasBstVonRil100,
+            MasBisBstDs100  = raw.MasBstBisRil100,
+            MasVonVzG       = ParseLong(raw.VzGStrecke),
+            MasBisVzG       = ParseLong(raw.VzGStreckeBis),
+            MasVonKmL       = raw.MasKmVon,
+            MasBisKmL       = raw.MasKmBis,
             Regelungen = regelungen
                 .Where(r => r is not null)
                 .Select(r => r!)
@@ -108,7 +108,7 @@ public static class BbpNeoNormalizer {
         };
 
         return new NormalizationResult<BbpNeoMassnahme> {
-            Value = massnahme,
+            Value    = massnahme,
             Warnings = warnings
         };
     }
@@ -122,9 +122,9 @@ public static class BbpNeoNormalizer {
     /// </summary>
     private static BbpNeoRegelung? NormalizeRegelung(
         BbpNeoRegelungRaw raw,
-        List<string> warnings) {
+        List<string>      warnings) {
 
-        if( string.IsNullOrWhiteSpace(raw.RegId) ) {
+        if (string.IsNullOrWhiteSpace(raw.RegId)) {
             warnings.Add("Regelung ohne RegId verworfen");
             return null;
         }
@@ -139,18 +139,18 @@ public static class BbpNeoNormalizer {
             Aktiv = ParseBool(raw.Aktiv),
 
             Beginn = ParseDateTime(raw.Beginn, "Regelung.Beginn", warnings),
-            Ende = ParseDateTime(raw.Ende, "Regelung.Ende", warnings),
+            Ende   = ParseDateTime(raw.Ende, "Regelung.Ende", warnings),
 
             Zeitraum = raw.Zeitraum,
             Richtung = ParseShort(raw.Richtung) ?? 0,
 
-            BplArt = raw.BplArtText,
+            BplArt       = raw.BplArtText,
             RegelungKurz = raw.BplRegelungKurz,
             RegelungLang = raw.BplRegelungLang,
 
-            Durchgehend = ParseBool(raw.Durchgehend),
+            Durchgehend  = ParseBool(raw.Durchgehend),
             Schichtweise = ParseBool(raw.Schichtweise),
-            
+
             VonBstDs100 = raw.BstVonRil100,
             BisBstDs100 = raw.BstBisRil100,
 
@@ -158,9 +158,9 @@ public static class BbpNeoNormalizer {
             BisVzG = ParseLong(raw.VzGStreckeBis),
 
             Bven = bven
-            .Where(r => r is not null)
-            .Select(r => r!)
-            .ToList()
+                .Where(r => r is not null)
+                .Select(r => r!)
+                .ToList()
         };
     }
 
@@ -175,7 +175,7 @@ public static class BbpNeoNormalizer {
         BbpNeoBveRaw raw,
         List<string> warnings) {
 
-        if( string.IsNullOrWhiteSpace(raw.BveId) ) {
+        if (string.IsNullOrWhiteSpace(raw.BveId)) {
             warnings.Add("BVE ohne BveId verworfen");
             return null;
         }
@@ -187,9 +187,9 @@ public static class BbpNeoNormalizer {
             BveId = raw.BveId!,
             Aktiv = ParseBool(raw.Aktiv),
 
-            Art = raw.ArtText,
+            Art              = raw.ArtText,
             OrtMikroskopisch = raw.OrtMikroskop,
-            Bemerkung = raw.Bemerkung ?? string.Empty,
+            Bemerkung        = raw.Bemerkung ?? string.Empty,
 
             Gueltigkeit = raw.Gueltigkeit,
             GueltigkeitEffektiveVerkehrstage =
@@ -200,14 +200,14 @@ public static class BbpNeoNormalizer {
 
             VonBstDs100 = raw.BstVonRil100,
             BisBstDs100 = raw.BstBisRil100,
-            VonVzG = ParseLong(raw.VzGStrecke),
-            BisVzG = ParseLong(raw.VzGStreckeBis),
+            VonVzG      = ParseLong(raw.VzGStrecke),
+            BisVzG      = ParseLong(raw.VzGStreckeBis),
 
             // 🔹 HEADER + DETAILS
             Aps = raw.Aps != null
                 ? NormalizeAps(raw.Aps)
                 : null,
-            
+
             Iav = raw.Iav != null
                 ? NormalizeIav(raw.Iav)
                 : null
@@ -224,10 +224,11 @@ public static class BbpNeoNormalizer {
     private static BbpNeoIav NormalizeIav(BbpNeoIavRaw raw) {
 
         var iavIstBetroffen = ParseBool(raw.Betroffenheit);
-        
+
         return new BbpNeoIav {
-            Betroffenheit = ParseBool(raw.Betroffenheit),
-            Beschreibung = raw.Beschreibung ?? string.Empty,
+            Betroffenheit = iavIstBetroffen,
+            IstBetroffen  = iavIstBetroffen, // 🔑 DAS FEHLT
+            Beschreibung  = raw.Beschreibung ?? string.Empty,
 
             Betroffenheiten = raw.Betroffenheiten
                 .Where(b => !string.IsNullOrWhiteSpace(b.VertragNr))
@@ -260,10 +261,11 @@ public static class BbpNeoNormalizer {
     private static BbpNeoAps NormalizeAps(BbpNeoApsRaw raw) {
 
         var apsIstBetroffen = ParseBool(raw.Betroffenheit);
-        
+
         return new BbpNeoAps {
-            Betroffenheit = ParseBool(raw.Betroffenheit),
-            Beschreibung = raw.Beschreibung ?? string.Empty,
+            Betroffenheit     = apsIstBetroffen,
+            IstBetroffen      = apsIstBetroffen, // 🔑 FEHLT BISHER
+            Beschreibung      = raw.Beschreibung ?? string.Empty,
             FreiVonFahrzeugen = ParseBool(raw.FreiVonFahrzeugen),
 
             Betroffenheiten = raw.Betroffenheiten
@@ -282,7 +284,7 @@ public static class BbpNeoNormalizer {
                     EinschraenkungBefahrbarkeitSe =
                         b.EinschraenkungBefahrbarkeitSE,
                     Kommentar      = b.Kommentar,
-                    MoeglicheZAs   = b.MoeglicheZA,
+                    MoeglicheZas   = b.MoeglicheZa ?? [],
                     AbFahrplanjahr = ParseShort(b.AbFahrplanjahr)
                 })
                 .ToList()
@@ -297,7 +299,7 @@ public static class BbpNeoNormalizer {
     /// Robuste Bool-Konvertierung aus Textwerten.
     /// </summary>
     private static bool ParseBool(string? raw) {
-        if( string.IsNullOrWhiteSpace(raw) )
+        if (string.IsNullOrWhiteSpace(raw))
             return false;
 
         return raw switch {
@@ -314,7 +316,7 @@ public static class BbpNeoNormalizer {
     /// Long-Konvertierung mit InvariantCulture.
     /// </summary>
     private static long? ParseLong(string? raw) {
-        if( string.IsNullOrWhiteSpace(raw) )
+        if (string.IsNullOrWhiteSpace(raw))
             return null;
 
         return long.TryParse(
@@ -330,19 +332,14 @@ public static class BbpNeoNormalizer {
     /// DateTime-Parsing (yyyyMMddHHmm).
     /// </summary>
     private static DateTime? ParseDateTime(
-        string? raw,
-        string field,
+        string?      raw,
+        string       field,
         List<string> warnings) {
 
-        if( string.IsNullOrWhiteSpace(raw) )
+        if (string.IsNullOrWhiteSpace(raw))
             return null;
 
-        if( DateTime.TryParseExact(
-            raw,
-            "yyyyMMddHHmm",
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.None,
-            out var dt) )
+        if (DateTime.TryParseExact(raw, "yyyyMMddHHmm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
             return dt;
 
         warnings.Add($"Ungültiges DateTime ({field}): '{raw}'");
@@ -353,26 +350,20 @@ public static class BbpNeoNormalizer {
     /// Kombiniert getrennte Datums- und Zeitfelder
     /// zu einem DateTime.
     /// </summary>
-    private static DateTime? Combine(
-        string? rawDate,
-        string? rawTime,
-        List<string> warnings,
-        string field) {
+    private static DateTime? Combine(string? rawDate, string? rawTime, List<string> warnings, string field) {
 
-        if( string.IsNullOrWhiteSpace(rawDate) )
+        if (string.IsNullOrWhiteSpace(rawDate))
             return null;
 
         DateOnly date;
 
-        if( !DateOnly.TryParseExact(
-            rawDate,
-            [
-                "yyyyMMdd",
-                "dd.MM.yyyy"
-            ],
-            CultureInfo.GetCultureInfo("de-DE"),
-            DateTimeStyles.None,
-            out date) ) {
+        if (!DateOnly.TryParseExact(rawDate, [
+                    "yyyyMMdd",
+                    "dd.MM.yyyy"
+                ],
+                CultureInfo.GetCultureInfo("de-DE"),
+                DateTimeStyles.None,
+                out date)) {
 
             warnings.Add($"Ungültiges Datum ({field}): '{rawDate}'");
             return null;
@@ -381,8 +372,7 @@ public static class BbpNeoNormalizer {
         var time = TimeOnly.MinValue;
 
         if (string.IsNullOrWhiteSpace(rawTime) ||
-            TimeOnly.TryParseExact(
-                rawTime,
+            TimeOnly.TryParseExact(rawTime,
                 [
                     "HHmm",
                     "HH:mm:ss"
@@ -400,41 +390,31 @@ public static class BbpNeoNormalizer {
     /// Short-Konvertierung.
     /// </summary>
     private static short? ParseShort(string? raw) {
-        if( string.IsNullOrWhiteSpace(raw) )
+        if (string.IsNullOrWhiteSpace(raw))
             return null;
 
-        if( short.TryParse(
-            raw,
-            NumberStyles.Integer,
-            CultureInfo.InvariantCulture,
-            out var v) )
+        if (short.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v))
             return v;
 
         return null;
     }
-    
+
     /// <summary>
     /// DateOnly-Parsing aus BBPNeo-Formaten.
     /// </summary>
     private static DateOnly? ParseDateOnly(
-        string? raw,
-        string field,
+        string?      raw,
+        string       field,
         List<string> warnings) {
 
-        if( string.IsNullOrWhiteSpace(raw) )
+        if (string.IsNullOrWhiteSpace(raw))
             return null;
 
         // akzeptiert yyyyMMddHHmm
-        if( DateTime.TryParseExact(
-            raw,
-            "yyyyMMddHHmm",
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.None,
-            out var dt) )
+        if (DateTime.TryParseExact(raw, "yyyyMMddHHmm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
             return DateOnly.FromDateTime(dt);
 
         warnings.Add($"Ungültiges DateOnly ({field}): '{raw}'");
         return null;
     }
-
 }

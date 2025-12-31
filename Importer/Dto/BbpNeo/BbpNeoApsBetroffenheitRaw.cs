@@ -145,5 +145,6 @@ public sealed class BbpNeoApsBetroffenheitRaw {
     ///
     /// Die Liste ist niemals <c>null</c>.
     /// </remarks>
-    public List<BbpNeoMoeglicheZaRaw> MoeglicheZA { get; set; } = [];
+    public List<BbpNeoZaRaw>? MoeglicheZa { get; set; } = [];
+    
 }

@@ -102,11 +102,8 @@ public sealed class ImportWorkerViewModel : ObservableObject {
         Statistics.Add(new("Anzahl APS", "0"));
         Statistics.Add(new("Anzahl IAV", "0"));
         Statistics.Add(new("Queue-Größe", "0"));
-        Statistics.Add(new("Aktive Consumer", "0"));
-        Statistics.Add(new("Durchsatz / s", "0"));
         Statistics.Add(new("Consumer aktiv", "0"));
         Statistics.Add(new("Consumer gesamt", "0"));
-        Statistics.Add(new("ETA", "—"));
     }
 
     public void UpdateStat(string key, int value) {

@@ -1,11 +1,14 @@
 using System;
 using System.Threading;
 using System.Xml;
+using BauFahrplanMonitor.Helpers;
 using BauFahrplanMonitor.Importer.Dto.BbpNeo;
+using NLog;
 
 namespace BauFahrplanMonitor.Importer.Xml;
 
 public static class BbpNeoRawXmlParser {
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
     // =====================================================================
     // ENTRY: <BBPMassnahme>
@@ -205,16 +208,23 @@ public static class BbpNeoRawXmlParser {
             token.ThrowIfCancellationRequested();
 
             switch (reader.LocalName) {
-                case "bVEId": dto.BveId                    = ReadElementText(reader); break;
-                case "aktiv": dto.Aktiv                    = ReadElementText(reader); break;
-                case "bVEArtText": dto.ArtText             = ReadElementText(reader); break;
-                case "bVEBstVonRil100": dto.BstVonRil100   = ReadElementText(reader); break;
-                case "bVEBstBisRil100": dto.BstBisRil100   = ReadElementText(reader); break;
-                case "bVEVzGStrecke": dto.VzGStrecke       = ReadElementText(reader); break;
-                case "bVEVzGStreckeBis": dto.VzGStreckeBis = ReadElementText(reader); break;
-                case "bVEGueltigkeit": dto.Gueltigkeit     = ReadElementText(reader); break;
-                case "bVEIAV": dto.Iav                     = ParseIav(reader, token); break;
-                case "bVEAPS": dto.Aps                     = ParseAps(reader, token); break;
+                case "bVEId": dto.BveId                                               = ReadElementText(reader); break;
+                case "aktiv": dto.Aktiv                                               = ReadElementText(reader); break;
+                case "bVEArtText": dto.ArtText                                        = ReadElementText(reader); break;
+                case "bVEBstVonRil100": dto.BstVonRil100                              = ReadElementText(reader); break;
+                case "bVEBstBisRil100": dto.BstBisRil100                              = ReadElementText(reader); break;
+                case "bVEVzGStrecke": dto.VzGStrecke                                  = ReadElementText(reader); break;
+                case "bVEVzGStreckeBis": dto.VzGStreckeBis                            = ReadElementText(reader); break;
+                case "bVEGueltigkeit": dto.Gueltigkeit                                = ReadElementText(reader); break;
+                case "bVEIAV": dto.Iav                                                = ParseIav(reader, token); break;
+                case "bVEAPS": dto.Aps                                                = ParseAps(reader, token); break;
+                case "bVEGueltigkeitTagVon": dto.TagVon                               = ReadElementText(reader); break;
+                case "bVEGueltigkeitZeitVon": dto.ZeitVon                             = ReadElementText(reader); break;
+                case "bVEGueltigkeitTagBis": dto.TagBis                               = ReadElementText(reader); break;
+                case "bVEGueltigkeitZeitBis": dto.ZeitBis                             = ReadElementText(reader); break;
+                case "bVEGueltigkeitEffektiveVerkehrstage": dto.EffektiveVerkehrstage = ReadElementText(reader); break;
+                case "bVEOrtMikroskop": dto.OrtMikroskop                              = ReadElementText(reader); break;
+                case "bVEBemerkung": dto.Bemerkung                                    = ReadElementText(reader); break;
                 default: SkipElement(reader); break;
             }
         }
@@ -223,6 +233,7 @@ public static class BbpNeoRawXmlParser {
             reader.LocalName == startName)
             reader.Read();
 
+        Logger.Debug("RAW BVE:\n{Dump}", dto.Dump());
         return dto;
     }
 
@@ -266,9 +277,91 @@ public static class BbpNeoRawXmlParser {
         while (reader.MoveToContent() == XmlNodeType.Element &&
                reader.Depth           > depth) {
 
+            token.ThrowIfCancellationRequested();
+
             switch (reader.LocalName) {
-                case "Betroffenheit": dto.Betroffenheit = ReadElementText(reader); break;
-                case "Beschreibung": dto.Beschreibung   = ReadElementText(reader); break;
+                case "Betroffenheit":
+                    dto.Betroffenheit = ReadElementText(reader);
+                    break;
+
+                case "Beschreibung":
+                    dto.Beschreibung = ReadElementText(reader);
+                    break;
+
+                case "bVEIAVBetroffenheiten":
+                    ParseIavBetroffenheiten(reader, dto, token);
+                    break;
+
+                default:
+                    SkipElement(reader);
+                    break;
+            }
+        }
+
+        if (reader.NodeType == XmlNodeType.EndElement)
+            reader.Read();
+
+        return dto;
+    }
+
+    private static void ParseIavBetroffenheiten(
+        XmlReader         reader,
+        BbpNeoIavRaw      iav,
+        CancellationToken token) {
+
+        if (reader.IsEmptyElement) {
+            reader.Read();
+            return;
+        }
+
+        var depth = reader.Depth;
+        reader.Read();
+
+        while (reader.MoveToContent() == XmlNodeType.Element &&
+               reader.Depth           > depth) {
+
+            token.ThrowIfCancellationRequested();
+
+            if (reader.LocalName == "IAVBetroffenheit") {
+                iav.Betroffenheiten.Add(ParseIavBetroffenheit(reader));
+            }
+            else {
+                SkipElement(reader);
+            }
+        }
+
+        if (reader.NodeType == XmlNodeType.EndElement)
+            reader.Read();
+    }
+
+    private static BbpNeoIavBetroffenheitRaw ParseIavBetroffenheit(XmlReader reader) {
+        var dto = new BbpNeoIavBetroffenheitRaw();
+
+        if (reader.IsEmptyElement) {
+            reader.Read();
+            return dto;
+        }
+
+        var depth = reader.Depth;
+        reader.Read();
+
+        while (reader.MoveToContent() == XmlNodeType.Element &&
+               reader.Depth           > depth) {
+
+            switch (reader.LocalName) {
+                case "VertragNr": dto.VertragNr             = ReadElementText(reader); break;
+                case "VertragArt": dto.VertragArt           = ReadElementText(reader); break;
+                case "VertragStatus": dto.VertragStatus     = ReadElementText(reader); break;
+                case "Kunde": dto.Kunde                     = ReadElementText(reader); break;
+                case "Betriebsstelle": dto.Betriebsstelle   = ReadElementText(reader); break;
+                case "VzGStrecke": dto.VzGStrecke           = ReadElementText(reader); break;
+                case "Anschlussgrenze": dto.Anschlussgrenze = ReadElementText(reader); break;
+                case "Oberleitung": dto.Oberleitung         = ReadElementText(reader); break;
+                case "OberleitungAus": dto.OberleitungAus   = ReadElementText(reader); break;
+                case "EinschraenkungBedienbarkeitIA":
+                    dto.EinschraenkungBedienbarkeitIA = ReadElementText(reader);
+                    break;
+                case "Kommentar": dto.Kommentar = ReadElementText(reader); break;
                 default: SkipElement(reader); break;
             }
         }
@@ -289,20 +382,229 @@ public static class BbpNeoRawXmlParser {
         }
 
         var depth = reader.Depth;
-        reader.Read();
+        reader.Read(); // rein in <bVEAPS>
 
         while (reader.MoveToContent() == XmlNodeType.Element &&
                reader.Depth           > depth) {
 
+            token.ThrowIfCancellationRequested();
+
             switch (reader.LocalName) {
-                case "Betroffenheit": dto.Betroffenheit = ReadElementText(reader); break;
-                case "Beschreibung": dto.Beschreibung   = ReadElementText(reader); break;
-                default: SkipElement(reader); break;
+
+                case "Betroffenheit":
+                    dto.Betroffenheit = ReadElementText(reader);
+                    break;
+
+                case "Beschreibung":
+                    dto.Beschreibung = ReadElementText(reader);
+                    break;
+
+                case "FreiVonFahrzeugen":
+                    dto.FreiVonFahrzeugen = ReadElementText(reader);
+                    break;
+
+                case "bVEAPSBetroffenheiten":
+                    ParseApsBetroffenheiten(reader, dto, token);
+                    break;
+
+                default:
+                    SkipElement(reader);
+                    break;
             }
         }
 
         if (reader.NodeType == XmlNodeType.EndElement)
+            reader.Read(); // </bVEAPS>
+
+        return dto;
+    }
+
+    private static void ParseApsBetroffenheiten(
+        XmlReader         reader,
+        BbpNeoApsRaw      aps,
+        CancellationToken token) {
+
+        if (reader.IsEmptyElement) {
             reader.Read();
+            return;
+        }
+
+        var depth = reader.Depth;
+        reader.Read(); // rein in <bVEAPSBetroffenheiten>
+
+        while (reader.MoveToContent() == XmlNodeType.Element &&
+               reader.Depth           > depth) {
+
+            token.ThrowIfCancellationRequested();
+
+            if (reader.LocalName.Equals("APSBetroffenheit", StringComparison.OrdinalIgnoreCase)) {
+                aps.Betroffenheiten.Add(ParseApsBetroffenheit(reader, token));
+            }
+            else {
+                SkipElement(reader);
+            }
+        }
+
+        if (reader.NodeType == XmlNodeType.EndElement)
+            reader.Read(); // </bVEAPSBetroffenheiten>
+    }
+
+    private static BbpNeoApsBetroffenheitRaw ParseApsBetroffenheit(
+        XmlReader         reader,
+        CancellationToken token) {
+
+        var dto = new BbpNeoApsBetroffenheitRaw();
+
+        if (reader.IsEmptyElement) {
+            reader.Read();
+            return dto;
+        }
+
+        var depth = reader.Depth;
+        reader.Read(); // rein in <APSBetroffenheit>
+
+        while (reader.MoveToContent() == XmlNodeType.Element &&
+               reader.Depth           > depth) {
+
+            token.ThrowIfCancellationRequested();
+
+            switch (reader.LocalName) {
+
+                case "UUID":
+                    dto.Uuid = ReadElementText(reader);
+                    break;
+
+                case "DS100":
+                    dto.Ds100 = ReadElementText(reader);
+                    break;
+
+                case "GleisNr":
+                    dto.GleisNr = ReadElementText(reader);
+                    break;
+
+                case "PrimaereKategorie":
+                    dto.PrimaereKategorie = ReadElementText(reader);
+                    break;
+
+                case "SekundaereKategorie":
+                    dto.SekundaereKategorie = ReadElementText(reader);
+                    break;
+
+                case "Oberleitung":
+                    dto.Oberleitung = ReadElementText(reader);
+                    break;
+
+                case "OberleitungAus":
+                    dto.OberleitungAus = ReadElementText(reader);
+                    break;
+
+                case "TechnischerPlatz":
+                    dto.TechnischerPlatz = ReadElementText(reader);
+                    break;
+
+                case "ArtDerAnbindung":
+                    dto.ArtDerAnbindung = ReadElementText(reader);
+                    break;
+
+                case "EinschraenkungBefahrbarkeitSE":
+                    dto.EinschraenkungBefahrbarkeitSE = ReadElementText(reader);
+                    break;
+
+                case "Kommentar":
+                    dto.Kommentar = ReadElementText(reader);
+                    break;
+
+                case "AbFahrplanjahr":
+                    dto.AbFahrplanjahr = ReadElementText(reader);
+                    break;
+
+                case "moeglicheZA":
+                    ParseMoeglicheZa(reader, dto, token);
+                    break;
+
+                default:
+                    SkipElement(reader);
+                    break;
+            }
+        }
+
+        if (reader.NodeType == XmlNodeType.EndElement)
+            reader.Read(); // </APSBetroffenheit>
+
+        return dto;
+    }
+
+    private static void ParseMoeglicheZa(
+        XmlReader                 reader,
+        BbpNeoApsBetroffenheitRaw aps,
+        CancellationToken         token) {
+
+        if (reader.IsEmptyElement) {
+            reader.Read();
+            return;
+        }
+
+        var depth = reader.Depth;
+        reader.Read(); // rein in <moeglicheZA>
+
+        while (reader.MoveToContent() == XmlNodeType.Element &&
+               reader.Depth           > depth) {
+
+            token.ThrowIfCancellationRequested();
+
+            if (reader.LocalName.Equals("za", StringComparison.OrdinalIgnoreCase)) {
+                aps.MoeglicheZa!.Add(ParseZa(reader, token));
+            }
+            else {
+                SkipElement(reader);
+            }
+        }
+
+        if (reader.NodeType == XmlNodeType.EndElement)
+            reader.Read(); // </moeglicheZA>
+    }
+
+    private static BbpNeoZaRaw ParseZa(
+        XmlReader         reader,
+        CancellationToken token) {
+
+        var dto = new BbpNeoZaRaw();
+
+        if (reader.IsEmptyElement) {
+            reader.Read();
+            return dto;
+        }
+
+        var depth = reader.Depth;
+        reader.Read(); // rein in <za>
+
+        while (reader.MoveToContent() == XmlNodeType.Element &&
+               reader.Depth           > depth) {
+
+            token.ThrowIfCancellationRequested();
+
+            switch (reader.LocalName) {
+
+                case "uuidZa":
+                    dto.UuidZa = ReadElementText(reader);
+                    break;
+
+                case "typZa":
+                    dto.TypZa = ReadElementText(reader);
+                    break;
+
+                case "objektnummer":
+                    dto.Objektnummer = ReadElementText(reader);
+                    break;
+
+                default:
+                    SkipElement(reader);
+                    break;
+            }
+        }
+
+        if (reader.NodeType == XmlNodeType.EndElement)
+            reader.Read(); // </za>
 
         return dto;
     }

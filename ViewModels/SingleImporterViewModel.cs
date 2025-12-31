@@ -35,12 +35,12 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
     // Header
     // =====================================================
     public  string                    Title      { get; }
-    public  ImportStatisticsViewModel Statistics { get; }
+    private ImportStatisticsViewModel Statistics { get; }
     private ImporterStatus            _status = ImporterStatus.Bereit;
 
-    public ImporterStatus Status {
+    private ImporterStatus Status {
         get => _status;
-        private set {
+        set {
             if (!SetProperty(ref _status, value)) return;
             OnPropertyChanged(nameof(StatusText));
             OnPropertyChanged(nameof(StatusBrush));
@@ -72,9 +72,9 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
     // =====================================================
     private string? _importFile;
 
-    public string? ImportFile {
+    private string? ImportFile {
         get => _importFile;
-        private set {
+        set {
             SetProperty(ref _importFile, value);
             OnPropertyChanged(nameof(CanStart));
         }
@@ -137,7 +137,7 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
     // =====================================================
     // Threads
     // =====================================================
-    public ObservableCollection<ImportWorkerViewModel> Threads { get; }
+    private ObservableCollection<ImportWorkerViewModel> Threads { get; }
         = [];
 
     // =====================================================
@@ -145,9 +145,9 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
     // =====================================================
     private bool _isRunning;
 
-    public bool IsRunning {
+    private bool IsRunning {
         get => _isRunning;
-        private set {
+        set {
             SetProperty(ref _isRunning, value);
             OnPropertyChanged(nameof(CanStart));
             OnPropertyChanged(nameof(CanStop));
@@ -198,8 +198,7 @@ public sealed partial class SingleFileImporterViewModel : ObservableObject {
 
         Threads.Add(worker);
     }
-
-
+    
     // =====================================================
     // Commands
     // =====================================================

@@ -59,7 +59,7 @@ public sealed class BbpNeoMassnahme {
     /// Wird im Resolver auf eine
     /// <c>Region</c>-Entität abgebildet.
     /// </remarks>
-    public long? RegionRef { get; init; }
+    public long? RegionId { get; init; }
 
     // ==========================================================
     // FACHLICHE BASISDATEN

@@ -58,17 +58,17 @@ public class SharedReferenceResolver {
 
     private static void LogStart(string scope, string msg, params object?[] args) {
         if (!Logger.IsDebugEnabled) return;
-        Logger.Debug("→ {0} {1}", scope, string.Format(msg, args));
+        Logger.Debug($"→ {scope} {string.Format(msg, args)}");
     }
 
     private static void LogHit(string scope, string source, string msg, params object?[] args) {
         if (!Logger.IsDebugEnabled) return;
-        Logger.Debug("← {0} ({1}) {2}", scope, source, string.Format(msg, args));
+        Logger.Debug($"← {scope} ({source}) {string.Format(msg, args)}");
     }
 
     private static void LogCreated(string scope, string msg, params object?[] args) {
         // Created ist für dich besonders wichtig → Info
-        Logger.Info("＋ {0} {1}", scope, string.Format(msg, args));
+        Logger.Info($"＋ {scope} {string.Format(msg, args)}");
     }
 
     // =====================================================================
@@ -86,8 +86,8 @@ public class SharedReferenceResolver {
             Mail: Norm(header.SenderMail)
         );
 
-        LogStart("[Sender.ResolveOrCreate]", "name='{0}', vorname='{1}', mail='{2}', file='{3}'", key.Name, key.Vorname,
-            key.Mail,                        header.FileName);
+        LogStart("[Sender.ResolveOrCreate]", "name='{0}', vorname='{1}', mail='{2}', file='{3}'", 
+            key.Name, key.Vorname, key.Mail, header.FileName);
 
         // -------------------------------------------------
         // Fast Path: Cache vor Lock
@@ -147,13 +147,11 @@ public class SharedReferenceResolver {
                     isChanged  = true;
                 }
 
-                if (isChanged) {
-                    Logger.Info("[Sender] aktualisiert: {0} {1} <{2}> id={3}",
-                        sender.Name, sender.Vorname, sender.Email, sender.Id);
+                if (isChanged) {Logger.Info($"[Sender] aktualisiert: {sender.Name} {sender.Vorname} <{sender.Email}> id={sender.Id}");
                 }
                 else {
-                    LogHit("[Sender.ResolveOrCreate]", "NoChange", "{0} {1} <{2}> → {3}", sender.Name, sender.Vorname,
-                        sender.Email,                  sender.Id);
+                    LogHit("[Sender.ResolveOrCreate]", "NoChange", "{0} {1} <{2}> → {3}", 
+                        sender.Name, sender.Vorname, sender.Email, sender.Id);
                 }
             }
 
@@ -182,8 +180,8 @@ public class SharedReferenceResolver {
             _senderCache[key] = sender.Id;
 
             if (isNew) {
-                LogCreated("[Sender]", "angelegt: {0} {1} <{2}> → id={3}", sender.Name, sender.Vorname, sender.Email,
-                    sender.Id);
+                LogCreated($"[Sender]", "angelegt: {0} {1} <{2}> → id={3}", 
+                    sender.Name, sender.Vorname, sender.Email, sender.Id);
             }
 
             return sender.Id;
@@ -273,11 +271,11 @@ public class SharedReferenceResolver {
             _vorgangCache[cacheKey] = vorgang.Id;
 
             if (isNew)
-                LogCreated("[Vorgang]", "angelegt: masterFplo={0}, fahrplanJahr={1} → id={2}", dto.MasterFplo,
-                    dto.FahrplanJahr,   vorgang.Id);
+                LogCreated("[Vorgang]", "angelegt: masterFplo={0}, fahrplanJahr={1} → id={2}", 
+                    dto.MasterFplo, dto.FahrplanJahr, vorgang.Id);
             else
-                LogHit("[Vorgang.ResolveOrCreate]", "Resolved", "{0}/{1} → {2}", dto.MasterFplo, dto.FahrplanJahr,
-                    vorgang.Id);
+                LogHit("[Vorgang.ResolveOrCreate]", "Resolved", "{0}/{1} → {2}", 
+                    dto.MasterFplo, dto.FahrplanJahr, vorgang.Id);
 
             return vorgang.Id;
         }
@@ -407,8 +405,7 @@ public class SharedReferenceResolver {
         LogStart("[Bst.ResolveOrCreate]", "raw='{0}' key='{1}'", raw, key);
 
         if (string.IsNullOrWhiteSpace(key))
-            throw new InvalidOperationException(
-                "Abweichung ohne gültigen RL100-Anker");
+            throw new InvalidOperationException($"Kein Key für {raw} gefunden");
 
         // Cache
         if (_bstCache.TryGetValue(key, out var cached) && cached > 0) {
@@ -449,7 +446,7 @@ public class SharedReferenceResolver {
     // =====================================================================
     // STRECKE
     // =====================================================================
-    public async Task<long> ResolveStreckeAsync(UjBauDbContext db, long? vzgNr) {
+    public async Task<long> ResolveStreckeAsync(UjBauDbContext db, long? vzgNr, CancellationToken token = default) {
         LogStart("[Strecke.Resolve]", "vzgNr={0}", vzgNr);
 
         if (vzgNr is null or <= 0) {
@@ -463,7 +460,7 @@ public class SharedReferenceResolver {
         }
 
         var strecke = await db.BasisStrecke
-            .FirstOrDefaultAsync(s => s.VzgNr == vzgNr);
+            .FirstOrDefaultAsync(s => s.VzgNr == vzgNr, cancellationToken: token);
 
         if (strecke != null) {
             _streckeCache[vzgNr.Value] = strecke.Id;
@@ -525,30 +522,19 @@ public class SharedReferenceResolver {
             Logger.Warn(ex, "[Bst2Str] INSERT Race → Re-Read: {0}", key);
 
             var winner = await db.BasisBetriebsstelle2strecke
-                .FirstOrDefaultAsync(
-                    x => x.BstRef == bstRef && x.StreckeRef == strRef,
-                    token);
+                .FirstOrDefaultAsync(x => x.BstRef == bstRef && x.StreckeRef == strRef, token);
 
             if (winner != null) {
                 _bst2StrCache[key] = winner.Id;
 
-                LogHit(
-                    "[Bst2Str.Resolve]",
-                    "RaceWinner",
-                    "{0} → {1}",
-                    key,
-                    winner.Id);
+                LogHit("[Bst2Str.Resolve]", "RaceWinner", "{0} → {1}", key, winner.Id);
 
                 return winner.Id;
             }
 
             // ❗ DAS ist wichtig:
             // Kein Datensatz → kein Race → echter Fehler
-            Logger.Error(
-                ex,
-                "[Bst2Str.Resolve] FK-Race ohne Gewinner: bstRef={0}, strRef={1}",
-                bstRef,
-                strRef);
+            Logger.Error(ex, "[Bst2Str.Resolve] FK-Race ohne Gewinner: bstRef={0}, strRef={1}", bstRef, strRef);
 
             throw;
         }
@@ -633,9 +619,7 @@ public class SharedReferenceResolver {
                 _regionCache.TryAdd(NormalizeRegionKey(r.Langname), r.Id);
         }
 
-        Logger.Info(
-            "[Region.Cache] Warm-Up abgeschlossen: {0} Einträge",
-            RegionCacheSize);
+        Logger.Info($"[Region.Cache] Warm-Up abgeschlossen: {RegionCacheSize} Einträge");
     }
 
     public int              RegionCacheSize  => _regionCache.Count;

@@ -9,20 +9,19 @@ using BauFahrplanMonitor.Importer.Dto.BbpNeo;
 using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Models;
 using BauFahrplanMonitor.Resolver;
-using Microsoft.EntityFrameworkCore;
 using NLog;
 
 namespace BauFahrplanMonitor.Importer.Upsert;
 
 public sealed class BbpNeoUpserter(SharedReferenceResolver resolver) : IBbpNeoUpserter {
-    private static readonly Logger                  Logger    = LogManager.GetCurrentClassLogger();
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
     // =====================================================================
     // ENTRY
     // =====================================================================
     public async Task UpsertMassnahmeWithChildrenAsync(
         UjBauDbContext        db,
-        BbpNeoMassnahme       domain,
+        BbpNeoMassnahme       dto,
         IReadOnlyList<string> warnings,
         Action                onRegelungUpserted,
         Action                onBveUpserted,
@@ -31,308 +30,264 @@ public sealed class BbpNeoUpserter(SharedReferenceResolver resolver) : IBbpNeoUp
         CancellationToken     token) {
         token.ThrowIfCancellationRequested();
 
-        // 🔑 Import-Optimierung (einmalig, hier ok)
         db.ChangeTracker.AutoDetectChangesEnabled = false;
 
         Logger.Info(
             "[BBPNeo.Upsert] ▶ Maßnahme START: MasNr={MasNr}",
-            domain.MasId);
+            dto.MasId);
 
         // -------------------------------------------------
         // MASSNAHME
         // -------------------------------------------------
-        Logger.Info("ENTER UpsertMassnahmeAsync");
-        var masEntity = await UpsertMassnahmeAsync(db, domain, token);
-        await db.SaveChangesAsync(token);
-        db.ChangeTracker.Clear();
-        Logger.Info("EXIT  UpsertMassnahmeAsync");
 
-        // -------------------------------------------------
-        // REGELUNGEN + CHILDREN
-        // -------------------------------------------------
-        foreach (var regelung in domain.Regelungen) {
-            token.ThrowIfCancellationRequested();
+        var masVonBstRef     = await resolver.ResolveOrCreateBetriebsstelleAsync(db, dto.MasVonBstDs100, token);
+        var masVonStrRef     = await resolver.ResolveStreckeAsync(db, dto.MasVonVzG);
+        var masVonBst2StrRef = await resolver.ResolveBst2StrAsync(db, masVonBstRef, masVonStrRef, null, token);
 
-            Logger.Info("ENTER UpsertRegelungAsync");
-            var regEntityId = await UpsertRegelungAsync(db, masEntity.Id, regelung, token);
+        var masBisBstRef     = await resolver.ResolveOrCreateBetriebsstelleAsync(db, dto.MasBisBstDs100, token);
+        var masBisStrRef     = await resolver.ResolveStreckeAsync(db, dto.MasBisVzG);
+        var masBisBst2StrRef = await resolver.ResolveBst2StrAsync(db, masBisBstRef, masBisStrRef, null, token);
+
+        var mn = db.BbpneoMassnahme.SingleOrDefault(s => s.MasId == dto.MasId) ?? new BbpneoMassnahme();
+        mn.MasId            = dto.MasId;
+        mn.Aktiv            = dto.Aktiv;
+        mn.Arbeiten         = dto.Arbeiten     ?? string.Empty;
+        mn.ArtDerArbeit     = dto.ArtDerArbeit ?? string.Empty;
+        mn.RegionRef        = dto.RegionId     ?? throw new Exception("Konnte Region Referenz nicht auflösen");
+        mn.MasVonBst2strRef = masVonBst2StrRef;
+        mn.MasBisBst2strRef = masBisBst2StrRef;
+        mn.MasVonKmL        = dto.MasVonKmL;
+        mn.MasBisKmL        = dto.MasBisKmL;
+        mn.Genehmigung      = dto.Genehmigung;
+        mn.AnforderungBbzr  = dto.AnforderungBbzr;
+        if (dto.Beginn.HasValue) mn.MasBeginn = dto.Beginn.Value;
+        if (dto.Ende.HasValue) mn.MasEnde     = dto.Ende.Value;
+
+        try {
+            db.BbpneoMassnahme.Update(mn);
             await db.SaveChangesAsync(token);
-            db.ChangeTracker.Clear();
-            Logger.Info("EXIT  UpsertRegelungAsync");
-            
-            onRegelungUpserted();
-
-            // -------------------------
-            // BVE / APS / IAV
-            // -------------------------
-            foreach (var bve in regelung.Bven) {
-                token.ThrowIfCancellationRequested();
-
-                var bveId = await UpsertBveAsync(db, regEntityId, bve, token);
-                await db.SaveChangesAsync(token);
-                db.ChangeTracker.Clear();
-                onBveUpserted();
-
-                if (bve.Aps?.Betroffenheit == true) {
-                    await UpsertApsAsync(db, bveId, bve.Aps, token);
-                    await db.SaveChangesAsync(token);
-                    db.ChangeTracker.Clear();
-                    onApsUpserted();
-                }
-
-                if (bve.Iav?.Betroffenheit == true) {
-                    await UpsertIavAsync(db, bveId, bve.Iav, token);
-                    await db.SaveChangesAsync(token);
-                    db.ChangeTracker.Clear();
-                    onIavUpserted();
-                }
-            }
         }
+        catch (Exception ex) {
+            Logger.Fatal($"Fehler beim Einfügen einer Maßnahme {dto.MasId} in die Datenbank: {ex.Message}\n{ex.InnerException}\n{ex.StackTrace}");
+        }
+
+        // Nun die Regelungen
+        await UpsertRegelungenAsync(
+            db,
+            dto.Regelungen,
+            mn.Id,
+            onRegelungUpserted,
+            onBveUpserted,
+            onApsUpserted,
+            onIavUpserted,
+            token);
 
         Logger.Info(
             "[BBPNeo.Upsert] ✔ Maßnahme READY (SaveChanges ausstehend): MasNr={MasNr}",
-            domain.MasId);
+            dto.MasId);
+        db.ChangeTracker.AutoDetectChangesEnabled = true;
+    }
+
+    // ---------------------------
+    // Regelungen
+    // ---------------------------
+    private async Task UpsertRegelungenAsync(
+        UjBauDbContext                db,
+        IReadOnlyList<BbpNeoRegelung> dtoRegelungen,
+        long                          masRef,
+        Action                        onRegelungUpserted,
+        Action                        onBveUpserted,
+        Action                        onApsUpserted,
+        Action                        onIavUpserted,
+        CancellationToken             token) {
+
+        foreach (var regelung in dtoRegelungen) {
+            var reg =
+                db.BbpneoMassnahmeRegelung.SingleOrDefault(s =>
+                    s.BbpneoMasRef == masRef &&
+                    s.RegId        == regelung.RegId)
+                ?? new BbpneoMassnahmeRegelung();
+
+            var regVonBstRef     = await resolver.ResolveOrCreateBetriebsstelleAsync(db, regelung.VonBstDs100, token);
+            var regVonStrRef     = await resolver.ResolveStreckeAsync(db, regelung.VonVzG);
+            var regVonBst2StrRef = await resolver.ResolveBst2StrAsync(db, regVonBstRef, regVonStrRef, null, token);
+
+            var regBisBstRef     = await resolver.ResolveOrCreateBetriebsstelleAsync(db, regelung.BisBstDs100, token);
+            var regBisStrRef     = await resolver.ResolveStreckeAsync(db, regelung.BisVzG);
+            var regBisBst2StrRef = await resolver.ResolveBst2StrAsync(db, regBisBstRef, regBisStrRef, null, token);
+
+            reg.BbpneoMasRef  = masRef;
+            reg.RegId         = regelung.RegId;
+            reg.Aktiv         = regelung.Aktiv;
+            reg.Bplart        = regelung.BplArt   ?? string.Empty;
+            reg.Beginn        = regelung.Beginn   ?? throw new Exception($"Kein Beginndatum für RegID {regelung.RegId}");
+            reg.Ende          = regelung.Ende     ?? throw new Exception($"Kein Enddatum für RegId {regelung.RegId}");
+            reg.Zeitraum      = regelung.Zeitraum ?? string.Empty;
+            reg.Richtung      = regelung.Richtung;
+            reg.RegelungKurz  = regelung.RegelungKurz;
+            reg.RegelungLang  = regelung.RegelungLang;
+            reg.Durchgehend   = regelung.Durchgehend;
+            reg.Schichtweise  = regelung.Schichtweise;
+            reg.Bst2strVonRef = regVonBst2StrRef;
+            reg.Bst2strBisRef = regBisBst2StrRef;
+
+            try {
+                db.BbpneoMassnahmeRegelung.Update(reg);
+                await db.SaveChangesAsync(token);
+                onRegelungUpserted();
+            }
+            catch (Exception ex) {
+                Logger.Fatal($"Fehler beim Einfügen einer Regelung {regelung.RegId} in die Datenbank: {ex.Message}\n{ex.InnerException}\n{ex.StackTrace}");
+            }
+
+            // Nun die BvE(n)
+            await UpsertBvenAsync(db, regelung.Bven, reg.Id, onBveUpserted, onApsUpserted, onIavUpserted, token);
+        }
+    }
+
+    // ---------------------------
+    // BvE(n)
+    // ---------------------------
+    private async Task UpsertBvenAsync(
+        UjBauDbContext           db,
+        IReadOnlyList<BbpNeoBve> regelungBven,
+        long                     regId,
+        Action                   onBveUpserted,
+        Action                   onApsUpserted,
+        Action                   onIavUpserted,
+        CancellationToken        token) {
+
+        foreach (var bve in regelungBven) {
+            var b = db.BbpneoMassnahmeRegelungBve.SingleOrDefault(s =>
+                        s.BbpneoMasRegRef == regId &&
+                        s.BveId           == bve.BveId)
+                    ?? new BbpneoMassnahmeRegelungBve();
+
+            var bveVonBstRef     = await resolver.ResolveOrCreateBetriebsstelleAsync(db, bve.VonBstDs100, token);
+            var bveVonStrRef     = await resolver.ResolveStreckeAsync(db, bve.VonVzG, token);
+            var bveVonBst2StrRef = await resolver.ResolveBst2StrAsync(db, bveVonBstRef, bveVonStrRef, null, token);
+
+            var bveBisBstRef     = await resolver.ResolveOrCreateBetriebsstelleAsync(db, bve.BisBstDs100, token);
+            var bveBisStrRef     = await resolver.ResolveStreckeAsync(db, bve.BisVzG, token);
+            var bveBisBst2StrRef = await resolver.ResolveBst2StrAsync(db, bveBisBstRef, bveBisStrRef, null, token);
+
+            b.BveId                            = bve.BveId;
+            b.BbpneoMasRegRef                  = regId;
+            b.Aktiv                            = bve.Aktiv;
+            b.Art                              = bve.Art;
+            b.OrtMikroskopisch                 = bve.OrtMikroskopisch;
+            b.Bemerkung                        = bve.Bemerkung;
+            b.IavBetroffenheit                 = bve.Iav?.IstBetroffen      ?? false;
+            b.ApsBetroffenheit                 = bve.Aps?.IstBetroffen      ?? false;
+            b.IavBeschreibung                  = bve.Iav?.Beschreibung      ?? string.Empty;
+            b.ApsBeschreibung                  = bve.Aps?.Beschreibung      ?? string.Empty;
+            b.ApsFreiVonFahrzeugen             = bve.Aps?.FreiVonFahrzeugen ?? false;
+            b.Gueltigkeit                      = bve.Gueltigkeit;
+            b.GueltigkeitVon                   = bve.GueltigkeitVon;
+            b.GueltigkeitBis                   = bve.GueltigkeitBis;
+            b.GueltigkeitEffektiveVerkehrstage = bve.GueltigkeitEffektiveVerkehrstage;
+            b.Bst2strVonRef                    = bveVonBst2StrRef;
+            b.Bst2strBisRef                    = bveBisBst2StrRef;
+
+            try {
+                db.BbpneoMassnahmeRegelungBve.Update(b);
+                await db.SaveChangesAsync(token);
+                onBveUpserted();
+            }
+            catch (Exception ex) {
+                Logger.Fatal($"Fehler beim Einfügen einer BvE {bve.BveId} in die Datenbank: {ex.Message}\n{ex.InnerException}\n{ex.StackTrace}");
+            }
+
+            if (bve.Aps?.IstBetroffen ?? false) {
+                await UpdateAps(db, b.Id, bve.Aps, token);
+                onApsUpserted();
+            }
+
+            if (!(bve.Iav?.IstBetroffen ?? false))
+                continue;
+            await UpdateIaV(db, b.Id, bve.Iav, token);
+            onIavUpserted();
+        }
     }
     
-    // =====================================================================
-    // MASSNAHME
-    // =====================================================================
-    private async Task<BbpneoMassnahme> UpsertMassnahmeAsync(
-        UjBauDbContext    db,
-        BbpNeoMassnahme   mas,
-        CancellationToken token) {
-        var entity = await db.BbpneoMassnahme
-            .FirstOrDefaultAsync(x => x.MasId == mas.MasId, token);
+    private async Task UpdateAps(UjBauDbContext db, long bId, BbpNeoAps bbpBveAps, CancellationToken token) {
 
-        if (entity == null) {
-            entity = new BbpneoMassnahme {
-                MasId = mas.MasId
-            };
-            db.Add(entity);
-        }
+        foreach (var bveAps in bbpBveAps.Betroffenheiten) {
+            var aps = db.BbpneoMassnahmeRegelungBveAps.SingleOrDefault(s =>
+                          s.BbpneoMassnahmeRegelungBveRef == bId &&
+                          s.Uuid                          == bveAps.Uuid)
+                      ?? new BbpneoMassnahmeRegelungBveAps();
 
-        var bstVon = await resolver.ResolveOrCreateBetriebsstelleAsync(db, mas.MasVonBstDs100, token);
-        var bstBis = await resolver.ResolveOrCreateBetriebsstelleAsync(db, mas.MasBisBstDs100, token);
-        var strVon = await resolver.ResolveStreckeAsync(db, mas.MasVonVzG);
-        var strBis = await resolver.ResolveStreckeAsync(db, mas.MasBisVzG);
+            var bstRef = await resolver.ResolveOrCreateBetriebsstelleAsync(db, bveAps.BstDs100, token);
 
-        entity.Aktiv            = mas.Aktiv;
-        entity.MasBeginn        = mas.Beginn    ?? DateTime.MinValue;
-        entity.MasEnde          = mas.Ende      ?? DateTime.MinValue;
-        entity.RegionRef        = mas.RegionRef ?? 0;
-        entity.Arbeiten         = mas.Arbeiten  ?? string.Empty;
-        entity.ArtDerArbeit     = mas.ArtDerArbeit;
-        entity.Genehmigung      = mas.Genehmigung;
-        entity.AnforderungBbzr  = mas.AnforderungBbzr;
-        entity.MasVonBst2strRef = await resolver.ResolveBst2StrAsync(db, bstVon, strVon, token: token);
-        entity.MasBisBst2strRef = await resolver.ResolveBst2StrAsync(db, bstBis, strBis, token: token);
-        entity.MasVonKmL        = mas.MasVonKmL;
-        entity.MasBisKmL        = mas.MasBisKmL;
-
-        return entity;
-    }
-
-    // =====================================================================
-    // REGELUNG
-    // =====================================================================
-    private async Task<long> UpsertRegelungAsync(
-        UjBauDbContext    db,
-        long              masRef,
-        BbpNeoRegelung    reg,
-        CancellationToken token) {
-        var entity = await db.BbpneoMassnahmeRegelung
-            .FirstOrDefaultAsync(x => x.RegId == reg.RegId, token);
-
-        if (entity == null) {
-            entity = new BbpneoMassnahmeRegelung {
-                RegId        = reg.RegId,
-                BbpneoMasRef = masRef
-            };
-            db.Add(entity);
-        }
-
-        var bstVon = await resolver.ResolveOrCreateBetriebsstelleAsync(db, reg.VonBstDs100, token);
-        var bstBis = await resolver.ResolveOrCreateBetriebsstelleAsync(db, reg.BisBstDs100, token);
-        var strVon = await resolver.ResolveStreckeAsync(db, reg.VonVzG);
-        var strBis = await resolver.ResolveStreckeAsync(db, reg.BisVzG);
-
-        entity.Aktiv         = reg.Aktiv;
-        entity.Beginn        = reg.Beginn   ?? DateTime.MinValue;
-        entity.Ende          = reg.Ende     ?? DateTime.MinValue;
-        entity.Bplart        = reg.BplArt   ?? string.Empty;
-        entity.Zeitraum      = reg.Zeitraum ?? string.Empty;
-        entity.Richtung      = reg.Richtung ?? 0;
-        entity.RegelungKurz  = reg.RegelungKurz;
-        entity.RegelungLang  = reg.RegelungLang;
-        entity.Durchgehend   = reg.Durchgehend  ?? false;
-        entity.Schichtweise  = reg.Schichtweise ?? false;
-        entity.Bst2strVonRef = await resolver.ResolveBst2StrAsync(db, bstVon, strVon, token: token);
-        entity.Bst2strBisRef = await resolver.ResolveBst2StrAsync(db, bstBis, strBis, token: token);
-
-        foreach (var bve in reg.Bven) {
-            await UpsertBveAsync(db, entity.Id, bve, token);
-        }
-
-        return entity.Id;
-    }
-
-    // =====================================================================
-    // BVE
-    // =====================================================================
-    private async Task<long> UpsertBveAsync(
-        UjBauDbContext    db,
-        long              regRef,
-        BbpNeoBve         dto,
-        CancellationToken token) {
-        var bve = await db.BbpneoMassnahmeRegelungBve
-            .FirstOrDefaultAsync(
-                x => x.BbpneoMasRegRef == regRef &&
-                     x.BveId           == dto.BveId,
-                token);
-
-        if (bve == null) {
-            bve = new BbpneoMassnahmeRegelungBve {
-                BbpneoMasRegRef = regRef,
-                BveId           = dto.BveId
-            };
-            db.Add(bve);
-        }
-
-        bve.Aktiv            = dto.Aktiv;
-        bve.Art              = dto.Art;
-        bve.OrtMikroskopisch = dto.OrtMikroskopisch;
-        bve.Bemerkung        = dto.Bemerkung;
-        bve.GueltigkeitVon   = dto.GueltigkeitVon;
-        bve.GueltigkeitBis   = dto.GueltigkeitBis;
-        bve.Gueltigkeit      = dto.Gueltigkeit;
-        bve.GueltigkeitEffektiveVerkehrstage =
-            dto.GueltigkeitEffektiveVerkehrstage;
-
-        var bstVonRef = await resolver.ResolveOrCreateBetriebsstelleAsync(db, dto.VonBstDs100, token);
-        var strVonRef = await resolver.ResolveStreckeAsync(db, dto.VonVzG);
-        bve.Bst2strVonRef = await resolver.ResolveBst2StrAsync(db, bstVonRef, strVonRef, token: token);
-        var bstBisRef = await resolver.ResolveOrCreateBetriebsstelleAsync(db, dto.BisBstDs100, token);
-        var strBisRef = await resolver.ResolveStreckeAsync(db, dto.BisVzG);
-        bve.Bst2strBisRef = await resolver.ResolveBst2StrAsync(db, bstBisRef, strBisRef, token: token);
-
-
-        bve.ApsBetroffenheit     = dto.Aps != null;
-        bve.ApsBeschreibung      = dto.Aps?.Beschreibung;
-        bve.ApsFreiVonFahrzeugen = dto.Aps?.FreiVonFahrzeugen ?? false;
-        bve.IavBetroffenheit     = dto.Iav != null;
-        bve.IavBeschreibung      = dto.Iav?.Beschreibung;
-
-        return bve.Id;
-    }
-
-    // =====================================================================
-    // APS
-    // =====================================================================
-    private async Task UpsertApsAsync(
-        UjBauDbContext    db,
-        long              bveRef,
-        BbpNeoAps         aps,
-        CancellationToken token) {
-
-        foreach (var dto in aps.Betroffenheiten) {
-
-            // 🔑 FACHLICHER FILTER
-            if (!dto.IstBetroffen)
-                continue;
-
-            if (string.IsNullOrWhiteSpace(dto.Uuid))
-                continue;
-
-            var entity = await db.BbpneoMassnahmeRegelungBveAps
-                .FirstOrDefaultAsync(
-                    x => x.BbpneoMassnahmeRegelungBveRef == bveRef &&
-                         x.Uuid                          == dto.Uuid,
-                    token);
-
-            if (entity == null) {
-                entity = new BbpneoMassnahmeRegelungBveAps {
-                    BbpneoMassnahmeRegelungBveRef = bveRef,
-                    Uuid                          = dto.Uuid
-                };
-                db.Add(entity);
-            }
-
-            entity.Gleis                         = dto.Gleis;
-            entity.PrimaereKategorie             = dto.PrimaereKat;
-            entity.SekundaereKategorie           = dto.SekundaerKat ?? string.Empty;
-            entity.Oberleitung                   = dto.Oberleitung;
-            entity.OberleitungAus                = dto.OberleitungAus;
-            entity.TechnischerPlatz              = dto.TechnischerPlatz;
-            entity.ArtDerAnbindung               = dto.ArtDerAnbindung;
-            entity.EinschraenkungBefahrbarkeitSe = dto.EinschraenkungBefahrbarkeitSe;
-            entity.Kommentar                     = dto.Kommentar;
-            entity.AbFahrplanjahr                = dto.AbFahrplanjahr;
-
-            entity.BstRef = await resolver.ResolveOrCreateBetriebsstelleAsync(
-                db, dto.BstDs100, token);
-
-            entity.MoeglicheZa =
-                dto.MoeglicheZAs is { Count: > 0 }
+            aps.BbpneoMassnahmeRegelungBveRef = bId;
+            aps.AbFahrplanjahr                = bveAps.AbFahrplanjahr;
+            aps.Uuid                          = bveAps.Uuid;
+            aps.Gleis                         = bveAps.Gleis;
+            aps.PrimaereKategorie             = bveAps.PrimaereKat;
+            aps.SekundaereKategorie           = bveAps.SekundaerKat;
+            aps.Oberleitung                   = bveAps.Oberleitung;
+            aps.OberleitungAus                = bveAps.OberleitungAus;
+            aps.TechnischerPlatz              = bveAps.TechnischerPlatz;
+            aps.ArtDerAnbindung               = bveAps.ArtDerAnbindung;
+            aps.EinschraenkungBefahrbarkeitSe = bveAps.EinschraenkungBefahrbarkeitSe;
+            aps.Kommentar                     = bveAps.Kommentar;
+            aps.BstRef                        = bstRef;
+            
+            aps.MoeglicheZa =
+                bveAps.MoeglicheZas is { Count: > 0 }
                     ? JsonSerializer.Serialize(
-                        dto.MoeglicheZAs,
+                        bveAps.MoeglicheZas,
+#pragma warning disable CA1869
                         new JsonSerializerOptions {
+#pragma warning restore CA1869
                             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                         })
-                    : string.Empty;
+                    : "[]";   // 🔑 NICHT string.Empty
 
-
+            
+            try {
+                db.BbpneoMassnahmeRegelungBveAps.Update(aps);
+                await db.SaveChangesAsync(token);
+            }
+            catch (Exception ex) {
+                Logger.Fatal($"Fehler beim Einfügen einer APS {bveAps.Uuid} in die Datenbank: {ex.Message}\n{ex.InnerException}\n{ex.StackTrace}");
+            }
         }
     }
+    
+    private async Task UpdateIaV(UjBauDbContext db, long bId, BbpNeoIav? bbpBveIaV, CancellationToken token) {
 
-    // =====================================================================
-    // IAV
-    // =====================================================================
-    private async Task UpsertIavAsync(
-        UjBauDbContext    db,
-        long              bveRef,
-        BbpNeoIav         iav,
-        CancellationToken token) {
+        foreach (var bveIav in bbpBveIaV!.Betroffenheiten) {
+            var iav = db.BbpneoMassnahmeRegelungBveIav.SingleOrDefault(s =>
+                          s.BbpneoMassnahmeRegelungBveRef == bId &&
+                          s.VertragNr                     == bveIav.VertragNr)
+                      ?? new BbpneoMassnahmeRegelungBveIav();
 
-        foreach (var dto in iav.Betroffenheiten) {
-            // 🔑 FACHLICHER FILTER
-            if (!dto.IstBetroffen)
-                return;
+            var bstRef     = await resolver.ResolveOrCreateBetriebsstelleAsync(db, bveIav.BstDs100, token);
+            var strRef     = await resolver.ResolveStreckeAsync(db, bveIav.VzgStrecke, token);
+            var bst2StrRef = await resolver.ResolveBst2StrAsync(db, bstRef, strRef, null, token);
 
-            if (string.IsNullOrWhiteSpace(dto.VertragNr))
-                return;
+            iav.BbpneoMassnahmeRegelungBveRef = bId;
+            iav.Anschlussgrenze               = bveIav.Anschlussgrenze;
+            iav.VertragNr                     = bveIav.VertragNr;
+            iav.VertragArt                    = bveIav.VertragArt;
+            iav.VertragStatus                 = bveIav.VertragStatus;
+            iav.Kunde                         = bveIav.Kunde;
+            iav.Oberleitung                   = bveIav.Oberleitung;
+            iav.OberleitungAus                = bveIav.OberleitungAus;
+            iav.EinschraenkungBedienbarkeitIa = bveIav.EinschraenkungBedienbarkeitIA;
+            iav.Kommentar                     = bveIav.Kommentar;
+            iav.Bst2strRef                    = bst2StrRef;
 
-            var entity = await db.BbpneoMassnahmeRegelungBveIav
-                .FirstOrDefaultAsync(
-                    x => x.BbpneoMassnahmeRegelungBveRef == bveRef &&
-                         x.VertragNr                     == dto.VertragNr,
-                    token);
-
-            if (entity == null) {
-                entity = new BbpneoMassnahmeRegelungBveIav {
-                    BbpneoMassnahmeRegelungBveRef = bveRef,
-                    VertragNr                     = dto.VertragNr
-                };
-                db.Add(entity);
+            try {
+                db.BbpneoMassnahmeRegelungBveIav.Update(iav);
+                await db.SaveChangesAsync(token);
             }
-
-            var bstRef = await resolver.ResolveOrCreateBetriebsstelleAsync(
-                db, dto.BstDs100, token);
-
-            var strRef = await resolver.ResolveStreckeAsync(
-                db, dto.VzgStrecke);
-
-            var bst2StrRef = await resolver.ResolveBst2StrAsync(
-                db, bstRef, strRef, token: token);
-
-            entity.Kunde                         = dto.Kunde;
-            entity.Anschlussgrenze               = dto.Anschlussgrenze;
-            entity.Oberleitung                   = dto.Oberleitung    ?? false;
-            entity.OberleitungAus                = dto.OberleitungAus ?? false;
-            entity.EinschraenkungBedienbarkeitIa = dto.EinschraenkungBedienbarkeitIA;
-            entity.Kommentar                     = dto.Kommentar;
-            entity.Bst2strRef                    = bst2StrRef;
-            entity.VertragArt                    = dto.VertragArt;
-            entity.VertragStatus                 = dto.VertragStatus;
-
+            catch (Exception ex) {
+                Logger.Fatal($"Fehler beim Einfügen einer IAV {bveIav.VertragNr} in die Datenbank: {ex.Message}\n{ex.InnerException}\n{ex.StackTrace}");
+            }
         }
     }
 }
+
