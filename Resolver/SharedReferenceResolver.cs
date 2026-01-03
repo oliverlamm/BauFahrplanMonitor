@@ -86,7 +86,7 @@ public class SharedReferenceResolver {
             Mail: Norm(header.SenderMail)
         );
 
-        LogStart("[Sender.ResolveOrCreate]", "name='{0}', vorname='{1}', mail='{2}', file='{3}'", 
+        LogStart("[Sender.ResolveOrCreate]", "name='{0}', vorname='{1}', mail='{2}', file='{3}'",
             key.Name, key.Vorname, key.Mail, header.FileName);
 
         // -------------------------------------------------
@@ -137,9 +137,9 @@ public class SharedReferenceResolver {
             else {
                 var s = sender;
                 isChanged |= UpdateIfDifferent(sender.Abteilung, header.SenderAbteilung, v => s.Abteilung = v);
-                isChanged |= UpdateIfDifferent(sender.Telefon,   header.SenderTelefon,   v => s.Telefon   = v);
-                isChanged |= UpdateIfDifferent(sender.Strasse,   header.SenderAdresse,   v => s.Strasse   = v);
-                isChanged |= UpdateIfDifferent(sender.Stadt,     header.SenderStadt,     v => s.Stadt     = v);
+                isChanged |= UpdateIfDifferent(sender.Telefon, header.SenderTelefon, v => s.Telefon       = v);
+                isChanged |= UpdateIfDifferent(sender.Strasse, header.SenderAdresse, v => s.Strasse       = v);
+                isChanged |= UpdateIfDifferent(sender.Stadt, header.SenderStadt, v => s.Stadt             = v);
 
                 // UpdateIfDifferent ist nur für string → PLZ explizit
                 if (sender.Plz != header.SenderPlz) {
@@ -147,10 +147,11 @@ public class SharedReferenceResolver {
                     isChanged  = true;
                 }
 
-                if (isChanged) {Logger.Info($"[Sender] aktualisiert: {sender.Name} {sender.Vorname} <{sender.Email}> id={sender.Id}");
+                if (isChanged) {
+                    Logger.Info($"[Sender] aktualisiert: {sender.Name} {sender.Vorname} <{sender.Email}> id={sender.Id}");
                 }
                 else {
-                    LogHit("[Sender.ResolveOrCreate]", "NoChange", "{0} {1} <{2}> → {3}", 
+                    LogHit("[Sender.ResolveOrCreate]", "NoChange", "{0} {1} <{2}> → {3}",
                         sender.Name, sender.Vorname, sender.Email, sender.Id);
                 }
             }
@@ -180,7 +181,7 @@ public class SharedReferenceResolver {
             _senderCache[key] = sender.Id;
 
             if (isNew) {
-                LogCreated($"[Sender]", "angelegt: {0} {1} <{2}> → id={3}", 
+                LogCreated($"[Sender]", "angelegt: {0} {1} <{2}> → id={3}",
                     sender.Name, sender.Vorname, sender.Email, sender.Id);
             }
 
@@ -271,10 +272,10 @@ public class SharedReferenceResolver {
             _vorgangCache[cacheKey] = vorgang.Id;
 
             if (isNew)
-                LogCreated("[Vorgang]", "angelegt: masterFplo={0}, fahrplanJahr={1} → id={2}", 
+                LogCreated("[Vorgang]", "angelegt: masterFplo={0}, fahrplanJahr={1} → id={2}",
                     dto.MasterFplo, dto.FahrplanJahr, vorgang.Id);
             else
-                LogHit("[Vorgang.ResolveOrCreate]", "Resolved", "{0}/{1} → {2}", 
+                LogHit("[Vorgang.ResolveOrCreate]", "Resolved", "{0}/{1} → {2}",
                     dto.MasterFplo, dto.FahrplanJahr, vorgang.Id);
 
             return vorgang.Id;
@@ -404,8 +405,10 @@ public class SharedReferenceResolver {
 
         LogStart("[Bst.ResolveOrCreate]", "raw='{0}' key='{1}'", raw, key);
 
-        if (string.IsNullOrWhiteSpace(key))
-            throw new InvalidOperationException($"Kein Key für {raw} gefunden");
+        if (string.IsNullOrWhiteSpace(key)) {
+            Logger.Error($"Kein Key für {raw} gefunden");
+            return -1;
+        }
 
         // Cache
         if (_bstCache.TryGetValue(key, out var cached) && cached > 0) {
@@ -442,7 +445,26 @@ public class SharedReferenceResolver {
         return bst.Id;
     }
 
+    public async Task<long> ResolveOrCreateBetriebsstelleCachedAsync(
+        UjBauDbContext    db,
+        string?           raw,
+        CancellationToken token) {
 
+        var key = Ds100Normalizer.Clean(raw);
+        if (string.IsNullOrWhiteSpace(key))
+            return -1;
+
+        if (_bstCache.TryGetValue(key, out var cached))
+            return cached;
+
+        var id = await ResolveOrCreateBetriebsstelleAsync(db, key, token);
+
+        if (id > 0)
+            _bstCache.TryAdd(key, id);
+
+        return id;
+    }
+    
     // =====================================================================
     // STRECKE
     // =====================================================================
@@ -605,7 +627,12 @@ public class SharedReferenceResolver {
         CancellationToken token) {
         var regions = await db.BasisRegion
             .AsNoTracking()
-            .Select(r => new { r.Id, r.Kbez, r.Bezeichner, r.Langname })
+            .Select(r => new {
+                r.Id,
+                r.Kbez,
+                r.Bezeichner,
+                r.Langname
+            })
             .ToListAsync(token);
 
         foreach (var r in regions) {

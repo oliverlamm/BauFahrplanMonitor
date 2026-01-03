@@ -7,8 +7,6 @@ using Microsoft.EntityFrameworkCore;
 namespace BauFahrplanMonitor.Models;
 
 [Table("nfpl_zug", Schema = "ujbaudb")]
-[Index("ZugNr", Name = "nfpl_zug_uq_zugnr", IsUnique = true)]
-[Index("ZugNr", Name = "uq_nfpl_zug_zugnr", IsUnique = true)]
 public partial class NfplZug
 {
     [Key]
@@ -18,9 +16,12 @@ public partial class NfplZug
     [Column("zug_nr")]
     public long ZugNr { get; set; }
 
+    [Column("fahrplan_jahr")]
+    public int FahrplanJahr { get; set; }
+
     [Column("updated_at", TypeName = "timestamp without time zone")]
-    public DateTime UpdatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 
     [InverseProperty("NfplZugRefNavigation")]
-    public virtual ICollection<NfplZugZugteil> NfplZugZugteil { get; set; } = new List<NfplZugZugteil>();
+    public virtual ICollection<NfplZugVariante> NfplZugVariante { get; set; } = new List<NfplZugVariante>();
 }

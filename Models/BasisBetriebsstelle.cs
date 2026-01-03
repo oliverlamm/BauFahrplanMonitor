@@ -67,13 +67,7 @@ public partial class BasisBetriebsstelle
     public virtual BasisNetzbezirk NetzbezirkRefNavigation { get; set; } = null!;
 
     [InverseProperty("BstRefNavigation")]
-    public virtual ICollection<NfplZugZugteilFahrtverlauf> NfplZugZugteilFahrtverlauf { get; set; } = new List<NfplZugZugteilFahrtverlauf>();
-
-    [InverseProperty("ErsterServiceBstRefNavigation")]
-    public virtual ICollection<NfplZugZugteilFkCon> NfplZugZugteilFkCon { get; set; } = new List<NfplZugZugteilFkCon>();
-
-    [InverseProperty("BstRefNavigation")]
-    public virtual ICollection<NfplZugZugteilFkCtSeq> NfplZugZugteilFkCtSeq { get; set; } = new List<NfplZugZugteilFkCtSeq>();
+    public virtual ICollection<NfplZugVarianteVerlauf> NfplZugVarianteVerlauf { get; set; } = new List<NfplZugVarianteVerlauf>();
 
     [ForeignKey("RegionRef")]
     [InverseProperty("BasisBetriebsstelle")]

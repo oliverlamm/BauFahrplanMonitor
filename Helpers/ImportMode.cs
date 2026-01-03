@@ -4,5 +4,6 @@ public enum ImportMode {
     None,
     ZvF,
     UeB,
-    Fplo
+    Fplo,
+    Kss
 }

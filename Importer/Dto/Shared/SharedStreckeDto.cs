@@ -1,5 +1,6 @@
 ﻿using System;
 using BauFahrplanMonitor.Importer.Helper;
+using BauFahrplanMonitor.Resolver;
 
 namespace BauFahrplanMonitor.Importer.Dto.Shared {
     /// <summary>

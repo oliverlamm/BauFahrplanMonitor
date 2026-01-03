@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -286,15 +287,16 @@ public partial class MultiFileImporterViewModel : ObservableObject {
         OnPropertyChanged(nameof(CanStart));
 
         _scanCts = new CancellationTokenSource();
+        var sw = new Stopwatch();
 
         try {
-            await Task.Run(() =>
-                    BuildQueueWithStatusAsync(_scanCts.Token),
-                _scanCts.Token);
+            sw.Start();
+            await Task.Run(() => BuildQueueWithStatusAsync(_scanCts.Token), _scanCts.Token);
 
             TotalFiles = _importQueue.Count;
-
-            Status = ImporterStatus.Abgeschlossen;
+            Status     = ImporterStatus.Abgeschlossen;
+            sw.Stop();
+            Logger.Info($"Scan hat {sw.ToString()} gedauert");
         }
         catch (OperationCanceledException) {
             Status = ImporterStatus.Abbruch;
@@ -417,6 +419,56 @@ public partial class MultiFileImporterViewModel : ObservableObject {
     // Scan + Queue-Aufbau
     // =====================================================
     private async Task BuildQueueWithStatusAsync(CancellationToken token) {
+        if (ImporterTyp == ImporterTyp.Direkt) {
+            BuildQueueDirect(token);
+            return;
+        }
+
+        await BuildQueueZvFExportAsync(token);
+    }
+
+    private void BuildQueueDirect(CancellationToken token) {
+        Status = ImporterStatus.Scannen;
+
+        var files = ScanFilesDirect();
+
+        Dispatcher.UIThread.Invoke(() => {
+            TotalFiles     = files.Count;
+            ProcessedFiles = 0;
+        });
+
+        _importQueue.Clear();
+
+        var processed = 0;
+
+        foreach (var file in files) {
+            token.ThrowIfCancellationRequested();
+
+            // 🔑 KEINE Prüfungen, KEINE DB, KEINE Sortierung
+            var item = new ImportFileItem(
+                file,
+                File.GetCreationTimeUtc(file),
+                ResolveFileType(file)
+            );
+
+            _importQueue.Enqueue(item);
+
+            processed++;
+            if (processed % 10 == 0 || processed == files.Count) {
+                Dispatcher.UIThread.Invoke(() => { ProcessedFiles = processed; });
+            }
+        }
+
+        Dispatcher.UIThread.Invoke(() => {
+            OnPropertyChanged(nameof(QueueCount));
+            OnPropertyChanged(nameof(CanStart));
+            _statusMessages.Success($"Direkt-Import: {files.Count} Dateien in Queue");
+        });
+
+        Logger.Info($"[Direkt] {files.Count} Dateien ungefiltert in Queue");
+    }
+
+    private async Task BuildQueueZvFExportAsync(CancellationToken token) {
         var files = ImporterTyp switch {
             ImporterTyp.Direkt    => ScanFilesDirect(),
             ImporterTyp.ZvFExport => ScanFilesZvFExport(),
@@ -425,7 +477,9 @@ public partial class MultiFileImporterViewModel : ObservableObject {
 
         LogDebugJson(
             "Scan-Ergebnis (Dateiliste)",
-            files.Select(f => new { File = f }).ToList());
+            files.Select(f => new {
+                File = f
+            }).ToList());
 
         Dispatcher.UIThread.Invoke(() => {
             TotalFiles     = files.Count;
@@ -467,6 +521,9 @@ public partial class MultiFileImporterViewModel : ObservableObject {
                         case ImportMode.Fplo:
                             Interlocked.Increment(ref stat.Fplo_New);
                             break;
+                        case ImportMode.Kss:
+                            Interlocked.Increment(ref stat.Kss_New);
+                            break;
                     }
                 }
                 else {
@@ -479,6 +536,9 @@ public partial class MultiFileImporterViewModel : ObservableObject {
                             break;
                         case ImportMode.Fplo:
                             Interlocked.Increment(ref stat.Fplo_Imported);
+                            break;
+                        case ImportMode.Kss:
+                            Interlocked.Increment(ref stat.Kss_Imported);
                             break;
                     }
                 }
@@ -516,15 +576,23 @@ public partial class MultiFileImporterViewModel : ObservableObject {
             OnPropertyChanged(nameof(CanStart));
         });
 
-        Dispatcher.UIThread.Invoke(() => {
-            _statusMessages.Success(
-                $"Gefundene Dateien: ZvF: {stat.ZvF_New} neu, {stat.ZvF_Imported} importiert, ÜB: {stat.UeB_New} neu, {stat.UeB_Imported} importiert, Fplo: {stat.Fplo_New} neu, {stat.Fplo_Imported} importiert"
-            );
-        });
+        var statusText = ImporterTyp switch {
+            ImporterTyp.ZvFExport =>
+                $"Gefundene Dateien: "                                       +
+                $"ZvF: {stat.ZvF_New} neu, {stat.ZvF_Imported} importiert, " +
+                $"ÜB: {stat.UeB_New} neu, {stat.UeB_Imported} importiert, "  +
+                $"Fplo: {stat.Fplo_New} neu, {stat.Fplo_Imported} importiert",
 
-        Logger.Info(
-            $"Gefundene Dateien: ZvF: {stat.ZvF_New} neu, {stat.ZvF_Imported} importiert, ÜB: {stat.UeB_New} neu, {stat.UeB_Imported} importiert, Fplo: {stat.Fplo_New} neu, {stat.Fplo_Imported} importiert"
-        );
+            ImporterTyp.Direkt =>
+                $"Gefundene Dateien: " +
+                $"KSS: {stat.Kss_New} neu, {stat.Kss_Imported} importiert",
+
+            _ => "Gefundene Dateien"
+        };
+
+        Dispatcher.UIThread.Invoke(() => { _statusMessages.Success(statusText); });
+
+        Logger.Info(statusText);
 
         LogDebugJson(
             "Queue-Inhalt nach Build",
@@ -696,13 +764,15 @@ public partial class MultiFileImporterViewModel : ObservableObject {
             return ImportMode.None;
 
         if (name.StartsWith("ZvF", StringComparison.OrdinalIgnoreCase)) return ImportMode.ZvF;
-        if (name.StartsWith("ÜB",  StringComparison.OrdinalIgnoreCase)) return ImportMode.UeB;
+        if (name.StartsWith("ÜB", StringComparison.OrdinalIgnoreCase)) return ImportMode.UeB;
         return name.StartsWith("Fplo", StringComparison.OrdinalIgnoreCase) ? ImportMode.Fplo : ImportMode.None;
     }
 
     private IEnumerable<string> GetZvFSearchPatterns() {
         if (FilterAll)
-            return new[] { "ZvF*.xml", "ÜB*.xml", "Fplo*.xml" };
+            return new[] {
+                "ZvF*.xml", "ÜB*.xml", "Fplo*.xml"
+            };
 
         var list = new List<string>();
         if (FilterZvF) list.Add("ZvF*.xml");
@@ -751,6 +821,41 @@ public partial class MultiFileImporterViewModel : ObservableObject {
 
         if (_configService.Effective.Datei.NachImportLoeschen) {
             File.Delete(filePath);
+        }
+    }
+
+    private void CleanupFileAfterSuccessfulImport(string filePath) {
+        var cfg = _configService.Effective.Datei;
+
+        if (cfg is {
+                Archivieren: false,
+                NachImportLoeschen: false
+            })
+            return;
+
+        try {
+            if (cfg.Archivieren) {
+                Directory.CreateDirectory(cfg.Archivpfad);
+
+                var target = Path.Combine(
+                    cfg.Archivpfad,
+                    Path.GetFileName(filePath));
+
+                File.Copy(filePath, target, overwrite: true);
+            }
+
+            if (cfg.NachImportLoeschen) {
+                File.Delete(filePath);
+            }
+
+            Logger.Info($"[Direkt][Cleanup] {Path.GetFileName(filePath)}");
+        }
+        catch (Exception ex) {
+            // 🔑 Import war erfolgreich → Cleanup-Fehler ist sekundär
+            Logger.Warn(
+                ex,
+                "[Direkt][Cleanup] Fehler bei Datei {0}",
+                filePath);
         }
     }
 

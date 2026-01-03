@@ -3,6 +3,7 @@ using System.IO;
 using Avalonia;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Importer;
+using BauFahrplanMonitor.Importer.Helper;
 using BauFahrplanMonitor.Importer.Mapper;
 using BauFahrplanMonitor.Importer.Upsert;
 using BauFahrplanMonitor.Importer.Xml;
@@ -13,6 +14,7 @@ using BauFahrplanMonitor.ViewModels;
 using BauFahrplanMonitor.Views;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NLog;
 
 namespace BauFahrplanMonitor;
@@ -71,8 +73,7 @@ internal class Program {
         // ======================================================
         // Importer
         // ======================================================
-        services.AddSingleton<NetzfahrplanImporter>();
-
+        
         // ZvF Import
         services.AddSingleton<IZvFExportXmlLoader, ZvFExportXmlLoader>();
         services.AddSingleton<IZvFDtoMapper, ZvFDtoMapper>();
@@ -96,7 +97,14 @@ internal class Program {
         // OsbBoB Import
         //services.AddTransient<OsbBobImporter>();
         
+        // Netzfahrplan
+        services.AddSingleton<IKssXmlLoader, KssXmlLoader>();
+        services.AddSingleton<INetzfahrplanMapper, NetzfahrplanMapper>();
+        services.AddSingleton<INetzfahrplanUpserter, NetzfahrplanUpserter>();
+        services.AddSingleton<INfplZugCache, NfplZugCache>();
+        
         // Importer selbst
+        services.AddSingleton<NetzfahrplanImporter>();
         services.AddSingleton<ZvFExportImporter>();
         services.AddSingleton<IFileImporterFactory, FileImporterFactory>();
 

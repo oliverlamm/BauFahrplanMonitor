@@ -45,6 +45,9 @@ public partial class BasisRegion
     public virtual ICollection<FploDokument> FploDokumentRegionRefNavigation { get; set; } = new List<FploDokument>();
 
     [InverseProperty("RegionRefNavigation")]
+    public virtual ICollection<NfplZugVariante> NfplZugVariante { get; set; } = new List<NfplZugVariante>();
+
+    [InverseProperty("RegionRefNavigation")]
     public virtual ICollection<UebDokument> UebDokument { get; set; } = new List<UebDokument>();
 
     [InverseProperty("RegionRefNavigation")]

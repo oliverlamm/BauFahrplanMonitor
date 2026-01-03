@@ -50,17 +50,9 @@ public partial class UjBauDbContext : DbContext {
 
     public virtual DbSet<NfplZug> NfplZug { get; set; }
 
-    public virtual DbSet<NfplZugZugteil> NfplZugZugteil { get; set; }
+    public virtual DbSet<NfplZugVariante> NfplZugVariante { get; set; }
 
-    public virtual DbSet<NfplZugZugteilFahrtverlauf> NfplZugZugteilFahrtverlauf { get; set; }
-
-    public virtual DbSet<NfplZugZugteilFk> NfplZugZugteilFk { get; set; }
-
-    public virtual DbSet<NfplZugZugteilFkCon> NfplZugZugteilFkCon { get; set; }
-
-    public virtual DbSet<NfplZugZugteilFkCt> NfplZugZugteilFkCt { get; set; }
-
-    public virtual DbSet<NfplZugZugteilFkCtSeq> NfplZugZugteilFkCtSeq { get; set; }
+    public virtual DbSet<NfplZugVarianteVerlauf> NfplZugVarianteVerlauf { get; set; }
 
     public virtual DbSet<SchemaVersion> SchemaVersion { get; set; }
 
@@ -155,8 +147,7 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.IstBasisDatensatz).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.NetzRefNavigation).WithMany(p => p.BasisNetzbezirk)
-                .HasConstraintName("basis_netzbezirk_netz_ref_fkey");
+            entity.HasOne(d => d.NetzRefNavigation).WithMany(p => p.BasisNetzbezirk).HasConstraintName("basis_netzbezirk_netz_ref_fkey");
         });
 
         modelBuilder.Entity<BasisRegion>(entity => {
@@ -188,8 +179,7 @@ public partial class UjBauDbContext : DbContext {
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("basis_strecke_info_region_ref_fkey");
 
-            entity.HasOne(d => d.StreckenRefNavigation).WithMany(p => p.BasisStreckeInfo)
-                .HasConstraintName("basis_strecke_info_strecken_ref_fkey");
+            entity.HasOne(d => d.StreckenRefNavigation).WithMany(p => p.BasisStreckeInfo).HasConstraintName("basis_strecke_info_strecken_ref_fkey");
         });
 
         modelBuilder.Entity<BbpneoMassnahme>(entity => {
@@ -219,16 +209,13 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.Schichtweise).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.BbpneoMasRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelung)
-                .HasConstraintName("bbpneo_massnahme_regelung_bbpneo_mas_ref_fkey");
+            entity.HasOne(d => d.BbpneoMasRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelung).HasConstraintName("bbpneo_massnahme_regelung_bbpneo_mas_ref_fkey");
 
-            entity.HasOne(d => d.Bst2strBisRefNavigation)
-                .WithMany(p => p.BbpneoMassnahmeRegelungBst2strBisRefNavigation)
+            entity.HasOne(d => d.Bst2strBisRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBst2strBisRefNavigation)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("bbpneo_massnahme_regelung_bst2str_bis_ref_fkey");
 
-            entity.HasOne(d => d.Bst2strVonRefNavigation)
-                .WithMany(p => p.BbpneoMassnahmeRegelungBst2strVonRefNavigation)
+            entity.HasOne(d => d.Bst2strVonRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBst2strVonRefNavigation)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("bbpneo_massnahme_regelung_bst2str_von_ref_fkey");
         });
@@ -236,22 +223,18 @@ public partial class UjBauDbContext : DbContext {
         modelBuilder.Entity<BbpneoMassnahmeRegelungBve>(entity => {
             entity.HasKey(e => e.Id).HasName("bbpneo_massnahme_regelung_bve_pkey");
 
-            entity.Property(e => e.Id)
-                .HasDefaultValueSql("nextval('ujbaudb.bbpneo_masnahme_regelung_bve_id_seq'::regclass)");
+            entity.Property(e => e.Id).HasDefaultValueSql("nextval('ujbaudb.bbpneo_masnahme_regelung_bve_id_seq'::regclass)");
             entity.Property(e => e.Aktiv).HasDefaultValue(true);
             entity.Property(e => e.ApsFreiVonFahrzeugen).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.BbpneoMasRegRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBve)
-                .HasConstraintName("bbpneo_massnahme_regelung_bve_bbpneo_massnahme_regelung_fk");
+            entity.HasOne(d => d.BbpneoMasRegRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBve).HasConstraintName("bbpneo_massnahme_regelung_bve_bbpneo_massnahme_regelung_fk");
 
-            entity.HasOne(d => d.Bst2strBisRefNavigation)
-                .WithMany(p => p.BbpneoMassnahmeRegelungBveBst2strBisRefNavigation)
+            entity.HasOne(d => d.Bst2strBisRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBveBst2strBisRefNavigation)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("bbpneo_massnahme_regelung_bve_bst2str_bis_ref_fkey");
 
-            entity.HasOne(d => d.Bst2strVonRefNavigation)
-                .WithMany(p => p.BbpneoMassnahmeRegelungBveBst2strVonRefNavigation)
+            entity.HasOne(d => d.Bst2strVonRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBveBst2strVonRefNavigation)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("bbpneo_massnahme_regelung_bve_bst2str_von_ref_fkey");
         });
@@ -263,11 +246,9 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.OberleitungAus).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.BbpneoMassnahmeRegelungBveRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBveAps)
-                .HasConstraintName("fk_bve_aps_bve_ref_massnahme_regelung_bve");
+            entity.HasOne(d => d.BbpneoMassnahmeRegelungBveRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBveAps).HasConstraintName("fk_bve_aps_bve_ref_massnahme_regelung_bve");
 
-            entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBveAps)
-                .HasConstraintName("fk_bve_aps_bst_ref_basis_betriebsstelle");
+            entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBveAps).HasConstraintName("fk_bve_aps_bst_ref_basis_betriebsstelle");
         });
 
         modelBuilder.Entity<BbpneoMassnahmeRegelungBveIav>(entity => {
@@ -277,8 +258,7 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.OberleitungAus).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.BbpneoMassnahmeRegelungBveRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBveIav)
-                .HasConstraintName("fk_bve_iav_bve_ref_massnahme_regelung_bve");
+            entity.HasOne(d => d.BbpneoMassnahmeRegelungBveRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBveIav).HasConstraintName("fk_bve_iav_bve_ref_massnahme_regelung_bve");
 
             entity.HasOne(d => d.Bst2strRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBveIav)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -304,8 +284,7 @@ public partial class UjBauDbContext : DbContext {
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fplo_dokument_sender_ref_fkey");
 
-            entity.HasOne(d => d.UjbauVorgangRefNavigation).WithMany(p => p.FploDokument)
-                .HasConstraintName("fplo_dokument_ujbau_vorgang_ref_fkey");
+            entity.HasOne(d => d.UjbauVorgangRefNavigation).WithMany(p => p.FploDokument).HasConstraintName("fplo_dokument_ujbau_vorgang_ref_fkey");
         });
 
         modelBuilder.Entity<FploDokumentStreckenabschnitte>(entity => {
@@ -313,8 +292,7 @@ public partial class UjBauDbContext : DbContext {
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.FploDokumentRefNavigation).WithMany(p => p.FploDokumentStreckenabschnitte)
-                .HasConstraintName("fk_fplo_dok_strabs_dok");
+            entity.HasOne(d => d.FploDokumentRefNavigation).WithMany(p => p.FploDokumentStreckenabschnitte).HasConstraintName("fk_fplo_dok_strabs_dok");
         });
 
         modelBuilder.Entity<FploDokumentZug>(entity => {
@@ -326,8 +304,7 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.Sicherheitsrelevant).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.FploDokumentRefNavigation).WithMany(p => p.FploDokumentZug)
-                .HasConstraintName("fplo_dokument_zug_fplo_dokument_ref_fkey");
+            entity.HasOne(d => d.FploDokumentRefNavigation).WithMany(p => p.FploDokumentZug).HasConstraintName("fplo_dokument_zug_fplo_dokument_ref_fkey");
 
             entity.HasOne(d => d.KundeRefNavigation).WithMany(p => p.FploDokumentZug)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -337,8 +314,7 @@ public partial class UjBauDbContext : DbContext {
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fplo_dokument_zug_regelweg_ab_bst_ref_fkey");
 
-            entity.HasOne(d => d.RegelwegZielBstRefNavigation)
-                .WithMany(p => p.FploDokumentZugRegelwegZielBstRefNavigation)
+            entity.HasOne(d => d.RegelwegZielBstRefNavigation).WithMany(p => p.FploDokumentZugRegelwegZielBstRefNavigation)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fplo_dokument_zug_regelweg_ziel_bst_ref_fkey");
         });
@@ -349,11 +325,9 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.Lfdnr).HasDefaultValue(1L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.FploDokumentZugFahrplan)
-                .HasConstraintName("fplo_dokument_zug_fahrplan_bst_ref_fkey");
+            entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.FploDokumentZugFahrplan).HasConstraintName("fplo_dokument_zug_fahrplan_bst_ref_fkey");
 
-            entity.HasOne(d => d.FploDokumentZugRefNavigation).WithMany(p => p.FploDokumentZugFahrplan)
-                .HasConstraintName("fplo_dokument_zug_fahrplan_fplo_dokument_zug_ref_fkey");
+            entity.HasOne(d => d.FploDokumentZugRefNavigation).WithMany(p => p.FploDokumentZugFahrplan).HasConstraintName("fplo_dokument_zug_fahrplan_fplo_dokument_zug_ref_fkey");
         });
 
         modelBuilder.Entity<FploDokumentZugRegelung>(entity => {
@@ -365,84 +339,37 @@ public partial class UjBauDbContext : DbContext {
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_fplo_zreg_bst");
 
-            entity.HasOne(d => d.FploDokumentZugRefNavigation).WithMany(p => p.FploDokumentZugRegelung)
-                .HasConstraintName("fk_fplo_zreg_zug");
+            entity.HasOne(d => d.FploDokumentZugRefNavigation).WithMany(p => p.FploDokumentZugRegelung).HasConstraintName("fk_fplo_zreg_zug");
         });
 
         modelBuilder.Entity<NfplZug>(entity => {
-            entity.HasKey(e => e.Id).HasName("nfpl_zug_pkey");
+            entity.HasKey(e => e.Id).HasName("nfpl_zug_pk");
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
         });
 
-        modelBuilder.Entity<NfplZugZugteil>(entity => {
-            entity.HasKey(e => e.Id).HasName("nfpl_zug_zgt_pkey");
+        modelBuilder.Entity<NfplZugVariante>(entity => {
+            entity.HasKey(e => e.Id).HasName("nfpl_zug_variante_pk");
 
-            entity.Property(e => e.Id).HasDefaultValueSql("nextval('ujbaudb.nfpl_zugteil_id_seq'::regclass)");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.NfplZugRefNavigation).WithMany(p => p.NfplZugZugteil)
-                .HasConstraintName("fk_nfpl_zugtl_zug_ref");
-        });
+            entity.HasOne(d => d.NfplZugRefNavigation).WithMany(p => p.NfplZugVariante).HasConstraintName("nfpl_zug_variante_nfpl_zug_fk");
 
-        modelBuilder.Entity<NfplZugZugteilFahrtverlauf>(entity => {
-            entity.HasKey(e => e.Id).HasName("nfpl_zug_zgt_fv_pkey");
-
-            entity.Property(e => e.Id)
-                .HasDefaultValueSql("nextval('ujbaudb.nfpl_zugteil_fahrtverlauf_id_seq'::regclass)");
-            entity.Property(e => e.Lfdnr).HasDefaultValue(1);
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
-
-            entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.NfplZugZugteilFahrtverlauf)
+            entity.HasOne(d => d.RegionRefNavigation).WithMany(p => p.NfplZugVariante)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_nfpl_zugtl_fv_bst_ref");
-
-            entity.HasOne(d => d.NfplZugZugteilRefNavigation).WithMany(p => p.NfplZugZugteilFahrtverlauf)
-                .HasConstraintName("fk_nfpl_zugtl_fv_zgt_ref");
+                .HasConstraintName("nfpl_zug_variante_basis_region_fk");
         });
 
-        modelBuilder.Entity<NfplZugZugteilFk>(entity => {
-            entity.HasKey(e => e.Id).HasName("nfpl_zug_zgt_fk_pkey");
+        modelBuilder.Entity<NfplZugVarianteVerlauf>(entity => {
+            entity.HasKey(e => e.Id).HasName("nfpl_zug_variante_verlauf_pk");
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.NfplZugZugteilRefNavigation).WithMany(p => p.NfplZugZugteilFk)
-                .HasConstraintName("nfpl_zug_zugteil_fk_nfpl_zug_zugteil_fk");
-        });
-
-        modelBuilder.Entity<NfplZugZugteilFkCon>(entity => {
-            entity.HasKey(e => e.Id).HasName("nfpl_zug_zgt_fkcon_pkey");
-
-            entity.Property(e => e.ErsterServiceBstRef).HasDefaultValue(0L);
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
-
-            entity.HasOne(d => d.ErsterServiceBstRefNavigation).WithMany(p => p.NfplZugZugteilFkCon)
-                .HasConstraintName("nfpl_zug_zugteil_fk_con_basis_betriebsstelle_fk");
-
-            entity.HasOne(d => d.NfplZugZugteilFkRefNavigation).WithMany(p => p.NfplZugZugteilFkCon)
-                .HasConstraintName("nfpl_zug_zugteil_fk_con_nfpl_zug_zugteil_fk_fk");
-        });
-
-        modelBuilder.Entity<NfplZugZugteilFkCt>(entity => {
-            entity.HasKey(e => e.Id).HasName("nfpl_zug_zgt_fkct_pkey");
-
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
-
-            entity.HasOne(d => d.NfplZugZugteilFkRefNavigation).WithMany(p => p.NfplZugZugteilFkCt)
-                .HasConstraintName("nfpl_zug_zugteil_fk_ct_nfpl_zug_zugteil_fk_fk");
-        });
-
-        modelBuilder.Entity<NfplZugZugteilFkCtSeq>(entity => {
-            entity.HasKey(e => e.Id).HasName("nfpl_zug_zgt_ctseq_pkey");
-
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
-
-            entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.NfplZugZugteilFkCtSeq)
+            entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.NfplZugVarianteVerlauf)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("nfpl_zug_zugteil_fk_ct_seq_basis_betriebsstelle_fk");
+                .HasConstraintName("nfpl_zug_variante_verlauf_basis_betriebsstelle_fk");
 
-            entity.HasOne(d => d.NfplZugZugteilFkCtRefNavigation).WithMany(p => p.NfplZugZugteilFkCtSeq)
-                .HasConstraintName("nfpl_zug_zugteil_fk_ct_seq_nfpl_zug_zugteil_fk_ct_fk");
+            entity.HasOne(d => d.NfplZugVarRefNavigation).WithMany(p => p.NfplZugVarianteVerlauf).HasConstraintName("nfpl_zug_var_verlauf_nfpl_zug_variante_fk");
         });
 
         modelBuilder.Entity<SchemaVersion>(entity => {
@@ -457,15 +384,13 @@ public partial class UjBauDbContext : DbContext {
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.RegionRefNavigation).WithMany(p => p.UebDokument)
-                .HasConstraintName("fk_ueb_dok_region_ref");
+            entity.HasOne(d => d.RegionRefNavigation).WithMany(p => p.UebDokument).HasConstraintName("fk_ueb_dok_region_ref");
 
             entity.HasOne(d => d.SenderRefNavigation).WithMany(p => p.UebDokument)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_ueb_dok_sender_ref");
 
-            entity.HasOne(d => d.UjbauVorgangRefNavigation).WithMany(p => p.UebDokument)
-                .HasConstraintName("fk_ueb_dok_vorgang_ref");
+            entity.HasOne(d => d.UjbauVorgangRefNavigation).WithMany(p => p.UebDokument).HasConstraintName("fk_ueb_dok_vorgang_ref");
         });
 
         modelBuilder.Entity<UebDokumentStreckenabschnitte>(entity => {
@@ -473,8 +398,7 @@ public partial class UjBauDbContext : DbContext {
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.UebDokumentRefNavigation).WithMany(p => p.UebDokumentStreckenabschnitte)
-                .HasConstraintName("fk_ueb_dok_strabs_dok");
+            entity.HasOne(d => d.UebDokumentRefNavigation).WithMany(p => p.UebDokumentStreckenabschnitte).HasConstraintName("fk_ueb_dok_strabs_dok");
         });
 
         modelBuilder.Entity<UebDokumentZug>(entity => {
@@ -494,13 +418,11 @@ public partial class UjBauDbContext : DbContext {
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("ueb_dokument_zug_regelweg_ab_bst_ref_fkey");
 
-            entity.HasOne(d => d.RegelwegZielBstRefNavigation)
-                .WithMany(p => p.UebDokumentZugRegelwegZielBstRefNavigation)
+            entity.HasOne(d => d.RegelwegZielBstRefNavigation).WithMany(p => p.UebDokumentZugRegelwegZielBstRefNavigation)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("ueb_dokument_zug_regelweg_ziel_bst_ref_fkey");
 
-            entity.HasOne(d => d.UebDokumentRefNavigation).WithMany(p => p.UebDokumentZug)
-                .HasConstraintName("fk_ueb_zug_dok");
+            entity.HasOne(d => d.UebDokumentRefNavigation).WithMany(p => p.UebDokumentZug).HasConstraintName("fk_ueb_zug_dok");
         });
 
         modelBuilder.Entity<UebDokumentZugKnotenzeiten>(entity => {
@@ -510,11 +432,9 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.Relativlage).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.UebDokumentZugKnotenzeiten)
-                .HasConstraintName("ueb_dokument_zug_fahrplan_bst_ref_fkey");
+            entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.UebDokumentZugKnotenzeiten).HasConstraintName("ueb_dokument_zug_fahrplan_bst_ref_fkey");
 
-            entity.HasOne(d => d.UebDokumentZugRefNavigation).WithMany(p => p.UebDokumentZugKnotenzeiten)
-                .HasConstraintName("fk_ueb_kzeit_zug");
+            entity.HasOne(d => d.UebDokumentZugRefNavigation).WithMany(p => p.UebDokumentZugKnotenzeiten).HasConstraintName("fk_ueb_kzeit_zug");
         });
 
         modelBuilder.Entity<UebDokumentZugRegelung>(entity => {
@@ -526,8 +446,7 @@ public partial class UjBauDbContext : DbContext {
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_ueb_zreg_bst");
 
-            entity.HasOne(d => d.UebDokumentZugRefNavigation).WithMany(p => p.UebDokumentZugRegelung)
-                .HasConstraintName("fk_ueb_zreg_zug");
+            entity.HasOne(d => d.UebDokumentZugRefNavigation).WithMany(p => p.UebDokumentZugRegelung).HasConstraintName("fk_ueb_zreg_zug");
         });
 
         modelBuilder.Entity<UjbauSender>(entity => {
@@ -553,15 +472,13 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.Id).HasDefaultValueSql("nextval('ujbaudb.zvf_vorgang_bbmn_id_seq'::regclass)");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.UjVorgangRefNavigation).WithMany(p => p.UjbauVorgangBbmn)
-                .HasConstraintName("ujbau_vorgang_bbmn_uj_vorgang_ref_fkey");
+            entity.HasOne(d => d.UjVorgangRefNavigation).WithMany(p => p.UjbauVorgangBbmn).HasConstraintName("ujbau_vorgang_bbmn_uj_vorgang_ref_fkey");
         });
 
         modelBuilder.Entity<ZvfDokument>(entity => {
             entity.HasKey(e => e.Id).HasName("zvf_dokument_pkey");
 
-            entity.HasIndex(e => e.Dateiname, "idx_zvf_dokument_dateiname_imported")
-                .HasFilter("(import_timestamp IS NOT NULL)");
+            entity.HasIndex(e => e.Dateiname, "idx_zvf_dokument_dateiname_imported").HasFilter("(import_timestamp IS NOT NULL)");
 
             entity.Property(e => e.Endstueck).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
@@ -585,8 +502,7 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
             entity.Property(e => e.ZeitraumUnterbrochen).HasDefaultValue(false);
 
-            entity.HasOne(d => d.ZvfDokumentRefNavigation).WithMany(p => p.ZvfDokumentStreckenabschnitte)
-                .HasConstraintName("zvf_dokument_streckenabschnitte_zvf_dokument_ref_fkey");
+            entity.HasOne(d => d.ZvfDokumentRefNavigation).WithMany(p => p.ZvfDokumentStreckenabschnitte).HasConstraintName("zvf_dokument_streckenabschnitte_zvf_dokument_ref_fkey");
         });
 
         modelBuilder.Entity<ZvfDokumentZug>(entity => {
@@ -600,18 +516,15 @@ public partial class UjBauDbContext : DbContext {
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("zvf_dokument_zug_kunde_ref_fkey");
 
-            entity.HasOne(d => d.RegelwegAbgangBstRefNavigation)
-                .WithMany(p => p.ZvfDokumentZugRegelwegAbgangBstRefNavigation)
+            entity.HasOne(d => d.RegelwegAbgangBstRefNavigation).WithMany(p => p.ZvfDokumentZugRegelwegAbgangBstRefNavigation)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("zvf_dokument_zug_regelweg_abgang_bst_ref_fkey");
 
-            entity.HasOne(d => d.RegelwegZielBstRefNavigation)
-                .WithMany(p => p.ZvfDokumentZugRegelwegZielBstRefNavigation)
+            entity.HasOne(d => d.RegelwegZielBstRefNavigation).WithMany(p => p.ZvfDokumentZugRegelwegZielBstRefNavigation)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("zvf_dokument_zug_regelweg_ziel_bst_ref_fkey");
 
-            entity.HasOne(d => d.ZvfDokumentRefNavigation).WithMany(p => p.ZvfDokumentZug)
-                .HasConstraintName("zvf_dokument_zug_zvf_dokument_ref_fkey");
+            entity.HasOne(d => d.ZvfDokumentRefNavigation).WithMany(p => p.ZvfDokumentZug).HasConstraintName("zvf_dokument_zug_zvf_dokument_ref_fkey");
         });
 
         modelBuilder.Entity<ZvfDokumentZugAbweichung>(entity => {
@@ -619,15 +532,15 @@ public partial class UjBauDbContext : DbContext {
 
             entity.HasIndex(e => e.Abweichung, "idx_zvfzugab_abweichung_json")
                 .HasMethod("gin")
-                .HasOperators(new[] { "jsonb_path_ops" });
+                .HasOperators(new[] {
+                    "jsonb_path_ops"
+                });
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.AbBstRefNavigation).WithMany(p => p.ZvfDokumentZugAbweichung)
-                .HasConstraintName("fk_zvf_zugabw_bst_ref");
+            entity.HasOne(d => d.AbBstRefNavigation).WithMany(p => p.ZvfDokumentZugAbweichung).HasConstraintName("fk_zvf_zugabw_bst_ref");
 
-            entity.HasOne(d => d.ZvfDokumentZugRefNavigation).WithMany(p => p.ZvfDokumentZugAbweichung)
-                .HasConstraintName("zvf_dokument_zug_abweichung_zvf_dokument_zug_ref_fkey");
+            entity.HasOne(d => d.ZvfDokumentZugRefNavigation).WithMany(p => p.ZvfDokumentZugAbweichung).HasConstraintName("zvf_dokument_zug_abweichung_zvf_dokument_zug_ref_fkey");
         });
 
         modelBuilder.Entity<ZvfDokumentZugEntfallen>(entity => {
@@ -635,13 +548,11 @@ public partial class UjBauDbContext : DbContext {
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.ZvfDokumentRefNavigation).WithMany(p => p.ZvfDokumentZugEntfallen)
-                .HasConstraintName("zvf_dokument_zug_entfallen_zvf_dokument_ref_fkey");
+            entity.HasOne(d => d.ZvfDokumentRefNavigation).WithMany(p => p.ZvfDokumentZugEntfallen).HasConstraintName("zvf_dokument_zug_entfallen_zvf_dokument_ref_fkey");
         });
 
         OnModelCreatingPartial(modelBuilder);
     }
-
     partial void OnCreated();
     partial void OnConfiguringPartial(DbContextOptionsBuilder optionsBuilder);
     partial void OnModelCreatingPartial(ModelBuilder          modelBuilder);
