@@ -108,12 +108,17 @@ public sealed class ImportWorkerViewModel : ObservableObject {
 
     public void UpdateStat(string key, int value) {
         var stat = Statistics.FirstOrDefault(s => s.Key == key);
-        stat?.Value = value.ToString("N0");
+        if (stat != null)
+        {
+            stat.Value = value.ToString("N0");
+        }
     }
 
     public void UpdateStat(string key, string value) {
         var stat = Statistics.FirstOrDefault(s => s.Key == key);
-        stat?.Value = value;
+        if (stat != null) {
+            stat.Value = value;
+        }
     }
 
     public void ResetTiming() {

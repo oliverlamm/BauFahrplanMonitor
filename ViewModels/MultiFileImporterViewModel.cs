@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Avalonia.Media;
 using Avalonia.Threading;
+using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
 using BauFahrplanMonitor.Importer.Dto;

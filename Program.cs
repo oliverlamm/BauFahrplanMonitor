@@ -1,6 +1,11 @@
 ﻿using System;
 using System.IO;
 using Avalonia;
+using BauFahrplanMonitor.Core.Importer;
+using BauFahrplanMonitor.Core.Importer.Upsert;
+using BauFahrplanMonitor.Core.Jobs;
+using BauFahrplanMonitor.Core.Services;
+using BauFahrplanMonitor.Core.Tools;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Importer;
 using BauFahrplanMonitor.Importer.Helper;
@@ -108,6 +113,12 @@ internal class Program {
         services.AddSingleton<ZvFExportImporter>();
         services.AddSingleton<IFileImporterFactory, FileImporterFactory>();
 
+        // Job
+        services.AddSingleton<ZvFExportJob>();
+        services.AddSingleton<ImporterFacade>();
+
+        services.AddSingleton<ZvFExportScanService>();
+        
         Services = services.BuildServiceProvider(
             new ServiceProviderOptions {
                 ValidateOnBuild = true,
