@@ -1,0 +1,17 @@
+Scannen:
+
+curl -X POST http://localhost:5222/api/import/zvfexport/scan \
+        -H "Content-Type: application/json" \
+        -d '{ "filter": "All" }'
+
+Status:
+
+curl -s http://localhost:5222/api/import/zvfexport/status | jq
+
+Import:
+
+curl -X POST http://localhost:5222/api/import/zvfexport/import
+
+Cancel:
+
+curl -X POST http://localhost:5222/api/import/zvfexport/cancel

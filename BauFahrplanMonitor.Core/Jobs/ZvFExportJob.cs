@@ -5,6 +5,7 @@ using BauFahrplanMonitor.Helpers;
 using BauFahrplanMonitor.Importer;
 using BauFahrplanMonitor.Importer.Dto;
 using BauFahrplanMonitor.Importer.Helper;
+using BauFahrplanMonitor.Resolver;
 using BauFahrplanMonitor.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -22,6 +23,8 @@ public sealed class ZvFExportJob {
     private readonly ZvFExportJobStatus                _status = new();
     private          IReadOnlyList<ImportFileItem>     _queue  = Array.Empty<ImportFileItem>();
     public           ZvFExportJobStatus                Status { get; } = new();
+    private          int                               _regionWarmupDone = 0;
+    private readonly SharedReferenceResolver           _resolver;
 
     public ZvFExportJob(
         ZvFExportImporter                 importer,
@@ -159,6 +162,7 @@ public sealed class ZvFExportJob {
         CancellationToken token) {
         ScanStat stat;
 
+        await EnsureRegionWarmupAsync(token);
         lock (_lock) {
             _status.State     = ImportJobState.Scanning;
             _status.StartedAt = DateTime.UtcNow;
@@ -199,6 +203,7 @@ public sealed class ZvFExportJob {
     }
 
     public async Task StartImportAsync(CancellationToken externalToken) {
+        await EnsureRegionWarmupAsync(externalToken);
         lock (_lock) {
             if (_status.State is not ImportJobState.Scanned)
                 throw new InvalidOperationException(
@@ -214,12 +219,13 @@ public sealed class ZvFExportJob {
 
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(externalToken, _cts.Token);
 
-
         try {
             await RunWorkersAsync(linkedCts.Token);
 
             lock (_lock) {
-                _status.State = ImportJobState.Finished;
+                _status.State = _status.Errors > 0
+                    ? ImportJobState.FinishedWithErrors
+                    : ImportJobState.Finished;
             }
 
             _logger.LogInformation("ZvFExportJob: Import abgeschlossen");
@@ -245,12 +251,22 @@ public sealed class ZvFExportJob {
         foreach (var item in _queue) {
             token.ThrowIfCancellationRequested();
 
-            await ImportOneAsync(item, token);
+            try {
+                await ImportOneAsync(item, token);
+                _status.IncrementProcessedFiles();
+            }
+            catch (Exception ex) {
+                _status.IncrementErrors();
 
-            _status.IncrementProcessedFiles();
+                _logger.LogError(ex,
+                    "Import fehlgeschlagen | Datei={File}",
+                    item.FilePath);
+
+                if (_config.Effective.Allgemein.StopAfterException)
+                    throw;
+            }
         }
     }
-
 
     private async Task ImportOneAsync(
         ImportFileItem    item,
@@ -282,7 +298,7 @@ public sealed class ZvFExportJob {
 
 
             _status.CurrentFile = item.FilePath;
-            
+
             await _importer.ImportAsync(
                 db,
                 item,
@@ -292,5 +308,18 @@ public sealed class ZvFExportJob {
             _status.CurrentFile = null;
             _logger.LogDebug("Import abgeschlossen");
         }
+    }
+
+    private async Task EnsureRegionWarmupAsync(CancellationToken token) {
+        // 🔑 exakt einmal pro App-Lauf
+        if (Interlocked.Exchange(ref _regionWarmupDone, 1) == 1)
+            return;
+
+        _logger.LogInformation("Region-Resolver WarmUp gestartet");
+
+        await using var db = await _dbFactory.CreateDbContextAsync(token);
+        await _resolver.WarmUpRegionCacheAsync(db, token);
+
+        _logger.LogInformation("Region-Resolver WarmUp abgeschlossen");
     }
 }

@@ -369,23 +369,27 @@ public class SharedReferenceResolver {
             return 0;
         }
 
+        // 1️⃣ Cache (Normalfall!)
         if (_regionCache.TryGetValue(key, out var cached)) {
             Interlocked.Increment(ref _regionStats.CacheHits);
             return cached;
         }
 
-        // Fallback (nur wenn Warm-Up nicht aktiv war)
+        // 2️⃣ Fallback: NUR rohe Vergleiche (EF-kompatibel)
+        var rawLower = raw!.Trim().ToLowerInvariant();
+
         var region = await db.BasisRegion
             .AsNoTracking()
             .Where(r =>
-                r.Bezeichner != null && r.Bezeichner.ToLower() == key ||
-                r.Langname   != null && r.Langname.ToLower()   == key ||
-                r.Kbez       != null && r.Kbez.ToLower()       == key)
+                (r.Bezeichner != null && r.Bezeichner.ToLower() == rawLower) ||
+                (r.Langname   != null && r.Langname.ToLower()   == rawLower) ||
+                (r.Kbez       != null && r.Kbez.ToLower()       == rawLower)
+            )
             .Select(r => r.Id)
             .FirstOrDefaultAsync(token);
 
         if (region > 0) {
-            _regionCache[key] = region;
+            _regionCache[key] = region; // 🔑 normierter Key
             Interlocked.Increment(ref _regionStats.DbHits);
             return region;
         }
@@ -394,7 +398,7 @@ public class SharedReferenceResolver {
         Interlocked.Increment(ref _regionStats.CacheMisses);
         return 0;
     }
-
+    
     // =====================================================================
     // BETRIEBSSTELLE
     // =====================================================================
@@ -604,24 +608,23 @@ public class SharedReferenceResolver {
 
     private static string NormalizeRegionKey(string? raw) {
         if (string.IsNullOrWhiteSpace(raw))
-            return "";
+            return string.Empty;
 
-        raw = raw.Trim().ToLowerInvariant();
+        var s = raw.Trim().ToLowerInvariant();
 
-        if (raw.StartsWith("rb "))
-            raw = raw[3..];
+        // 🔑 RB / Rb / rb entfernen
+        if (s.StartsWith("rb "))
+            s = s[3..];
 
-        if (raw.StartsWith("region "))
-            raw = raw[7..];
-
-        raw = raw
+        s = s
             .Replace("ü", "ue")
             .Replace("ö", "oe")
-            .Replace("ä", "ae");
+            .Replace("ä", "ae")
+            .Replace("ß", "ss");
 
-        raw = Regex.Replace(raw, @"\s+", " ");
+        s = Regex.Replace(s, @"\s+", " ");
 
-        return raw;
+        return s;
     }
 
     public async Task WarmUpRegionCacheAsync(
