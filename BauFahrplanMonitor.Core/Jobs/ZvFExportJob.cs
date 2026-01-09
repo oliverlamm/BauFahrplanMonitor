@@ -21,7 +21,7 @@ public sealed class ZvFExportJob {
     private          CancellationTokenSource?          _cts    = new();
     private readonly object                            _lock   = new();
     private readonly ZvFExportJobStatus                _status = new();
-    private          IReadOnlyList<ImportFileItem>     _queue  = Array.Empty<ImportFileItem>();
+    private          IReadOnlyList<ImportFileItem>     _queue  = [];
     public           ZvFExportJobStatus                Status { get; } = new();
     private          int                               _regionWarmupDone = 0;
     private readonly SharedReferenceResolver           _resolver;
@@ -57,7 +57,7 @@ public sealed class ZvFExportJob {
         var token = _cts.Token;
 
         Status.State     = ImportJobState.Scanning;
-        Status.StartedAt = DateTime.UtcNow;
+        Status.StartedAt = DateTime.Now;
 
         try {
             // 1️⃣ Scan
@@ -90,7 +90,7 @@ public sealed class ZvFExportJob {
 
                 var item = new ImportFileItem(
                     file,
-                    DateTime.UtcNow,
+                    DateTime.Now,
                     mode);
 
                 await _importer.ImportAsync(

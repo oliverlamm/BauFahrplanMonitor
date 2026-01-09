@@ -289,7 +289,6 @@ public class SharedReferenceResolver {
     // =====================================================================
     // KUNDE
     // =====================================================================
-
     public async Task<long> ResolveOrCreateKundeAsync(
         UjBauDbContext    db,
         string?           kundeCode,
@@ -610,20 +609,24 @@ public class SharedReferenceResolver {
         if (string.IsNullOrWhiteSpace(raw))
             return string.Empty;
 
+        Logger.Info($"[NormalizeRegionKey] => Eingang: {raw}");
+        
         var s = raw.Trim().ToLowerInvariant();
 
         // 🔑 RB / Rb / rb entfernen
         if (s.StartsWith("rb "))
             s = s[3..];
 
-        s = s
+        /*s = s
             .Replace("ü", "ue")
             .Replace("ö", "oe")
             .Replace("ä", "ae")
             .Replace("ß", "ss");
-
+        */
         s = Regex.Replace(s, @"\s+", " ");
 
+        Logger.Info($"[NormalizeRegionKey] => Ausgang: {s}");
+        
         return s;
     }
 
