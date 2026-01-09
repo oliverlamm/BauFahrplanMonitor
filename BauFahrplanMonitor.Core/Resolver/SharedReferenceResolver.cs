@@ -1,21 +1,16 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Linq;
+﻿using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using BauFahrplanMonitor.Core.Helpers;
+using BauFahrplanMonitor.Core.Importer.Dto.Shared;
+using BauFahrplanMonitor.Core.Importer.Helper;
+using BauFahrplanMonitor.Core.Interfaces;
 using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Importer.Dto.Shared;
-using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Models;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 using Npgsql;
 
-namespace BauFahrplanMonitor.Resolver;
+namespace BauFahrplanMonitor.Core.Resolver;
 
 /// <summary>
 /// Zentrale Referenzauflösung für alle Importer.

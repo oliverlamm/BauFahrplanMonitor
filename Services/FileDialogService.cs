@@ -3,8 +3,8 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
+using BauFahrplanMonitor.Core.Interfaces;
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Interfaces;
 
 namespace BauFahrplanMonitor.Services;
 

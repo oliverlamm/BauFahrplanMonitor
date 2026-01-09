@@ -1,10 +1,8 @@
-using System;
-using System.Linq;
-using BauFahrplanMonitor.Configuration;
+using BauFahrplanMonitor.Core.Configuration;
 using Microsoft.Extensions.Configuration;
 using NLog;
 
-namespace BauFahrplanMonitor.Services;
+namespace BauFahrplanMonitor.Core.Services;
 
 public class ConfigService {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();

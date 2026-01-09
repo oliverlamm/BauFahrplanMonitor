@@ -1,11 +1,8 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using BauFahrplanMonitor.Data;
+﻿using BauFahrplanMonitor.Data;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 
-namespace BauFahrplanMonitor.Services;
+namespace BauFahrplanMonitor.Core.Services;
 
 /// <summary>
 /// Zentraler Service für datenbankbezogene Infrastruktur-Aufgaben.

@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-
-namespace BauFahrplanMonitor.Configuration;
+namespace BauFahrplanMonitor.Core.Configuration;
 
 public class AppConfig {
     public DatenbankConfig Datenbank { get; set; } = new();

@@ -8,5 +8,7 @@ public enum ImportJobState {
     Finished,
     Aborted,
     Failed,
-    FinishedWithErrors
+    FinishedWithErrors,
+    Starting,
+    Stopping
 }

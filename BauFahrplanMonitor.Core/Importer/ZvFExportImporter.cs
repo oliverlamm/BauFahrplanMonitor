@@ -1,23 +1,15 @@
-using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading;
-using System.Threading.Tasks;
 using BauFahrplanMonitor.Core.Helpers;
+using BauFahrplanMonitor.Core.Importer.Helper;
+using BauFahrplanMonitor.Core.Interfaces;
+using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Interfaces;
-using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Mapper;
-using BauFahrplanMonitor.Services;
-using Microsoft.EntityFrameworkCore;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer;
+namespace BauFahrplanMonitor.Core.Importer;
 
 public sealed class ZvFExportImporter(
     IZvFExportXmlLoader xmlLoader,

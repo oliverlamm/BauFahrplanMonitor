@@ -1,8 +1,7 @@
-using System;
-using System.IO;
 using System.Xml.Serialization;
-using BauFahrplanMonitor.Importer.Xml;
-using BauFahrplanMonitor.Interfaces;
+using BauFahrplanMonitor.Core.Interfaces;
+
+namespace BauFahrplanMonitor.Core.Importer.Xml;
 
 public sealed class KssXmlLoader : IKssXmlLoader
 {

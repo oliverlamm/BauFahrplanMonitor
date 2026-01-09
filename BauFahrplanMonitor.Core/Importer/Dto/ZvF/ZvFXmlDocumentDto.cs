@@ -1,6 +1,6 @@
-using BauFahrplanMonitor.Importer.Dto.Shared;
+using BauFahrplanMonitor.Core.Importer.Dto.Shared;
 
-namespace BauFahrplanMonitor.Importer.Dto.ZvF;
+namespace BauFahrplanMonitor.Core.Importer.Dto.ZvF;
 
 public class ZvFXmlDocumentDto {
     public SharedHeaderDto Header   { get; set; } = new();

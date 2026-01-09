@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Importer.Dto.BbpNeo;
+namespace BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
 
 /// <summary>
 /// RAW-DTO für eine BVE (Betriebliche Verfahrensanordnung)

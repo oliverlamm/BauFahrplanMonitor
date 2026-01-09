@@ -1,24 +1,19 @@
-using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using BauFahrplanMonitor.Core.Helpers;
+using BauFahrplanMonitor.Core.Importer.Dto.Shared;
+using BauFahrplanMonitor.Core.Importer.Dto.Ueb;
+using BauFahrplanMonitor.Core.Importer.Helper;
+using BauFahrplanMonitor.Core.Importer.Mapper;
+using BauFahrplanMonitor.Core.Interfaces;
+using BauFahrplanMonitor.Core.Resolver;
+using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Importer.Dto.Shared;
-using BauFahrplanMonitor.Importer.Dto.Ueb;
-using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Mapper;
-using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Models;
-using BauFahrplanMonitor.Resolver;
-using BauFahrplanMonitor.Services;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 using Npgsql;
 
-namespace BauFahrplanMonitor.Importer.Upsert;
+namespace BauFahrplanMonitor.Core.Importer.Upsert;
 
 /// <summary>
 /// Upserter für ÜB-Dokumente

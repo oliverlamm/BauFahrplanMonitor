@@ -1,19 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using BauFahrplanMonitor.Core.Importer.Dto.Nfpl;
+using BauFahrplanMonitor.Core.Importer.Helper;
+using BauFahrplanMonitor.Core.Interfaces;
+using BauFahrplanMonitor.Core.Resolver;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Importer.Dto.Nfpl;
-using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Models;
-using BauFahrplanMonitor.Resolver;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer.Upsert;
+namespace BauFahrplanMonitor.Core.Importer.Upsert;
 
 public sealed class NetzfahrplanUpserter(SharedReferenceResolver resolver) : INetzfahrplanUpserter {
     private readonly        SharedReferenceResolver _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));

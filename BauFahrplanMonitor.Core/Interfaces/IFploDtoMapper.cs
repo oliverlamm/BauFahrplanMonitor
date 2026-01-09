@@ -1,7 +1,7 @@
-using BauFahrplanMonitor.Importer.Dto.Fplo;
-using BauFahrplanMonitor.Importer.Xml;
+using BauFahrplanMonitor.Core.Importer.Dto.Fplo;
+using BauFahrplanMonitor.Core.Importer.Xml;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface IFploDtoMapper {
     FploXmlDocumentDto Map(ZvFExport export, string sourceFile);

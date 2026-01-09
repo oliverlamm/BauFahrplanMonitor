@@ -1,6 +1,6 @@
-using BauFahrplanMonitor.Configuration;
+using BauFahrplanMonitor.Core.Configuration;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface IConfigService {
     AppConfig Raw        { get; }

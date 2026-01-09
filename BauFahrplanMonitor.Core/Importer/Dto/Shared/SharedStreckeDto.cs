@@ -1,8 +1,6 @@
-﻿using System;
-using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Resolver;
+﻿using BauFahrplanMonitor.Core.Resolver;
 
-namespace BauFahrplanMonitor.Importer.Dto.Shared {
+namespace BauFahrplanMonitor.Core.Importer.Dto.Shared {
     /// <summary>
     /// Gemeinsames Strecken-DTO für alle Importer.
     ///

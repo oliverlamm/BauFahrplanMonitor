@@ -1,8 +1,8 @@
-using BauFahrplanMonitor.Importer.Dto.Fplo;
-using BauFahrplanMonitor.Importer.Dto.Shared;
+using BauFahrplanMonitor.Core.Importer.Dto.Fplo;
+using BauFahrplanMonitor.Core.Importer.Dto.Shared;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer.Helper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public static class DebugTraceHelper {
     public static void TraceDocumentRegions(

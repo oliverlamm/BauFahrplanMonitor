@@ -1,9 +1,10 @@
 using System.Text.Json.Serialization;
 using BauFahrplanMonitor.Core;
 using BauFahrplanMonitor.Core.Jobs;
+using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Core.Tools;
 using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 using NLog.Extensions.Logging;
@@ -22,7 +23,7 @@ builder.Logging.AddNLog();
 
 // ------------- JSON -------------------
 services.ConfigureHttpJsonOptions(options => {
-    options.SerializerOptions.IncludeFields = true; 
+    options.SerializerOptions.IncludeFields = true;
     options.SerializerOptions.Converters.Add(
         new JsonStringEnumConverter());
 });
@@ -41,9 +42,11 @@ services.AddImporterServices();
 // --------------------------------------
 var app = builder.Build();
 
+// --------------------------------------
+// ZvFExport Importer
+// --------------------------------------
 app.MapPost("/api/import/zvfexport/import", (
-    ZvFExportJob job) =>
-{
+    ZvFExportJob job) => {
     _ = Task.Run(() =>
         job.StartImportAsync(CancellationToken.None));
 
@@ -55,7 +58,7 @@ app.MapPost("/api/import/zvfexport/import", (
 
 app.MapPost("/api/import/zvfexport/cancel", (
     ZvFExportJob job) => {
-    job.Cancel();
+    job.RequestCancel();
     return Results.Accepted(
         value: new {
             state = "cancelled"
@@ -68,16 +71,13 @@ app.MapGet("/api/import/zvfexport/status", (
     return Results.Ok(job.GetStatus());
 });
 
-app.MapPost("/api/import/zvfexport/scan", (
+app.MapPost("/api/import/zvfexport/scan", async (
     ZvFScanRequest request,
     ZvFExportJob   job) => {
-    // 🔑 Scan im Hintergrund starten
-    _ = Task.Run(() =>
-        job.StartScanAsync(
-            request.Filter,
-            CancellationToken.None));
+    await job.TriggerScanAsync(
+        request.Filter,
+        CancellationToken.None);
 
-    // 🔑 sofort zurückkehren
     return Results.Accepted(
         value: new {
             state  = "scanning",
@@ -85,6 +85,66 @@ app.MapPost("/api/import/zvfexport/scan", (
         });
 });
 
+// --------------------------------------
+// Netzfahrplan Importer
+// --------------------------------------
+app.MapPost("/api/import/netzfahrplan/scan",
+    async (NetzfahrplanJob job) => {
+        await job.ScanAsync(CancellationToken.None);
+        return Results.Accepted();
+    });
+
+app.MapPost("/api/import/netzfahrplan/start",
+    async (NetzfahrplanJob job) => {
+        await job.StartImportAsync(CancellationToken.None);
+        return Results.Accepted();
+    });
+
+app.MapPost("/api/import/netzfahrplan/cancel",
+    (NetzfahrplanJob job) => {
+        job.RequestSoftCancel();
+        return Results.Accepted();
+    });
+
+app.MapGet("/api/import/netzfahrplan/status",
+    (NetzfahrplanJob job) => job.Status);
+
+// --------------------------------------
+// BBPNeo Importer
+// --------------------------------------
+app.MapPost("/api/import/bbpneo/start",
+    async (
+        BbpNeoImportRequest      request,
+        [FromServices] BbpNeoJob job,
+        CancellationToken        token) => {
+        if (string.IsNullOrWhiteSpace(request.FilePath))
+            return Results.BadRequest("FilePath fehlt");
+
+        await job.StartAsync(request.FilePath, token);
+
+        return Results.Accepted(
+            value: new {
+                state = "started",
+                file  = request.FilePath
+            });
+    });
+
+app.MapPost("/api/import/bbpneo/cancel",
+    ([FromServices] BbpNeoJob job) => {
+        job.RequestCancel();
+        return Results.Accepted(
+            value: new {
+                state = "cancel-requested"
+            });
+    });
+
+app.MapGet("/api/import/bbpneo/status",
+    ([FromServices] BbpNeoJob job) =>
+        Results.Ok(job.Status));
+
+// --------------------------------------
+// Status
+// --------------------------------------
 app.MapGet("/", (
     ConfigService  config,
     ImporterFacade facade) => {
@@ -109,16 +169,16 @@ app.MapGet("/", (
         },
 
         datei = new {
-            Importpfad         = cfg.Datei.Importpfad,
-            Archivepfad        = cfg.Datei.Archivpfad,
-            Archivieren        = cfg.Datei.Archivieren,
-            NachImportLoeschen = cfg.Datei.NachImportLoeschen
+            cfg.Datei.Importpfad,
+            cfg.Datei.Archivpfad,
+            cfg.Datei.Archivieren,
+            cfg.Datei.NachImportLoeschen
         },
 
         allgemein = new {
-            ImportThreads      = cfg.Allgemein.ImportThreads,
-            debugging          = cfg.Allgemein.Debugging,
-            stopAfterException = cfg.Allgemein.StopAfterException
+            cfg.Allgemein.ImportThreads,
+            cfg.Allgemein.Debugging,
+            cfg.Allgemein.StopAfterException
         },
 
         zvfExport = new {
@@ -129,7 +189,15 @@ app.MapGet("/", (
         },
 
         endpoints = new[] {
-            "/api/import/zvfexport/start", "/api/import/zvfexport/status", "/api/import/zvfexport/cancel"
+            "/api/import/zvfexport/start", 
+            "/api/import/zvfexport/status", 
+            "/api/import/zvfexport/cancel",
+            "/api/import/netzfahrplan/start",
+            "/api/import/netzfahrplan/status",
+            "/api/import/netzfahrplan/cancel",
+            "/api/import/bbpneo/start",
+            "/api/import/bbpneo/status",
+            "/api/import/bbpneo/cancel",
         }
     });
 });

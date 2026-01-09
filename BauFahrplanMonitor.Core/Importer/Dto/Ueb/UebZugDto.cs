@@ -1,7 +1,6 @@
-using System.Collections.Generic;
-using BauFahrplanMonitor.Importer.Dto.Shared;
+using BauFahrplanMonitor.Core.Importer.Dto.Shared;
 
-namespace BauFahrplanMonitor.Importer.Dto.Ueb;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Ueb;
 
 public class UebZugDto : SharedZugDto {
     public bool                  Bedarf                 { get; set; } = false;

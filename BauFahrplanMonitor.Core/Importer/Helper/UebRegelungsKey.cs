@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Importer.Helper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 internal readonly record struct UebRegelungsKey(
     string  Art,

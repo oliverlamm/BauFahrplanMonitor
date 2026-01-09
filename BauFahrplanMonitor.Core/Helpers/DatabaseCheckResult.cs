@@ -1,4 +1,4 @@
-using BauFahrplanMonitor.Services;
+using BauFahrplanMonitor.Core.Services;
 
 namespace BauFahrplanMonitor.Helpers {
     public class DatabaseCheckResult {

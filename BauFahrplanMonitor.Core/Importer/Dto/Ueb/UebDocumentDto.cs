@@ -1,8 +1,6 @@
-using System;
-using System.Collections.Generic;
-using BauFahrplanMonitor.Importer.Dto.Shared;
+using BauFahrplanMonitor.Core.Importer.Dto.Shared;
 
-namespace BauFahrplanMonitor.Importer.Dto.Ueb;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Ueb;
 
 public class UebDocumentDto : SharedDocumentDto {
     public DateOnly?              GueltigAb    { get; set; }

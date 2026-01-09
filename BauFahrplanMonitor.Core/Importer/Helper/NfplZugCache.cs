@@ -1,9 +1,8 @@
 using System.Collections.Concurrent;
-using System.Threading.Tasks;
+using BauFahrplanMonitor.Core.Interfaces;
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Interfaces;
 
-namespace BauFahrplanMonitor.Importer.Helper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public sealed class NfplZugCache : INfplZugCache {
 

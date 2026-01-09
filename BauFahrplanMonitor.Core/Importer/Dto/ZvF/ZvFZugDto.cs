@@ -1,7 +1,6 @@
-using System.Collections.Generic;
-using BauFahrplanMonitor.Importer.Dto.Shared;
+using BauFahrplanMonitor.Core.Importer.Dto.Shared;
 
-namespace BauFahrplanMonitor.Importer.Dto.ZvF;
+namespace BauFahrplanMonitor.Core.Importer.Dto.ZvF;
 
 public class ZvFZugDto : SharedZugDto {
     public string?                Aenderung    { get; set; }

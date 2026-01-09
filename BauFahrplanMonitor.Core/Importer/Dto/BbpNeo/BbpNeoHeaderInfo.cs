@@ -1,6 +1,4 @@
-using System;
-
-namespace BauFahrplanMonitor.Importer.Dto.BbpNeo;
+namespace BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
 
 public sealed class BbpNeoHeaderInfo {
     public int AnzMas { get; set; }

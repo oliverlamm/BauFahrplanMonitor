@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace BauFahrplanMonitor.Importer.Dto.Shared;
+﻿namespace BauFahrplanMonitor.Core.Importer.Dto.Shared;
 
 /// <summary>
 /// Gemeinsames Header-DTO für alle Importer (ZvF, ÜB, FPLO, …).

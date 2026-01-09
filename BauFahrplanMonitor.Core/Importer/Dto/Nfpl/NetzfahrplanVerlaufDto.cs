@@ -1,6 +1,4 @@
-using System;
-
-namespace BauFahrplanMonitor.Importer.Dto.Nfpl;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Nfpl;
 
 public sealed class NetzfahrplanVerlaufDto {
     public long Seq { get; init; }

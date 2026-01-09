@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Importer.Dto.Ueb;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Ueb;
 
 public class UebRegelungDto {
     private string? _jsonRaw;

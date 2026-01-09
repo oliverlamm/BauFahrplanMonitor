@@ -1,6 +1,6 @@
 using BauFahrplanMonitor.Helpers;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface IFileImporterFactory {
     IFileImporter GetImporter(ImporterTyp typ);

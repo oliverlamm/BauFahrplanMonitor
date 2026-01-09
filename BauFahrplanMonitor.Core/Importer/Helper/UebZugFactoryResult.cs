@@ -1,7 +1,6 @@
-using System.Collections.Generic;
-using BauFahrplanMonitor.Importer.Dto.Ueb;
+using BauFahrplanMonitor.Core.Importer.Dto.Ueb;
 
-namespace BauFahrplanMonitor.Importer.Helper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public sealed class UebZugFactoryResult {
     public required List<UebZugDto>                             Zuege      { get; init; }

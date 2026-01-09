@@ -1,8 +1,6 @@
-using System.Threading;
-using System.Threading.Tasks;
-using BauFahrplanMonitor.Importer.Dto.BbpNeo;
+using BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 /// <summary>
 /// Erweiterung für BBPNeo-Importer:

@@ -1,6 +1,4 @@
-using System;
-
-namespace BauFahrplanMonitor.Importer.Helper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public readonly record struct FploZugKey(
     long     ZugNr,

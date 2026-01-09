@@ -1,8 +1,6 @@
-using System.Collections.Generic;
-using BauFahrplanMonitor.Importer.Dto.Fplo;
-using BauFahrplanMonitor.Importer.Dto.Ueb;
+using BauFahrplanMonitor.Core.Importer.Dto.Fplo;
 
-namespace BauFahrplanMonitor.Importer.Helper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public sealed class FploZugFactoryResult {
     public required List<FploZugDto>                             Zuege      { get; init; }

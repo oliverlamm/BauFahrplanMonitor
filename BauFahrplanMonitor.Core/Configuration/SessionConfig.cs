@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Configuration;
+namespace BauFahrplanMonitor.Core.Configuration;
 
 public class SessionConfig {
     public DatenbankConfig Datenbank { get; set; } = new();

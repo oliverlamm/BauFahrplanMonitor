@@ -1,7 +1,6 @@
-using System;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer.Helper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public static class FahrplanjahrHelper {
     private static readonly Logger Log =

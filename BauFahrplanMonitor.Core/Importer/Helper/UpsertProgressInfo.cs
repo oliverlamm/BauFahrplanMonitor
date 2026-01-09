@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Importer.Helper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public sealed class UpsertProgressInfo {
     public required UpsertPhase Phase   { get; init; } // Zuege | Entfallen

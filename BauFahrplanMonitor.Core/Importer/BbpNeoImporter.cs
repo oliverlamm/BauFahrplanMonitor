@@ -1,23 +1,17 @@
-using System;
-using System.Collections.Concurrent;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 using System.Xml;
+using BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
+using BauFahrplanMonitor.Core.Importer.Helper;
+using BauFahrplanMonitor.Core.Importer.Mapper;
+using BauFahrplanMonitor.Core.Interfaces;
+using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Importer.Dto.BbpNeo;
-using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Mapper;
-using BauFahrplanMonitor.Interfaces;
-using BauFahrplanMonitor.Services;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer;
+namespace BauFahrplanMonitor.Core.Importer;
 
 public sealed class BbpNeoImporter(
     ConfigService                     config,

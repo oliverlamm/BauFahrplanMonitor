@@ -1,14 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using BauFahrplanMonitor.Importer.Dto.Fplo;
-using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Xml;
+using BauFahrplanMonitor.Core.Importer.Dto.Fplo;
+using BauFahrplanMonitor.Core.Importer.Helper;
+using BauFahrplanMonitor.Core.Importer.Xml;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer.Mapper;
+namespace BauFahrplanMonitor.Core.Importer.Mapper;
 
 public static class FploZugFactory {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();

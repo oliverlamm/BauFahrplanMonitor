@@ -1,13 +1,9 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml;
-using BauFahrplanMonitor.Importer.Dto.BbpNeo;
-using BauFahrplanMonitor.Interfaces;
+using BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
+using BauFahrplanMonitor.Core.Interfaces;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer.Xml;
+namespace BauFahrplanMonitor.Core.Importer.Xml;
 
 public sealed class BbpNeoXmlStreamingLoader : IBbpNeoXmlStreamingLoader {
 

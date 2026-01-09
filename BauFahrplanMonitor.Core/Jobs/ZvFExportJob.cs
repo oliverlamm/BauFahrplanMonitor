@@ -1,12 +1,11 @@
 using BauFahrplanMonitor.Core.Helpers;
+using BauFahrplanMonitor.Core.Importer;
+using BauFahrplanMonitor.Core.Importer.Dto;
+using BauFahrplanMonitor.Core.Importer.Helper;
+using BauFahrplanMonitor.Core.Resolver;
 using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Importer;
-using BauFahrplanMonitor.Importer.Dto;
-using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Resolver;
-using BauFahrplanMonitor.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -18,18 +17,23 @@ public sealed class ZvFExportJob {
     private readonly IDbContextFactory<UjBauDbContext> _dbFactory;
     private readonly ILogger<ZvFExportJob>             _logger;
     private readonly ZvFExportScanService              _scanService;
-    private          CancellationTokenSource?          _cts    = new();
-    private readonly object                            _lock   = new();
-    private readonly ZvFExportJobStatus                _status = new();
-    private          IReadOnlyList<ImportFileItem>     _queue  = [];
-    public           ZvFExportJobStatus                Status { get; } = new();
-    private          int                               _regionWarmupDone = 0;
+    private          CancellationTokenSource?          _cts  = new();
+    private readonly object                            _lock = new();
+    private readonly ZvFExportJobStatus                _status;
+    private          IReadOnlyList<ImportFileItem>     _queue = [];
+    private          int                               _regionWarmupDone;
     private readonly SharedReferenceResolver           _resolver;
+    private volatile bool                              _initialized;
+    private          int                               _softCancelRequested;
+
+    public ZvFExportJobStatus Status => _status;
+
 
     public ZvFExportJob(
         ZvFExportImporter                 importer,
         ConfigService                     config,
         ZvFExportScanService              scanService,
+        SharedReferenceResolver           resolver,
         ILogger<ZvFExportJob>             logger,
         IDbContextFactory<UjBauDbContext> dbFactory) {
 
@@ -38,10 +42,18 @@ public sealed class ZvFExportJob {
         _dbFactory   = dbFactory;
         _logger      = logger;
         _scanService = scanService;
+        _resolver    = resolver;
+
+        var workerCount =
+            _config.Effective.Allgemein.Debugging
+                ? 1
+                : Math.Max(1, _config.Effective.Allgemein.ImportThreads);
+
+        _status = new ZvFExportJobStatus(workerCount);
     }
 
     // --------------------------------------------------
-    // START
+    // StartAsync
     // --------------------------------------------------
     public async Task StartAsync(
         ImportRunMode     runMode,
@@ -113,12 +125,12 @@ public sealed class ZvFExportJob {
     }
 
     // --------------------------------------------------
-    // CANCEL
+    // Cancel
     // --------------------------------------------------
     public void Cancel() => _cts?.Cancel();
 
     // --------------------------------------------------
-    // Scan / Filter
+    // ScanFiles
     // --------------------------------------------------
     private List<string> ScanFiles(ZvFFileFilter filter) {
         var root = _config.Effective.Datei.Importpfad;
@@ -155,35 +167,31 @@ public sealed class ZvFExportJob {
     }
 
     // --------------------------------------------------
-    // Scan
+    // StartScanAsync
     // --------------------------------------------------
-    public async Task StartScanAsync(
+    private async Task StartScanAsync(
         ZvFFileFilter     filter,
         CancellationToken token) {
         ScanStat stat;
 
-        await EnsureRegionWarmupAsync(token);
         lock (_lock) {
             _status.State     = ImportJobState.Scanning;
             _status.StartedAt = DateTime.UtcNow;
 
             stat             = new ScanStat();
-            _status.ScanStat = stat; // 🔑 EIN Objekt
+            _status.ScanStat = stat;
 
-            _queue             = Array.Empty<ImportFileItem>();
+            _queue             = [];
             _status.QueueCount = 0;
             _status.TotalFiles = 0;
             _status.ResetErrors();
         }
 
-        // Phase A
         var candidates = _scanService.PreScan(filter, token);
 
-        lock (_lock) {
+        lock (_lock)
             _status.TotalFiles = candidates.Count;
-        }
 
-        // Phase B – WICHTIG: dieselbe Stat-Instanz übergeben
         var queue = await _scanService.ValidateAsync(
             candidates,
             stat,
@@ -196,81 +204,155 @@ public sealed class ZvFExportJob {
         }
     }
 
+    // --------------------------------------------------
+    // GetStatus
+    // --------------------------------------------------
     public ZvFExportJobStatus GetStatus() {
         lock (_lock) {
             return _status;
         }
     }
 
+    // --------------------------------------------------
+    // StartImportAsync
+    // --------------------------------------------------
     public async Task StartImportAsync(CancellationToken externalToken) {
         await EnsureRegionWarmupAsync(externalToken);
+        _softCancelRequested = 0;
         lock (_lock) {
             if (_status.State is not ImportJobState.Scanned)
                 throw new InvalidOperationException(
                     "Import kann nur nach abgeschlossenem Scan gestartet werden.");
 
             _status.State     = ImportJobState.Running;
-            _status.StartedAt = DateTime.UtcNow;
+            _status.StartedAt = DateTime.Now;
             _status.ResetErrors();
             _status.ResetProcessedFiles();
         }
 
         _logger.LogInformation("ZvFExportJob: Import gestartet | Queue={Count}", _queue.Count);
 
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(externalToken, _cts.Token);
-
-        try {
-            await RunWorkersAsync(linkedCts.Token);
-
-            lock (_lock) {
-                _status.State = _status.Errors > 0
-                    ? ImportJobState.FinishedWithErrors
-                    : ImportJobState.Finished;
-            }
-
-            _logger.LogInformation("ZvFExportJob: Import abgeschlossen");
-        }
-        catch (OperationCanceledException) {
-            lock (_lock) {
-                _status.State = ImportJobState.Aborted;
-            }
-
-            _logger.LogWarning("ZvFExportJob: Import abgebrochen");
-        }
-        catch (Exception ex) {
-            lock (_lock) {
-                _status.State = ImportJobState.Failed;
-                _status.IncrementErrors();
-            }
-
-            _logger.LogError(ex, "ZvFExportJob: Fehler beim Import");
-        }
-    }
-
-    private async Task RunWorkersAsync(CancellationToken token) {
-        foreach (var item in _queue) {
-            token.ThrowIfCancellationRequested();
+        if (_cts != null) {
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(externalToken, _cts.Token);
 
             try {
-                await ImportOneAsync(item, token);
-                _status.IncrementProcessedFiles();
+                await RunWorkersAsync(linkedCts.Token);
+
+                if (_softCancelRequested == 1) {
+                    lock (_lock) {
+                        foreach (var w in _status.Workers) {
+                            if (w.State == WorkerState.Stopping)
+                                w.State = WorkerState.Idle;
+                        }
+
+                        _status.State = ImportJobState.Aborted;
+                    }
+
+                    _logger.LogInformation(
+                        "ZvFExportJob: Soft-Cancel abgeschlossen");
+                }
+
+                lock (_lock) {
+                    _status.State = _status.Errors > 0
+                        ? ImportJobState.FinishedWithErrors
+                        : ImportJobState.Finished;
+                }
+
+                _logger.LogInformation("ZvFExportJob: Import abgeschlossen");
+            }
+            catch (OperationCanceledException) {
+                lock (_lock) {
+                    _status.State = ImportJobState.Aborted;
+                }
+
+                _logger.LogWarning("ZvFExportJob: Import abgebrochen");
             }
             catch (Exception ex) {
-                _status.IncrementErrors();
+                lock (_lock) {
+                    _status.State = ImportJobState.Failed;
+                    _status.IncrementErrors();
+                }
 
-                _logger.LogError(ex,
-                    "Import fehlgeschlagen | Datei={File}",
-                    item.FilePath);
-
-                if (_config.Effective.Allgemein.StopAfterException)
-                    throw;
+                _logger.LogError(ex, "ZvFExportJob: Fehler beim Import");
             }
         }
+
     }
 
+    // --------------------------------------------------
+    // RunWorkersAsync
+    // --------------------------------------------------
+    private async Task RunWorkersAsync(CancellationToken token) {
+        var workerCount =
+            _config.Effective.Allgemein.Debugging
+                ? 1
+                : Math.Max(1, _config.Effective.Allgemein.ImportThreads);
+
+        _logger.LogInformation("ZvFExportJob: Starte Import mit {Workers} Worker(n)",
+            workerCount);
+
+        _status.ResetActiveWorkers();
+
+        await Parallel.ForEachAsync(
+            _queue,
+            new ParallelOptions {
+                MaxDegreeOfParallelism = workerCount,
+                CancellationToken      = token // Hard-Cancel
+            },
+            async (item, ct) => {
+                if (_softCancelRequested == 1)
+                    return;
+
+                var worker = _status.AcquireWorker();
+                _status.IncrementActiveWorkers();
+
+                try {
+                    worker.CurrentFile = item.FilePath;
+
+                    await ImportOneAsync(item, ct);
+
+                    _status.IncrementProcessedFiles();
+                }
+                catch (OperationCanceledException) {
+                    worker.State = WorkerState.Canceled;
+                    throw;
+                }
+                catch (Exception ex) {
+                    worker.State = WorkerState.Error;
+                    _status.IncrementErrors();
+
+                    _logger.LogError(ex,
+                        "Import fehlgeschlagen | Datei={File}",
+                        item.FilePath);
+
+                    if (_config.Effective.Allgemein.StopAfterException)
+                        throw;
+                }
+                finally {
+                    _status.DecrementActiveWorkers();
+
+                    lock (_lock) {
+                        if (_softCancelRequested == 1 &&
+                            worker.State == WorkerState.Working) {
+                            worker.State = WorkerState.Stopping;
+                        }
+                        else {
+                            _status.ReleaseWorker(worker);
+                        }
+                    }
+                }
+            });
+    }
+
+    // --------------------------------------------------
+    // ImportOneAsync
+    // --------------------------------------------------
     private async Task ImportOneAsync(
         ImportFileItem    item,
         CancellationToken token) {
+
+        token.ThrowIfCancellationRequested();
+
         using (_logger.BeginScope(new Dictionary<string, object> {
                    ["ImportFile"] = item.FilePath
                })) {
@@ -283,33 +365,39 @@ public sealed class ZvFExportJob {
             var progress = new Progress<ImportProgressInfo>(p => {
                 _status.IncrementProcessedFiles();
 
-                if (_logger.IsEnabled(LogLevel.Debug)
-                    && DateTime.UtcNow - lastLog > TimeSpan.FromSeconds(1)) {
+                if (!_logger.IsEnabled(LogLevel.Debug)
+                    || DateTime.UtcNow - lastLog <= TimeSpan.FromSeconds(1))
+                    return;
+                lastLog = DateTime.UtcNow;
 
-                    lastLog = DateTime.UtcNow;
-
-                    _logger.LogDebug(
-                        "Import läuft | {File} | {Current}/{Total}",
-                        item.FilePath,
-                        p.ProcessedItems,
-                        p.TotalItems);
-                }
+                _logger.LogDebug("Import läuft | {File} | {Current}/{Total}",
+                    item.FilePath,
+                    p.ProcessedItems,
+                    p.TotalItems);
             });
-
-
+            
             _status.CurrentFile = item.FilePath;
-
-            await _importer.ImportAsync(
-                db,
-                item,
-                progress,
-                token);
+            await _importer.ImportAsync(db, item, progress, token);
 
             _status.CurrentFile = null;
             _logger.LogDebug("Import abgeschlossen");
         }
     }
 
+    // --------------------------------------------------
+    // EnsureInitializedAsync
+    // --------------------------------------------------
+    private async Task EnsureInitializedAsync(CancellationToken token) {
+        if (_initialized)
+            return;
+
+        await EnsureRegionWarmupAsync(token);
+        _initialized = true;
+    }
+
+    // --------------------------------------------------
+    // EnsureRegionWarmupAsync
+    // --------------------------------------------------
     private async Task EnsureRegionWarmupAsync(CancellationToken token) {
         // 🔑 exakt einmal pro App-Lauf
         if (Interlocked.Exchange(ref _regionWarmupDone, 1) == 1)
@@ -321,5 +409,55 @@ public sealed class ZvFExportJob {
         await _resolver.WarmUpRegionCacheAsync(db, token);
 
         _logger.LogInformation("Region-Resolver WarmUp abgeschlossen");
+    }
+
+    // --------------------------------------------------
+    // TriggerScanAsync
+    // --------------------------------------------------
+    public async Task TriggerScanAsync(
+        ZvFFileFilter     filter,
+        CancellationToken token) {
+        lock (_lock) {
+            if (_status.State is ImportJobState.Scanning
+                or ImportJobState.Running
+                or ImportJobState.Starting)
+                return;
+
+            _status.State = ImportJobState.Starting;
+        }
+
+        await EnsureInitializedAsync(token);
+
+        _ = Task.Run(async () => {
+            try {
+                await StartScanAsync(filter, token);
+            }
+            catch (Exception ex) {
+                lock (_lock) {
+                    _status.State = ImportJobState.Failed;
+                    _status.IncrementErrors();
+                }
+
+                _logger.LogError(ex, "ZvFExportJob scan failed");
+            }
+        }, token);
+    }
+
+    // --------------------------------------------------
+    // RequestCancel
+    // --------------------------------------------------
+    public bool RequestCancel() {
+        // atomar: war schon gesetzt?
+        if (Interlocked.Exchange(ref _softCancelRequested, 1) == 1)
+            return false;
+
+        _logger.LogInformation("ZvFExportJob: Cancel angefordert (Soft)");
+
+        lock (_lock) {
+            if (_status.State == ImportJobState.Running)
+                _status.State = ImportJobState.Stopping;
+        }
+
+        return true;
     }
 }

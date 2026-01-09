@@ -1,10 +1,8 @@
-using System;
-using System.Linq;
-using BauFahrplanMonitor.Importer.Dto.Nfpl;
-using BauFahrplanMonitor.Importer.Xml;
-using BauFahrplanMonitor.Interfaces;
+using BauFahrplanMonitor.Core.Importer.Dto.Nfpl;
+using BauFahrplanMonitor.Core.Importer.Xml;
+using BauFahrplanMonitor.Core.Interfaces;
 
-namespace BauFahrplanMonitor.Importer.Mapper;
+namespace BauFahrplanMonitor.Core.Importer.Mapper;
 
 public sealed class NetzfahrplanMapper : INetzfahrplanMapper {
     public NetzfahrplanDto Map(

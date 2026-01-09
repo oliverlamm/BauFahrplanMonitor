@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace BauFahrplanMonitor.Resolver;
+namespace BauFahrplanMonitor.Core.Resolver;
 
 /// <summary>
 /// Hilfsklasse zur Normalisierung von DS100-Codes

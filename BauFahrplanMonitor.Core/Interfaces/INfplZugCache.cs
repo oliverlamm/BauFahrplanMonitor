@@ -1,8 +1,6 @@
-using System;
-using System.Threading.Tasks;
 using BauFahrplanMonitor.Helpers;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface INfplZugCache {
     Task<ZugCacheEntry> GetOrCreateAsync(

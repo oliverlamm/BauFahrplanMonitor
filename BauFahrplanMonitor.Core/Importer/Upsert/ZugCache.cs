@@ -1,7 +1,6 @@
-using System;
 using System.Collections.Concurrent;
 
-namespace BauFahrplanMonitor.Importer.Upsert;
+namespace BauFahrplanMonitor.Core.Importer.Upsert;
 
 public sealed class ZvFZugCache {
     // Key: "dokRef|zugnr|yyyy-MM-dd"

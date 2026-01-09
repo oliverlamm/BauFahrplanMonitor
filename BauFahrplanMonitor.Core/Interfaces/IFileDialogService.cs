@@ -1,7 +1,6 @@
-using System.Threading.Tasks;
 using BauFahrplanMonitor.Helpers;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface IFileDialogService {
     Task<string?> OpenFileAsync(ImporterTyp importerTyp);

@@ -1,7 +1,6 @@
-using System;
-using BauFahrplanMonitor.Importer.Dto.Shared;
+using BauFahrplanMonitor.Core.Importer.Dto.Shared;
 
-namespace BauFahrplanMonitor.Importer.Dto.Ueb;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Ueb;
 
 public class UebErsatzZugDto :SharedZugDto{
     public int       Vespaetung    { get; set; }

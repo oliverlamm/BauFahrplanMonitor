@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Importer.Helper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public sealed class UeBImportStats {
     public long Dokumente { get; set; }

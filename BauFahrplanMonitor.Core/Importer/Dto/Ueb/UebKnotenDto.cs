@@ -1,6 +1,4 @@
-using System;
-
-namespace BauFahrplanMonitor.Importer.Dto.Ueb;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Ueb;
 
 public class UebKnotenDto {
     public string?   BahnhofDs100 { get; set; }

@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Configuration;
+namespace BauFahrplanMonitor.Core.Configuration;
 
 public class DateiConfig {
     public bool   Archivieren        { get; set; }

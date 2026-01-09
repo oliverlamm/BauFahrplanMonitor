@@ -1,4 +1,4 @@
-﻿namespace BauFahrplanMonitor.Importer.Dto.Shared;
+﻿namespace BauFahrplanMonitor.Core.Importer.Dto.Shared;
 
 /// <summary>
 /// Gemeinsames Versions-DTO für importierte Dokumente.

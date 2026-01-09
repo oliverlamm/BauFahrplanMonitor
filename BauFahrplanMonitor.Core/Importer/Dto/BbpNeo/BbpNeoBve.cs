@@ -1,7 +1,4 @@
-using System;
-using BauFahrplanMonitor.Importer.Upsert;
-
-namespace BauFahrplanMonitor.Importer.Dto.BbpNeo;
+namespace BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
 
 /// <summary>
 /// Domain-DTO für eine BVE (Betriebliche Verfahrensanordnung)

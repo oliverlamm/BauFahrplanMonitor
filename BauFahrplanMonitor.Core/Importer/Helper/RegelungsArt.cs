@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Importer.Helper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public static class RegelungsArt {
     // ===== Basis / Abschnitt (immer abgeleitet, KEIN Json) =====

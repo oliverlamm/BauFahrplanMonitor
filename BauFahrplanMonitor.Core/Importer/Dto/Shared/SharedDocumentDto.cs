@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace BauFahrplanMonitor.Importer.Dto.Shared;
+﻿namespace BauFahrplanMonitor.Core.Importer.Dto.Shared;
 
 /// <summary>
 /// Gemeinsames Basis-Dokument-DTO für alle Importer.

@@ -1,7 +1,4 @@
-using System;
-using BauFahrplanMonitor.Importer.Dto.Ueb;
-
-namespace BauFahrplanMonitor.Importer.Dto.Fplo;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Fplo;
 
 public class FploSevDto {
     public long            ZugNr            { get; set; }

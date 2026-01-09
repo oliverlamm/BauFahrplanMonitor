@@ -1,12 +1,11 @@
-﻿using System;
-using System.Text.Encodings.Web;
+﻿using System.Text.Encodings.Web;
 using System.Text.Json;
-using BauFahrplanMonitor.Importer.Dto.ZvF;
-using BauFahrplanMonitor.Importer.Dto.ZvF.Abweichungen;
-using BauFahrplanMonitor.Importer.Xml;
+using BauFahrplanMonitor.Core.Importer.Dto.ZvF;
+using BauFahrplanMonitor.Core.Importer.Dto.ZvF.Abweichungen;
+using BauFahrplanMonitor.Core.Importer.Xml;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer.Mapper;
+namespace BauFahrplanMonitor.Core.Importer.Mapper;
 
 /// <summary>
 /// Factory zur Erzeugung strukturierter ZvF-Abweichungen

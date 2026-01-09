@@ -1,8 +1,8 @@
-﻿using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Interfaces;
+﻿using BauFahrplanMonitor.Core.Importer.Helper;
+using BauFahrplanMonitor.Core.Interfaces;
 using BauFahrplanMonitor.Models;
 
-namespace BauFahrplanMonitor.Importer.Dto.Shared;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Shared;
 
 /// <summary>
 /// Gemeinsames Vorgangs-DTO für alle Importer.

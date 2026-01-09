@@ -1,9 +1,8 @@
-using System.Collections.Generic;
-using BauFahrplanMonitor.Importer.Dto.Shared;
-using BauFahrplanMonitor.Interfaces;
+using BauFahrplanMonitor.Core.Importer.Dto.Shared;
+using BauFahrplanMonitor.Core.Interfaces;
 using BauFahrplanMonitor.Models;
 
-namespace BauFahrplanMonitor.Importer.Dto.ZvF;
+namespace BauFahrplanMonitor.Core.Importer.Dto.ZvF;
 
 public class ZvFVorgangDto
     : SharedVorgangDto, IExtendedVorgangDto {

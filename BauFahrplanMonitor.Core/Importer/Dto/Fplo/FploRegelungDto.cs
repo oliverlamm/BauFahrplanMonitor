@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Importer.Dto.Fplo;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Fplo;
 
 public class FploRegelungDto {
     public string  Art         { get; set; } = "";

@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using BauFahrplanMonitor.Importer.Upsert;
-
-namespace BauFahrplanMonitor.Importer.Dto.BbpNeo;
+namespace BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
 
 /// <summary>
 /// Domain-DTO für eine Regelung im BBPNeo-Kontext.

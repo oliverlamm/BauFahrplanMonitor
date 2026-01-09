@@ -1,6 +1,6 @@
 using BauFahrplanMonitor.Models;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface IExtendedVorgangDto {
     /// <summary>

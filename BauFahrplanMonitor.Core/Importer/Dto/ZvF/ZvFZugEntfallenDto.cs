@@ -1,6 +1,4 @@
-using System;
-
-namespace BauFahrplanMonitor.Importer.Dto.ZvF;
+namespace BauFahrplanMonitor.Core.Importer.Dto.ZvF;
 
 public class ZvFZugEntfallenDto {
     public long     Zugnr           { get; set; }

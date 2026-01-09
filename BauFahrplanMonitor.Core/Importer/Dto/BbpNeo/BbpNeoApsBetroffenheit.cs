@@ -1,6 +1,4 @@
-using System.Collections.Generic;
-
-namespace BauFahrplanMonitor.Importer.Dto.BbpNeo;
+namespace BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
 
 /// <summary>
 /// Domain-DTO für eine einzelne APS-Betroffenheit.

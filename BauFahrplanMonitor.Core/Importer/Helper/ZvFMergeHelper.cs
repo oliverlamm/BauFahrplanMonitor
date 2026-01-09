@@ -1,9 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using BauFahrplanMonitor.Importer.Dto.ZvF;
+using BauFahrplanMonitor.Core.Importer.Dto.ZvF;
 
-namespace BauFahrplanMonitor.Importer.Helper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public static class ZvFMergeHelper {
     public static void MergeZuege(ZvFDocumentDto doc) {

@@ -4,8 +4,6 @@ using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Importer.Dto;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Importer.Dto;
-using BauFahrplanMonitor.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

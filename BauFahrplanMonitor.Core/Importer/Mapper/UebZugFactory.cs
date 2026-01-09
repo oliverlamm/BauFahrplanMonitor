@@ -1,13 +1,11 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using BauFahrplanMonitor.Importer.Dto.Ueb;
-using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Xml;
+using BauFahrplanMonitor.Core.Importer.Dto.Ueb;
+using BauFahrplanMonitor.Core.Importer.Helper;
+using BauFahrplanMonitor.Core.Importer.Xml;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer.Mapper;
+namespace BauFahrplanMonitor.Core.Importer.Mapper;
 
 public static class UebZugFactory {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();

@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace BauFahrplanMonitor.Importer.Dto.ZvF.Abweichungen;
+﻿namespace BauFahrplanMonitor.Core.Importer.Dto.ZvF.Abweichungen;
 
 /// <summary>
 /// Interner Container für mehrere WZR-Regeln

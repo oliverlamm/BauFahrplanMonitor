@@ -1,9 +1,7 @@
-using System;
-using System.IO;
 using System.Xml.Serialization;
-using BauFahrplanMonitor.Interfaces;
+using BauFahrplanMonitor.Core.Interfaces;
 
-namespace BauFahrplanMonitor.Importer.Xml;
+namespace BauFahrplanMonitor.Core.Importer.Xml;
 
 public sealed class ZvFExportXmlLoader : IZvFExportXmlLoader {
     private static readonly XmlSerializer Serializer =

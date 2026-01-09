@@ -1,10 +1,10 @@
 ﻿#nullable disable
 
-namespace BauFahrplanMonitor.Importer.Xml;
+namespace BauFahrplanMonitor.Core.Importer.Xml;
 
 // HINWEIS: Für den generierten Code ist möglicherweise mindestens .NET Framework 4.5 oder .NET Core/Standard 2.0 erforderlich.
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 [System.Xml.Serialization.XmlRoot( "KSS", Namespace = "", IsNullable = false )]
@@ -45,7 +45,7 @@ public class KSSxmlSchnittstelle {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSHeader {
@@ -99,7 +99,7 @@ public partial class KSSHeader {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSHeaderDescription {
@@ -121,7 +121,7 @@ public partial class KSSHeaderDescription {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSHeaderDescriptionScheduleVersion {
@@ -200,7 +200,7 @@ public partial class KSSHeaderDescriptionScheduleVersion {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSHeaderDescriptionScheduleVersionValidity {
@@ -224,7 +224,7 @@ public partial class KSSHeaderDescriptionScheduleVersionValidity {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSHeaderSpurplanVersionDescription {
@@ -262,7 +262,7 @@ public partial class KSSHeaderSpurplanVersionDescription {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSHeaderSpurplanVersionDescriptionValidity {
@@ -286,7 +286,7 @@ public partial class KSSHeaderSpurplanVersionDescriptionValidity {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSHeaderGfdiVersionDescription {
@@ -324,7 +324,7 @@ public partial class KSSHeaderGfdiVersionDescription {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSHeaderGfdiVersionDescriptionValidity {
@@ -348,7 +348,7 @@ public partial class KSSHeaderGfdiVersionDescriptionValidity {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSEntryIndexTrassen {
@@ -428,7 +428,7 @@ public partial class KSSEntryIndexTrassen {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSEntryIndexTrassenTimetablePeriod {
@@ -470,7 +470,7 @@ public partial class KSSEntryIndexTrassenTimetablePeriod {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSEntryIndexTrassenValidity {
@@ -494,7 +494,7 @@ public partial class KSSEntryIndexTrassenValidity {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSEntryIndexTrassenAdditionalTimetable {
@@ -516,7 +516,7 @@ public partial class KSSEntryIndexTrassenAdditionalTimetable {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSEntryIndexTrassenAdditionalTimetableAdditionalTimetableMode {
@@ -549,7 +549,7 @@ public partial class KSSEntryIndexTrassenAdditionalTimetableAdditionalTimetableM
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailml {
@@ -563,7 +563,7 @@ public partial class KSSRailml {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetable {
@@ -595,7 +595,7 @@ public partial class KSSRailmlTimetable {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTimetablePeriods {
@@ -609,7 +609,7 @@ public partial class KSSRailmlTimetableTimetablePeriods {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTimetablePeriodsTimetablePeriod {
@@ -651,7 +651,7 @@ public partial class KSSRailmlTimetableTimetablePeriodsTimetablePeriod {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrain {
@@ -728,7 +728,7 @@ public partial class KSSRailmlTimetableTrain {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntry {
@@ -857,7 +857,7 @@ public partial class KSSRailmlTimetableTrainEntry {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryComposition {
@@ -888,7 +888,7 @@ public partial class KSSRailmlTimetableTrainEntryComposition {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryCompositionService {
@@ -930,7 +930,7 @@ public partial class KSSRailmlTimetableTrainEntryCompositionService {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryCompositionDynamic {
@@ -963,7 +963,7 @@ public partial class KSSRailmlTimetableTrainEntryCompositionDynamic {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntrySection {
@@ -987,7 +987,7 @@ public partial class KSSRailmlTimetableTrainEntrySection {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformation {
@@ -1005,7 +1005,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformation {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicCharacteristic {
@@ -1125,7 +1125,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicChara
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicCharacteristicService {
@@ -1167,7 +1167,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicChara
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicCharacteristicTractionUnit {
@@ -1197,7 +1197,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicChara
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicCharacteristicTractionUnitPosition {
@@ -1230,7 +1230,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicChara
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicCharacteristicTractionUnitTractionUnitDesignSeries {
@@ -1260,7 +1260,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicChara
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicCharacteristicTractionUnitTractionUnitDesignSeriesDesignSeries {
@@ -1293,7 +1293,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicChara
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicCharacteristicTractionUnitTractionUnitDesignSeriesStromart {
@@ -1326,7 +1326,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicChara
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicCharacteristicBodyTiltingTechnique {
@@ -1359,7 +1359,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicChara
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicCharacteristicCarriageSpecifics {
@@ -1373,7 +1373,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicChara
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicCharacteristicCarriageSpecificsCarriageSpecific {
@@ -1395,7 +1395,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicChara
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicCharacteristicCarriageSpecificsCarriageSpecificTemplateTitle {
@@ -1419,7 +1419,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationBasicChara
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationalArrangementNotes {
@@ -1434,7 +1434,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationa
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationalArrangementNotesArrangementNote {
@@ -1480,7 +1480,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationa
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationalArrangementNotesArrangementNoteTemplateTitle {
@@ -1504,7 +1504,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationa
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationalArrangementNotesArrangementNoteService {
@@ -1537,7 +1537,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationa
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationalNotes {
@@ -1552,7 +1552,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationa
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationalNotesNote {
@@ -1590,7 +1590,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationa
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationalNotesNoteTemplateTitle {
@@ -1614,7 +1614,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationa
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationalNotesNoteService {
@@ -1647,7 +1647,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationOperationa
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationScheduleTimeNotes {
@@ -1661,7 +1661,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationScheduleTi
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationScheduleTimeNotesNote {
@@ -1691,7 +1691,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationScheduleTi
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainEntryAdditionalInformationScheduleTimeNotesNoteTemplateTitle {
@@ -1715,7 +1715,7 @@ public partial class KSSRailmlTimetableTrainEntryAdditionalInformationScheduleTi
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstruction {
@@ -1748,7 +1748,7 @@ public partial class KSSRailmlTimetableTrainFineConstruction {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrain {
@@ -1795,7 +1795,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrain {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainTrainNumber {
@@ -1825,7 +1825,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainTra
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCharacteristic {
@@ -2025,7 +2025,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCha
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCharacteristicTractionUnit {
@@ -2055,7 +2055,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCha
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCharacteristicTractionUnitPosition {
@@ -2088,7 +2088,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCha
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCharacteristicTractionUnitTractionUnitDesignSeries {
@@ -2118,7 +2118,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCha
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCharacteristicTractionUnitTractionUnitDesignSeriesDesignSeries {
@@ -2146,7 +2146,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCha
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCharacteristicTractionUnitTractionUnitDesignSeriesStromart {
@@ -2179,7 +2179,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCha
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCharacteristicBodyTiltingTechnique {
@@ -2212,7 +2212,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCha
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCharacteristicCarriageSpecifics {
@@ -2226,7 +2226,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCha
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCharacteristicCarriageSpecificsCarriageSpecific {
@@ -2248,7 +2248,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCha
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCharacteristicCarriageSpecificsCarriageSpecificTemplateTitle {
@@ -2272,7 +2272,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCha
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCharacteristicKind {
@@ -2305,7 +2305,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCha
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCharacteristicBrakingSystem {
@@ -2338,7 +2338,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainCha
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainService {
@@ -2416,7 +2416,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSer
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainServiceOperatingDay {
@@ -2440,7 +2440,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSer
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainServiceSpecial {
@@ -2464,7 +2464,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSer
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSequence {
@@ -2503,7 +2503,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSeq
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSequenceSequenceServicePoint {
@@ -2582,7 +2582,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSeq
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSequenceSequenceServicePointArrival {
@@ -2614,7 +2614,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSeq
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSequenceSequenceServicePointPublishedArrival {
@@ -2646,7 +2646,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSeq
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSequenceSequenceServicePointDeparture {
@@ -2678,7 +2678,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSeq
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSequenceSequenceServicePointPublishedDeparture {
@@ -2710,7 +2710,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSeq
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSequenceSequenceServicePointStopMode {
@@ -2743,7 +2743,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSeq
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSequenceAnchor {
@@ -2774,7 +2774,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConstructionTrainSeq
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConnection {
@@ -2837,7 +2837,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConnection {
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConnectionFirstTrain {
@@ -2867,7 +2867,7 @@ public partial class KSSRailmlTimetableTrainFineConstructionConnectionFirstTrain
 }
 
 /// <remarks/>
-[System.SerializableAttribute()]
+[Serializable()]
 [System.ComponentModel.DesignerCategoryAttribute( "code" )]
 [System.Xml.Serialization.XmlType( AnonymousType = true )]
 public partial class KSSRailmlTimetableTrainFineConstructionConnectionSecondTrain {

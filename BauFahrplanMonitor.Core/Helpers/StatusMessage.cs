@@ -1,5 +1,3 @@
-using BauFahrplanMonitor.Services;
-
 namespace BauFahrplanMonitor.Helpers;
 
 public sealed class StatusMessage {

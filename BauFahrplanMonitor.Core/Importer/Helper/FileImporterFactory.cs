@@ -1,9 +1,8 @@
-using System;
+using BauFahrplanMonitor.Core.Interfaces;
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace BauFahrplanMonitor.Importer;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public sealed class FileImporterFactory(IServiceProvider provider)
     : IFileImporterFactory {
@@ -14,13 +13,13 @@ public sealed class FileImporterFactory(IServiceProvider provider)
 
             ImporterTyp.ZvFExport =>
                 provider.GetRequiredService<ZvFExportImporter>(),
-            
+
             ImporterTyp.BBPNeo =>
                 provider.GetRequiredService<BbpNeoImporter>(),
 
             //ImporterTyp.OsbBob =>
             //    provider.GetRequiredService<OsbBobImporter>(),
-            
+
             _ => throw new InvalidOperationException(
                 $"Unbekannter ImporterTyp: {typ}")
         };

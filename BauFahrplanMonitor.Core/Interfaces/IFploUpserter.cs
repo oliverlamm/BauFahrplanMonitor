@@ -1,11 +1,8 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
+using BauFahrplanMonitor.Core.Importer.Dto.Fplo;
+using BauFahrplanMonitor.Core.Importer.Helper;
 using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Importer.Dto.Fplo;
-using BauFahrplanMonitor.Importer.Helper;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface IFploUpserter {
     Task<UpsertResult> UpsertAsync(

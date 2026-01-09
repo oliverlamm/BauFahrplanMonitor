@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
 using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Importer.Dto.BbpNeo;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface IBbpNeoUpserter {
     Task UpsertMassnahmeWithChildrenAsync(

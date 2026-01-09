@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using BauFahrplanMonitor.Importer.Xml;
+﻿using BauFahrplanMonitor.Core.Importer.Xml;
 
-namespace BauFahrplanMonitor.Importer.Dto.Shared;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Shared;
 
 /// <summary>
 /// Gemeinsames Zug-DTO für alle Importer.

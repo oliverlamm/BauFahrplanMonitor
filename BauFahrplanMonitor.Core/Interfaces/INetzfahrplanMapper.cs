@@ -1,7 +1,7 @@
-using BauFahrplanMonitor.Importer.Dto.Nfpl;
-using BauFahrplanMonitor.Importer.Xml;
+using BauFahrplanMonitor.Core.Importer.Dto.Nfpl;
+using BauFahrplanMonitor.Core.Importer.Xml;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface INetzfahrplanMapper {
     NetzfahrplanDto Map(

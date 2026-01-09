@@ -1,7 +1,7 @@
-using BauFahrplanMonitor.Importer.Dto.ZvF;
-using BauFahrplanMonitor.Importer.Xml;
+using BauFahrplanMonitor.Core.Importer.Dto.ZvF;
+using BauFahrplanMonitor.Core.Importer.Xml;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface IZvFDtoMapper {
     ZvFXmlDocumentDto Map(ZvFExport export, string sourceFile);

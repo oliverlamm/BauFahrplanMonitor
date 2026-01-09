@@ -1,4 +1,4 @@
-﻿namespace BauFahrplanMonitor.Importer.Dto.ZvF.Abweichungen;
+﻿namespace BauFahrplanMonitor.Core.Importer.Dto.ZvF.Abweichungen;
 
 /// <summary>
 /// Beschreibt einen einzelnen Haltausfall mit optionalem Ersatzhalt

@@ -1,7 +1,6 @@
-using System.Threading;
-using BauFahrplanMonitor.Importer.Dto.ZvF;
+using BauFahrplanMonitor.Core.Importer.Dto.ZvF;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface IZvFBusinessLogic {
     void Apply(ZvFXmlDocumentDto dto, CancellationToken token);

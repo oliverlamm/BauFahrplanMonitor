@@ -1,16 +1,12 @@
-using System;
 using System.Diagnostics;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using BauFahrplanMonitor.Core.Importer.Helper;
+using BauFahrplanMonitor.Core.Interfaces;
+using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Interfaces;
-using BauFahrplanMonitor.Services;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer;
+namespace BauFahrplanMonitor.Core.Importer;
 
 public sealed class NetzfahrplanImporter(
     IKssXmlLoader         xmlLoader,
@@ -20,9 +16,11 @@ public sealed class NetzfahrplanImporter(
     ConfigService         configService)
     : IFileImporter {
 
-    private static readonly Logger Logger =
-        LogManager.GetCurrentClassLogger();
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
+    // ----------------------------
+    // ImportAsync
+    // ----------------------------
     public async Task ImportAsync(
         UjBauDbContext                db,
         ImportFileItem                item,
@@ -45,7 +43,6 @@ public sealed class NetzfahrplanImporter(
     // =====================================================================
     // KSS
     // =====================================================================
-
     private async Task ImportKssAsync(
         UjBauDbContext                db,
         string                        filePath,

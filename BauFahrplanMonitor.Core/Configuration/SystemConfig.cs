@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Configuration;
+namespace BauFahrplanMonitor.Core.Configuration;
 
 public class SystemConfig {
     public string Name    { get; init; } = "";

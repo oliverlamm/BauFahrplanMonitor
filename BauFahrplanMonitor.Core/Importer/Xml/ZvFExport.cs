@@ -1,8 +1,7 @@
-﻿using System;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Xml.Serialization;
 
-namespace BauFahrplanMonitor.Importer.Xml;
+namespace BauFahrplanMonitor.Core.Importer.Xml;
 
 [Serializable]
 [DesignerCategory("code")]

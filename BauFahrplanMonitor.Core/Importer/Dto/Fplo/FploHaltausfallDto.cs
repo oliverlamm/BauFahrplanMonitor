@@ -1,6 +1,4 @@
-using System;
-
-namespace BauFahrplanMonitor.Importer.Dto.Fplo;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Fplo;
 
 public class FploHaltausfallDto {
     public long?     ZugNr                  { get; set; }

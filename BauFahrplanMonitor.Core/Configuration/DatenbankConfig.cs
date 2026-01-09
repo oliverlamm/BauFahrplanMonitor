@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Configuration;
+namespace BauFahrplanMonitor.Core.Configuration;
 
 public class DatenbankConfig {
     public string Host     { get; set; } = string.Empty;

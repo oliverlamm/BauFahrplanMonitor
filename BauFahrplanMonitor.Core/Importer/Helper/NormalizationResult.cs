@@ -1,6 +1,4 @@
-using System.Collections.Generic;
-
-namespace BauFahrplanMonitor.Importer.Mapper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 /// <summary>
 /// Ergebniscontainer für Normalisierungsprozesse.

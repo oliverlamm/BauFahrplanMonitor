@@ -1,5 +1,5 @@
 ﻿using System;
-using BauFahrplanMonitor.Services;
+using BauFahrplanMonitor.Core.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;

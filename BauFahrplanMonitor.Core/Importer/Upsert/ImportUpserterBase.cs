@@ -1,9 +1,8 @@
-using System;
+using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Services;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer.Upsert;
+namespace BauFahrplanMonitor.Core.Importer.Upsert;
 
 /// <summary>
 /// Zentrale Exception-Policy für alle Upserter

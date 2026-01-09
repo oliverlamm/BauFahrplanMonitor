@@ -2,10 +2,7 @@ using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Importer;
 using BauFahrplanMonitor.Core.Jobs;
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Importer;
-using BauFahrplanMonitor.Importer.Helper;
 using Microsoft.Extensions.Logging;
 
 namespace BauFahrplanMonitor.Core.Tools;

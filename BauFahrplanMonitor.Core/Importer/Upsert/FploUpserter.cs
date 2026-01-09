@@ -1,25 +1,19 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using BauFahrplanMonitor.Core.Helpers;
+using BauFahrplanMonitor.Core.Importer.Dto.Fplo;
+using BauFahrplanMonitor.Core.Importer.Helper;
+using BauFahrplanMonitor.Core.Importer.Mapper;
+using BauFahrplanMonitor.Core.Interfaces;
+using BauFahrplanMonitor.Core.Resolver;
+using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Importer.Dto.Fplo;
-using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Mapper;
-using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Models;
-using BauFahrplanMonitor.Resolver;
-using BauFahrplanMonitor.Services;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 using Npgsql;
 
-namespace BauFahrplanMonitor.Importer.Upsert;
+namespace BauFahrplanMonitor.Core.Importer.Upsert;
 
 /// <summary>
 /// Upserter für ÜB-Dokumente
@@ -225,10 +219,32 @@ public sealed class FploUpserter(
 
         var kundeRef = await ResolveKundeAsync(db, zug, dto, token);
         var regelwegAbBstRef =
-            await resolver.ResolveOrCreateBetriebsstelleAsync(db, zug.Regelweg?.Abgangsbahnhof?.Ds100, token);
+            await resolver.ResolveOrCreateBetriebsstelleAsync(
+                db,
+                zug.Regelweg?.Abgangsbahnhof?.Ds100,
+                token);
+
+        if (regelwegAbBstRef <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Regelweg-Abgangsbahnhof konnte nicht aufgelöst werden | "        +
+                $"Zug={zug.Zugnummer}, Verkehrstag={zug.Verkehrstag:yyyy-MM-dd}, " +
+                $"Wert='{zug.Regelweg?.Abgangsbahnhof?.Ds100}'");
+        }
 
         var regelwegZielBstRef =
-            await resolver.ResolveOrCreateBetriebsstelleAsync(db, zug.Regelweg?.Zielbahnhof?.Ds100, token);
+            await resolver.ResolveOrCreateBetriebsstelleAsync(
+                db,
+                zug.Regelweg?.Zielbahnhof?.Ds100,
+                token);
+
+        if (regelwegZielBstRef <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Regelweg-Zielbahnhof konnte nicht aufgelöst werden | "           +
+                $"Zug={zug.Zugnummer}, Verkehrstag={zug.Verkehrstag:yyyy-MM-dd}, " +
+                $"Wert='{zug.Regelweg?.Zielbahnhof?.Ds100}'");
+        }
 
         // Update
         if (existing != null) {

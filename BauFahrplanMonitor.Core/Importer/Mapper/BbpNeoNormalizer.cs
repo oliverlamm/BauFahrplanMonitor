@@ -1,10 +1,8 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using BauFahrplanMonitor.Importer.Dto.BbpNeo;
+using BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
+using BauFahrplanMonitor.Core.Importer.Helper;
 
-namespace BauFahrplanMonitor.Importer.Mapper;
+namespace BauFahrplanMonitor.Core.Importer.Mapper;
 
 /// <summary>
 /// Normalizer für BBPNeo-RAW-Daten.

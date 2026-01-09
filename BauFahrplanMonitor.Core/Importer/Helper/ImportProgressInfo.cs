@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Importer.Helper;
+namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public sealed class ImportProgressInfo {
     public string FileName   { get; init; } = "";
@@ -18,9 +18,12 @@ public sealed class ImportProgressInfo {
     public int TotalConsumers  { get; init; }
 
     // Statistik
-    public int MeasuresDone { get; init; }
-    public int Regelungen   { get; init; }
-    public int BvE          { get; init; }
-    public int APS          { get; init; }
-    public int IAV          { get; init; }
+    public int MeasuresDone      { get; init; }
+    public int Regelungen        { get; init; }
+    public int BvE               { get; init; }
+    public int APS               { get; init; }
+    public int IAV               { get; init; }
+    public int MassnahmenGesamt  { get; set; }
+    public int MassnahmenFertig  { get; set; }
+    public int Betriebsverfahren { get; set; }
 }

@@ -1,5 +1,4 @@
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Importer.Dto;
 
 namespace BauFahrplanMonitor.Core.Importer.Dto;
 

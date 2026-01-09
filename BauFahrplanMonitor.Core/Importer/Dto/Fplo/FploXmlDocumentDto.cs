@@ -1,6 +1,6 @@
-using BauFahrplanMonitor.Importer.Dto.Shared;
+using BauFahrplanMonitor.Core.Importer.Dto.Shared;
 
-namespace BauFahrplanMonitor.Importer.Dto.Fplo;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Fplo;
 
 public class FploXmlDocumentDto {
     public SharedHeaderDto  Header   { get; set; } = new();

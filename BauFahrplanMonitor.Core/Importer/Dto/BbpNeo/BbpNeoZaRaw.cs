@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Importer.Dto.BbpNeo;
+namespace BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
 
 public class BbpNeoZaRaw {
     public string? UuidZa       { get; set; }

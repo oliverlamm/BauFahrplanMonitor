@@ -1,11 +1,9 @@
-using System;
-using System.Threading;
 using System.Xml;
+using BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
 using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Importer.Dto.BbpNeo;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer.Xml;
+namespace BauFahrplanMonitor.Core.Importer.Xml;
 
 public static class BbpNeoRawXmlParser {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();

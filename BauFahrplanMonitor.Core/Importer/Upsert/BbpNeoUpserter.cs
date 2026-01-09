@@ -1,17 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
+using BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
+using BauFahrplanMonitor.Core.Interfaces;
+using BauFahrplanMonitor.Core.Resolver;
 using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Importer.Dto.BbpNeo;
-using BauFahrplanMonitor.Interfaces;
 using BauFahrplanMonitor.Models;
-using BauFahrplanMonitor.Resolver;
 using NLog;
 
-namespace BauFahrplanMonitor.Importer.Upsert;
+namespace BauFahrplanMonitor.Core.Importer.Upsert;
 
 public sealed class BbpNeoUpserter(SharedReferenceResolver resolver) : IBbpNeoUpserter {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();

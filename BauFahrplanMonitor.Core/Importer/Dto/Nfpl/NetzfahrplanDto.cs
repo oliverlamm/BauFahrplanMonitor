@@ -1,6 +1,4 @@
-using System.Collections.Generic;
-
-namespace BauFahrplanMonitor.Importer.Dto.Nfpl;
+namespace BauFahrplanMonitor.Core.Importer.Dto.Nfpl;
 
 public sealed class NetzfahrplanDto {
     public int                      FahrplanJahr { get; init; }

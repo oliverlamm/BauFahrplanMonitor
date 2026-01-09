@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Importer.Dto;
+namespace BauFahrplanMonitor.Core.Importer.Dto;
 
 public sealed class ScanStat {
     public int ZvF_New;

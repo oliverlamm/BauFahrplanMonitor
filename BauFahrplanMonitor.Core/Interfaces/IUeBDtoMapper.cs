@@ -1,7 +1,7 @@
-using BauFahrplanMonitor.Importer.Dto.Ueb;
-using BauFahrplanMonitor.Importer.Xml;
+using BauFahrplanMonitor.Core.Importer.Dto.Ueb;
+using BauFahrplanMonitor.Core.Importer.Xml;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface IUeBDtoMapper {
     UebXmlDocumentDto Map(ZvFExport export, string sourceFile);

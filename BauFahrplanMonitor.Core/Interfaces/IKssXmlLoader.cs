@@ -1,6 +1,6 @@
-using BauFahrplanMonitor.Importer.Xml;
+using BauFahrplanMonitor.Core.Importer.Xml;
 
-namespace BauFahrplanMonitor.Interfaces;
+namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface IKssXmlLoader {
     KSSxmlSchnittstelle Load(string filePath);

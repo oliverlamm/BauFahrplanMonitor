@@ -1,4 +1,4 @@
-using BauFahrplanMonitor.Importer.Helper;
+using BauFahrplanMonitor.Core.Importer.Helper;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace BauFahrplanMonitor.ViewModels;

@@ -1,4 +1,4 @@
-﻿namespace BauFahrplanMonitor.Importer.Dto.ZvF.Abweichungen;
+﻿namespace BauFahrplanMonitor.Core.Importer.Dto.ZvF.Abweichungen;
 
 /// <summary>
 /// Beschreibt eine Verspätungsregel im Rahmen einer ZvF-Abweichung.

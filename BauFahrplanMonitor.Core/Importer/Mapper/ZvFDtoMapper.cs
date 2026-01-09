@@ -1,17 +1,11 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using BauFahrplanMonitor.Importer.Dto.Shared;
-using BauFahrplanMonitor.Importer.Dto.ZvF;
-using BauFahrplanMonitor.Importer.Helper;
-using BauFahrplanMonitor.Importer.Xml;
-using BauFahrplanMonitor.Interfaces;
+using BauFahrplanMonitor.Core.Importer.Dto.Shared;
+using BauFahrplanMonitor.Core.Importer.Dto.ZvF;
+using BauFahrplanMonitor.Core.Importer.Helper;
+using BauFahrplanMonitor.Core.Importer.Xml;
+using BauFahrplanMonitor.Core.Interfaces;
 
-namespace BauFahrplanMonitor.Importer.Mapper;
+namespace BauFahrplanMonitor.Core.Importer.Mapper;
 
 public sealed class ZvFDtoMapper : IZvFDtoMapper {
     public ZvFXmlDocumentDto Map(ZvFExport export, string sourceFile) {
