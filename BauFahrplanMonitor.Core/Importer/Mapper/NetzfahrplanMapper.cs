@@ -2,6 +2,7 @@ using BauFahrplanMonitor.Core.Importer.Dto.Nfpl;
 using BauFahrplanMonitor.Core.Importer.Xml;
 using BauFahrplanMonitor.Core.Interfaces;
 
+
 namespace BauFahrplanMonitor.Core.Importer.Mapper;
 
 public sealed class NetzfahrplanMapper : INetzfahrplanMapper {
