@@ -1,4 +1,4 @@
-namespace BauFahrplanMonitor.Helpers;
+namespace BauFahrplanMonitor.Core.Helpers;
 
 public enum ImportThreadStatus {
     Bereit,

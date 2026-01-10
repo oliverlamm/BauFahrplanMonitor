@@ -11,7 +11,6 @@ using BauFahrplanMonitor.Core.Interfaces;
 using BauFahrplanMonitor.Core.Jobs;
 using BauFahrplanMonitor.Core.Resolver;
 using BauFahrplanMonitor.Core.Services;
-using BauFahrplanMonitor.Core.Tools;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Services;
 using BauFahrplanMonitor.ViewModels;

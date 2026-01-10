@@ -57,21 +57,24 @@
 }
 
 /* Badge */
-.badge {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 999px;
+.badge.ok {
+    background: #00A63E;
+    color: #fef2f2;
 }
 
 .badge.warning {
-    background: #f59e0b;
-    color: #ffffff;
+    background: #D08700;
+    color: #fef2f2;
 }
 
-.badge.ok {
-    background: #22c55e;
-    color: #ffffff;
+.badge.error {
+    background: #991b1b;
+    color: #fef2f2;
+}
+
+.badge.neutral {
+    background: #f3f4f6;
+    color: #374151;
 }
 
 /* Key-Value List */

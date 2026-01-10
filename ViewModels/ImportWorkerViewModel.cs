@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia.Media;
+using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Helpers;
 using CommunityToolkit.Mvvm.ComponentModel;
 

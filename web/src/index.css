@@ -246,3 +246,21 @@ html, body {
   color: #6b7280;
 }
 
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot.ok {
+  background: #16a34a; /* grün */
+}
+
+.status-dot.warning {
+  background: #f59e0b; /* gelb */
+}
+
+.status-dot.error {
+  background: #dc2626; /* rot */
+}

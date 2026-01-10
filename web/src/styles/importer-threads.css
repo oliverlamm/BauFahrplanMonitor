@@ -1,5 +1,4 @@
 /* === Thread Grid === */
-/* === Thread Grid === */
 .thread-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -17,12 +16,6 @@
     top: 0;
     transform: none;
 }
-
-/* === Thread Card === */
-.thread-card {
-    min-height: 140px;   /* ← Wert ggf. leicht anpassen */
-}
-
 
 /* Header */
 .thread-header {
@@ -69,4 +62,47 @@
 .badge.error {
     background: #fee2e2;
     color: #b91c1c;
+}
+
+/* =========================================================
+   Statistik Card (Thread-Stil)
+   ========================================================= */
+
+.zvf-statistic {
+    margin-top: 16px;
+}
+
+.statistic-card {
+    padding-bottom: 14px;
+}
+
+/* 3 Spalten */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 8px;
+}
+
+/* Spalte */
+.stat-column {
+    padding-right: 8px;
+}
+
+/* Titel */
+.stat-title {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+/* Zeilen */
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.stat-row.muted {
+    color: #6b7280;
 }

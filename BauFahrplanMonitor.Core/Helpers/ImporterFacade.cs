@@ -1,33 +1,36 @@
-using BauFahrplanMonitor.Core.Helpers;
-using BauFahrplanMonitor.Core.Importer;
 using BauFahrplanMonitor.Core.Jobs;
-using BauFahrplanMonitor.Helpers;
-using BauFahrplanMonitor.Data;
-using Microsoft.Extensions.Logging;
 
-namespace BauFahrplanMonitor.Core.Tools;
+namespace BauFahrplanMonitor.Core.Helpers;
 
 public sealed class ImporterFacade(
     ZvFExportJob zvfJob) {
 
     private readonly ZvFExportJob _zvfJob = zvfJob;
 
-    public Task StartZvFExportAsync(
-        ZvFImportCommand  command,
+    // -----------------------------
+    // Scan
+    // -----------------------------
+    public Task StartZvFExportScanAsync(
         ZvFFileFilter     filter,
-        CancellationToken token) {
+        CancellationToken token)
+        => _zvfJob.TriggerScanAsync(filter, token);
 
-        return _zvfJob.StartAsync(
-            command == ZvFImportCommand.Scan
-                ? ImportRunMode.Scan
-                : ImportRunMode.Import,
-            filter,
-            token);
-    }
+    // -----------------------------
+    // Import
+    // -----------------------------
+    public Task StartZvFExportImportAsync(
+        CancellationToken token)
+        => _zvfJob.StartImportAsync(token);
 
+    // -----------------------------
+    // Cancel
+    // -----------------------------
+    public void CancelZvFExport()
+        => _zvfJob.RequestCancel();
+
+    // -----------------------------
+    // Status
+    // -----------------------------
     public ZvFExportJobStatus GetZvFExportStatus()
         => _zvfJob.Status;
-
-    public void CancelZvFExport()
-        => _zvfJob.Cancel();
 }

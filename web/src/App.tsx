@@ -1,4 +1,5 @@
 import { useState } from "react";
+import {useStatus} from "./hooks/useStatus";
 
 import StatusPage from "./pages/Status/StatusPage";
 import NetzfahrplanPage from "./pages/Netzfahrplan/NetzfahrplanPage";
@@ -18,7 +19,15 @@ type Page =
 
 export default function App() {
     const [activePage, setActivePage] = useState<Page>("status");
+    const {data, loading, error} = useStatus();
+    if (loading) {
+        return <div>Lade Systemstatus…</div>;
+    }
 
+    if (error || !data) {
+        return <div className="error">Fehler: {error}</div>;
+    }
+    
     const renderPage = () => {
         switch (activePage) {
             case "status": return <StatusPage />;
@@ -30,6 +39,11 @@ export default function App() {
             default: return null;
         }
     };
+
+    const dbStatus = data.databaseStatus.status.toLowerCase();
+    const systemReady =
+        dbStatus === "error" ? "System nicht bereit" : "System bereit";
+
     
     return (
         <div className="app">
@@ -41,7 +55,7 @@ export default function App() {
                         onClick={() => setActivePage("status")}
                         style={{ cursor: "pointer" }}
                     >
-                        BauFahrplanMonitor
+                        {data.name}
                     </div>
                     <div className="app-subtitle">Data Import Dashboard</div>
                 </div>
@@ -49,7 +63,7 @@ export default function App() {
                 <div className="header-right">
                     <div className="session">
                         <div className="session-label">Session</div>
-                        <div className="session-value">Inverclair</div>
+                        <div className="session-value">{data.allgemein.machineName}</div>
                     </div>
                 </div>
             </header>
@@ -134,13 +148,13 @@ export default function App() {
             {/* Footer */}
             <footer className="footer">
                 <div className="footer-left">
-                    <span className="footer-app">BauFahrplanMonitor</span>
-                    <span className="footer-version">v0.1</span>
+                    <span className="footer-app">{data.allgemein.name}</span>
+                    <span className="footer-version">v{data.allgemein.version}</span>
                 </div>
 
                 <div className="footer-right">
-                    <span className="status-dot ok"></span>
-                    System bereit
+                    <span className={`status-dot ${dbStatus}`} />
+                    &nbsp;{systemReady}
                 </div>
             </footer>
         </div>

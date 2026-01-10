@@ -1,0 +1,98 @@
+/* =========================================================
+   Importer Status Badge (Web-Äquivalent zu Avalonia Brushes)
+   ========================================================= */
+
+.importer-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 4px 10px;
+    border-radius: 999px;
+
+    font-size: 13px;
+    font-weight: 500;
+
+    border: 1px solid #E5E7EB;
+    user-select: none;
+}
+
+/* Bereit / Grau */
+.importer-badge.status-bereit {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+    color: #374151;
+}
+.importer-badge.status-bereit .badge-dot {
+    background: #9ca3af;
+}
+
+/* Scannen / RoyalBlue */
+.importer-badge.status-scan {
+    background: #eef2ff;
+    border-color: #4169e1; /* RoyalBlue */
+    color: #1e3a8a;
+}
+.importer-badge.status-scan .badge-dot {
+    background: #4169e1;
+}
+
+/* Importieren / DodgerBlue */
+.importer-badge.status-running {
+    background: #eff6ff;
+    border-color: #1e90ff; /* DodgerBlue */
+    color: #1e3a8a;
+}
+.importer-badge.status-running .badge-dot {
+    background: #1e90ff;
+}
+
+/* Abgeschlossen / ForestGreen */
+.importer-badge.status-success {
+    background: #ecfdf5;
+    border-color: #228b22; /* ForestGreen */
+    color: #065f46;
+}
+.importer-badge.status-success .badge-dot {
+    background: #228b22;
+}
+
+/* Warnung / DarkOrange */
+.importer-badge.status-warning {
+    background: #fffbeb;
+    border-color: #ff8c00; /* DarkOrange */
+    color: #78350f;
+}
+.importer-badge.status-warning .badge-dot {
+    background: #ff8c00;
+}
+
+/* Fehler / IndianRed */
+.importer-badge.status-error {
+    background: #fef2f2;
+    border-color: #cd5c5c; /* IndianRed */
+    color: #7f1d1d;
+}
+.importer-badge.status-error .badge-dot {
+    background: #cd5c5c;
+}
+
+/* Fatal / DarkRed */
+.importer-badge.status-fatal {
+    background: #7f1d1d;
+    border-color: #8b0000; /* DarkRed */
+    color: #ffffff;
+}
+.importer-badge.status-fatal .badge-dot {
+    background: #ffffff;
+}
+
+/* Beendet / DimGray */
+.importer-badge.status-disabled {
+    background: #e5e7eb;
+    border-color: #696969; /* DimGray */
+    color: #374151;
+}
+.importer-badge.status-disabled .badge-dot {
+    background: #696969;
+}

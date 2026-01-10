@@ -1,4 +1,5 @@
 using Avalonia.Media;
+using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Helpers;
 using CommunityToolkit.Mvvm.ComponentModel;
 

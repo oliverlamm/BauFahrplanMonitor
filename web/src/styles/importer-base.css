@@ -55,9 +55,8 @@
 }
 
 .btn-primary {
-    background: #111827;
-    color: #ffffff;
-    border-color: #111827;
+    background: #ffffff;
+    color: #6b7280;
 }
 
 .btn-secondary {
@@ -71,6 +70,7 @@
     padding: 2px 8px;
     border-radius: 999px;
     background: #f3f4f6;
+    border: 1px solid #E5E7EB;
 }
 
 /* Progress */
@@ -92,6 +92,19 @@
     overflow: hidden;
 }
 
+.progress-bar.progress-scan .progress-value {
+    background-color: #2563eb; /* blau */
+}
+
+.progress-bar.progress-import .progress-value {
+    background-color: #16a34a; /* grün */
+}
+
+.progress-bar.progress-error .progress-value {
+    background-color: #dc2626; /* rot */
+}
+
+
 .progress-bar.small {
     height: 6px;
 }
@@ -99,6 +112,11 @@
 .progress-value {
     height: 100%;
     background: #9ca3af;
+}
+
+.progress-subline {
+    font-size: 12px;
+    color: #6B7280;
 }
 
 /* Thread header */
@@ -113,15 +131,6 @@
 .thread-status {
     font-size: 13px;
     color: #6b7280;
-}
-
-/* Status Badges – Basis */
-.badge {
-    font-size: 12px;
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-weight: 500;
-    line-height: 1.4;
 }
 
 /* Bereit */

@@ -1,12 +1,12 @@
 namespace BauFahrplanMonitor.Core.Importer.Helper;
 
 public sealed class ImportProgressInfo {
-    public string FileName   { get; init; } = "";
-    public string Step       { get; init; } = "";
-    public int?   SubIndex   { get; init; }
-    public int?   SubTotal   { get; init; }
-    public int    StepIndex  { get; init; } // 1..TotalSteps
-    public int    TotalSteps { get; init; } // z. B. 6
+    public string  FileName   { get; init; } = "";
+    public string StepText   { get; init; } = "";
+    public int?    SubIndex   { get; init; }
+    public int?    SubTotal   { get; init; }
+    public int     StepIndex  { get; init; } // 1..TotalSteps
+    public int     TotalSteps { get; init; } // z. B. 6
 
     // Overall (Maßnahmen)
     public int TotalItems     { get; init; }

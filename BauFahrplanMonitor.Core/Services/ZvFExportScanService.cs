@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Xml.Linq;
 using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Importer.Dto;
@@ -9,28 +8,17 @@ using Microsoft.Extensions.Logging;
 
 namespace BauFahrplanMonitor.Core.Services;
 
-public sealed class ZvFExportScanService {
-    private readonly ConfigService                     _config;
-    private readonly IDbContextFactory<UjBauDbContext> _dbFactory;
-    private readonly ILogger<ZvFExportScanService>     _logger;
+public sealed class ZvFExportScanService(
+    ConfigService                     config,
+    IDbContextFactory<UjBauDbContext> dbFactory,
+    ILogger<ZvFExportScanService>     logger) {
 
     // 🔁 exakt wie früher
-    private readonly ConcurrentDictionary<string, bool> _importCache = new();
     private Dictionary<string, ImportDbInfo> _dbImportCache =
         new(StringComparer.OrdinalIgnoreCase);
 
-    public ZvFExportScanService(
-        ConfigService                     config,
-        IDbContextFactory<UjBauDbContext> dbFactory,
-        ILogger<ZvFExportScanService>     logger) {
-
-        _config    = config;
-        _dbFactory = dbFactory;
-        _logger    = logger;
-    }
-
     private List<string> ScanFilesZvFExport() {
-        var root = _config.Effective.Datei.Importpfad;
+        var root = config.Effective.Datei.Importpfad;
 
         return Directory
             .EnumerateFiles(root, "*.xml", SearchOption.AllDirectories)
@@ -38,12 +26,12 @@ public sealed class ZvFExportScanService {
     }
 
     private Task BuildImportCacheAsync() {
-        _logger.LogInformation("Lade Import-Cache aus der Datenbank…");
+        logger.LogInformation("Lade Import-Cache aus der Datenbank…");
 
         var cache = new Dictionary<string, ImportDbInfo>(
             StringComparer.OrdinalIgnoreCase);
 
-        using var db = _dbFactory.CreateDbContext();
+        using var db = dbFactory.CreateDbContext();
 
         foreach (var d in GetZvfDokumente(db))
             if (!string.IsNullOrWhiteSpace(d.FileName))
@@ -59,7 +47,7 @@ public sealed class ZvFExportScanService {
 
         _dbImportCache = cache;
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Import-Cache geladen ({Count} Einträge)",
             cache.Count);
 
@@ -95,9 +83,9 @@ public sealed class ZvFExportScanService {
 
     private bool ShouldImport(string filePath) {
         var name = Path.GetFileName(filePath);
-        return !_importCache.ContainsKey(name);
+        return !_dbImportCache.ContainsKey(name);
     }
-
+    
     private ImportFileItem? TryCreateImportItem(string file) {
         try {
             var ts = ReadTimestampFromHeader(file);
@@ -108,7 +96,7 @@ public sealed class ZvFExportScanService {
                 ImportModeResolver.Resolve(file));
         }
         catch (Exception ex) {
-            _logger.LogError(ex, "Fehler beim Erstellen des ImportItems: {File}", file);
+            logger.LogError(ex, "Fehler beim Erstellen des ImportItems: {File}", file);
             return null;
         }
     }
@@ -169,8 +157,8 @@ public sealed class ZvFExportScanService {
         foreach (var file in files) {
             token.ThrowIfCancellationRequested();
 
-            _logger.LogDebug("PreScan: {File}", file);
-            
+            logger.LogDebug("PreScan: {File}", file);
+
             var mode = ImportModeResolver.ResolveFileType(file);
             if (mode == ImportMode.None)
                 continue;
@@ -184,7 +172,7 @@ public sealed class ZvFExportScanService {
             });
         }
 
-        _logger.LogInformation("PreScan abgeschlossen | Kandidaten={Count}", result.Count);
+        logger.LogInformation("PreScan abgeschlossen | Kandidaten={Count}", result.Count);
 
         return result;
     }
@@ -193,8 +181,9 @@ public sealed class ZvFExportScanService {
     public async Task<IReadOnlyList<ImportFileItem>> ValidateAsync(
         IReadOnlyList<ScanCandidate> candidates,
         ScanStat                     stat,
+        IProgress<string>?           progress,
         CancellationToken            token) {
-        _logger.LogInformation(
+        logger.LogInformation(
             "Validierungs-Scan gestartet | Kandidaten={Count}",
             candidates.Count);
 
@@ -205,43 +194,42 @@ public sealed class ZvFExportScanService {
         foreach (var c in candidates) {
             token.ThrowIfCancellationRequested();
 
-            using (_logger.BeginScope(new Dictionary<string, object> {
+            // 🔑 Fortschritt: genau EIN Tick pro geprüfter Datei
+            progress?.Report(c.FilePath);
+
+            using (logger.BeginScope(new Dictionary<string, object> {
                        ["ImportFile"] = c.FilePath
                    })) {
 
-                _logger.LogDebug(
+                logger.LogDebug(
                     "Validate gestartet | PreScanMode={Mode}",
                     c.Mode);
 
-                // 🔑 Datei öffnen + Header lesen
                 var item = TryCreateImportItem(c.FilePath);
                 if (item == null) {
-                    _logger.LogDebug("Übersprungen (kein ImportItem erzeugt)");
+                    logger.LogDebug("Übersprungen (kein ImportItem erzeugt)");
                     continue;
                 }
 
-                var mode = item.FileType; // 🔑 DER fachlich relevante Modus
+                var mode = item.FileType;
 
-                _logger.LogDebug(
+                logger.LogDebug(
                     "Header gelesen | DetectedMode={Mode}",
                     mode);
 
-                // 🔑 genau EIN DB-Vergleich
                 if (!ShouldImport(c.FilePath)) {
-                    _logger.LogDebug(
-                        "Übersprungen (bereits importiert)");
-
+                    logger.LogDebug("Übersprungen (bereits importiert)");
                     CountImported(stat, mode);
                     continue;
                 }
 
-                _logger.LogDebug("Neu für Import");
+                logger.LogDebug("Neu für Import");
                 CountNew(stat, mode);
                 queue.Add(item);
             }
         }
-        
-        _logger.LogInformation(
+
+        logger.LogInformation(
             "Validierungs-Scan abgeschlossen | Queue={Queue} | ZvF={ZvF_New}/{ZvF_Imported} | ÜB={UeB_New}/{UeB_Imported} | Fplo={Fplo_New}/{Fplo_Imported}",
             queue.Count,
             stat.ZvF_New, stat.ZvF_Imported,

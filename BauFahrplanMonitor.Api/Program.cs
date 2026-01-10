@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
 using BauFahrplanMonitor.Core;
+using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Jobs;
 using BauFahrplanMonitor.Core.Services;
-using BauFahrplanMonitor.Core.Tools;
 using BauFahrplanMonitor.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -45,43 +45,48 @@ var app = builder.Build();
 // --------------------------------------
 // ZvFExport Importer
 // --------------------------------------
-app.MapPost("/api/import/zvfexport/import", (
-    ZvFExportJob job) => {
-    _ = Task.Run(() =>
-        job.StartImportAsync(CancellationToken.None));
 
-    return Results.Accepted(value: new {
-        state = "importing"
-    });
-});
+app.MapPost("/api/import/zvfexport/scan",
+    async Task<IResult> (
+        ZvFScanRequest request,
+        ZvFExportJob   job) =>
+    {
+        await job.TriggerScanAsync(
+            request.Filter,
+            CancellationToken.None);
 
-
-app.MapPost("/api/import/zvfexport/cancel", (
-    ZvFExportJob job) => {
-    job.RequestCancel();
-    return Results.Accepted(
-        value: new {
-            state = "cancelled"
-        }
-    );
-});
-
-app.MapGet("/api/import/zvfexport/status", (ZvFExportJob job) => { return Results.Ok(job.Status); });
-
-
-app.MapPost("/api/import/zvfexport/scan", async (
-    ZvFScanRequest request,
-    ZvFExportJob   job) => {
-    await job.TriggerScanAsync(
-        request.Filter,
-        CancellationToken.None);
-
-    return Results.Accepted(
-        value: new {
+        return Results.Accepted(value: new {
             state  = "scanning",
             filter = request.Filter.ToString()
         });
-});
+    });
+
+app.MapPost("/api/import/zvfexport/import",
+    async (
+        ImporterFacade    facade,
+        CancellationToken token) =>
+    {
+        await facade.StartZvFExportImportAsync(token);
+
+        return Results.Accepted(value: new {
+            state = "importing"
+        });
+    });
+
+app.MapPost("/api/import/zvfexport/cancel",
+    (ImporterFacade facade) =>
+    {
+        facade.CancelZvFExport();
+
+        return Results.Accepted(value: new {
+            state = "cancel-requested"
+        });
+    });
+
+app.MapGet("/api/import/zvfexport/status",
+    (ImporterFacade facade) =>
+        Results.Ok(facade.GetZvFExportStatus()));
+
 
 // --------------------------------------
 // Netzfahrplan Importer

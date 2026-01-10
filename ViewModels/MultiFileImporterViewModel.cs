@@ -622,22 +622,14 @@ public partial class MultiFileImporterViewModel : ObservableObject {
                 Dispatcher.UIThread.Post(() => {
                     threadVm.FileName      = info.FileName;
                     threadVm.Status        = ImportThreadStatus.Importieren;
-                    threadVm.StatusMessage = info.Step;
-
+                    
                     threadVm.ThreadProgressText =
                         $"{info.StepIndex} / {info.TotalSteps}";
 
                     if (!info.SubIndex.HasValue || !info.SubTotal.HasValue)
                         return;
 
-                    if (info.Step.StartsWith("Upsert Züge")) {
-                        totalZuege = info.SubTotal.Value;
-                        doneZuege  = info.SubIndex.Value;
-                    }
-                    else if (info.Step.StartsWith("Upsert Entfallen")) {
-                        totalEntfallen = info.SubTotal.Value;
-                        doneEntfallen  = info.SubIndex.Value;
-                    }
+                    
 
                     var total = totalZuege + totalEntfallen;
                     var done  = doneZuege  + doneEntfallen;

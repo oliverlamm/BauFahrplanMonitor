@@ -36,7 +36,7 @@ public sealed class NetzfahrplanImporter(
 
             return;
         }
-        
+
         await ImportKssAsync(db, item.FilePath, progress, token);
     }
 
@@ -101,7 +101,7 @@ public sealed class NetzfahrplanImporter(
 
                         progress.Report(new ImportProgressInfo {
                             FileName   = Path.GetFileName(filePath),
-                            Step       = text,
+                            StepText   = text,
                             StepIndex  = ImportSteps.Upsert,
                             TotalSteps = ImportSteps.TotalSteps,
                             SubIndex   = p.Current,
@@ -110,7 +110,7 @@ public sealed class NetzfahrplanImporter(
                     });
 
                 await upserter.UpsertAsync(db, dto, zugCache, upsertProgress, token);
-                
+
                 token.ThrowIfCancellationRequested();
 
                 // -------------------------------------------------
@@ -158,7 +158,7 @@ public sealed class NetzfahrplanImporter(
 
         progress?.Report(new ImportProgressInfo {
             FileName   = Path.GetFileName(file),
-            Step       = stepText,
+            StepText   = stepText,
             StepIndex  = stepIndex,
             TotalSteps = ImportSteps.TotalSteps
         });
