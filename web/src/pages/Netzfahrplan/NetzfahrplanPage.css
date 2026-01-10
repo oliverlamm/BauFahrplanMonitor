@@ -1,0 +1,76 @@
+@import "../../styles/importer-base.css";
+
+/* Container */
+.netzfahrplan-threads {
+    margin-top: 24px;
+}
+
+.netzfahrplan-threads h3 {
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+/* ZWEISPALTIGES GRID */
+.netzfahrplan-thread-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+/* Thread-spezifische Details */
+.thread-count {
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+/* Controls Container */
+.zvf-controls {
+    margin-top: 16px;
+}
+
+/* Gemeinsame Zeile */
+.nfpl-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 10px;
+}
+
+/* Linke Seite */
+.nfpl-row-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+/* Input */
+.nfpl-row-left input {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background: #f5f5f5;
+    font-size: 14px;
+}
+
+/* Rechte Seite (Buttons) */
+.nfpl-row-right {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* Filter */
+.nfpl-filter span {
+    font-size: 14px;
+    margin-right: 4px;
+}
+
+.znfpl-filter label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+}

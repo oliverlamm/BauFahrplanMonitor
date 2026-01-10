@@ -1,0 +1,83 @@
+@import "../../styles/importer-base.css";
+
+/* BBP-spezifisch */
+.bbp-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 24px;
+    align-items: stretch;
+}
+
+/* === Thread + Statistik: gleiche Höhe === */
+.bbpneo-thread,
+.bbpneo-stats {
+    display: flex;
+    flex-direction: column;
+    background: #f9fafb;              /* sehr helles Grau */
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+}
+
+/* === Thread === */
+.bbpneo-thread .progress-bar {
+    margin-top: auto; /* Progress immer unten */
+}
+
+/* === Statistik === */
+.bbpneo-stats h4 {
+    font-size: 14px;
+    margin-bottom: 12px;
+    margin-top: 0px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.stat-row span:first-child {
+    color: #6b7280;
+}
+
+/* Controls Container */
+.bbp-controls {
+    margin-top: 16px;
+}
+
+/* Gemeinsame Zeile */
+.bbp-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 10px;
+}
+
+/* Linke Seite */
+.bbp-row-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+/* Input */
+.bbp-row-left input {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background: #f5f5f5;
+    font-size: 14px;
+}
+
+/* Rechte Seite (Buttons) */
+.bbp-row-right {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}

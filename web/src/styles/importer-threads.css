@@ -1,0 +1,72 @@
+/* === Thread Grid === */
+/* === Thread Grid === */
+.thread-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+
+    /* 🔑 verhindert "baseline/offset" Effekte */
+    align-items: start;
+}
+
+/* 🔑 killt jede externe Margin/Offset-Regel auf den Items */
+.thread-grid > .thread-card {
+    margin: 0 !important;
+    align-self: start;
+    position: relative;
+    top: 0;
+    transform: none;
+}
+
+/* === Thread Card === */
+.thread-card {
+    min-height: 140px;   /* ← Wert ggf. leicht anpassen */
+}
+
+
+/* Header */
+.thread-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 500;
+}
+
+/* Meta */
+.thread-file,
+.thread-status {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.thread-count {
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+/* Progress */
+.thread-card .progress-bar {
+    grid-row: 6;
+}
+
+.badge {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.badge.ready {
+    background: #f3f4f6;
+}
+
+.badge.running {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.badge.error {
+    background: #fee2e2;
+    color: #b91c1c;
+}

@@ -16,7 +16,7 @@ public static class ImporterServiceCollectionExtensions {
     public static IServiceCollection AddImporterServices(
         this IServiceCollection services) {
         services.AddSingleton<ConfigService>();
-
+        services.AddSingleton<DatabaseService>();
         services.AddSingleton<SharedReferenceResolver>();
         services.AddSingleton<ZvFZugCache>();
 

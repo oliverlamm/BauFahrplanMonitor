@@ -66,10 +66,8 @@ app.MapPost("/api/import/zvfexport/cancel", (
     );
 });
 
-app.MapGet("/api/import/zvfexport/status", (
-    ZvFExportJob job) => {
-    return Results.Ok(job.GetStatus());
-});
+app.MapGet("/api/import/zvfexport/status", (ZvFExportJob job) => { return Results.Ok(job.Status); });
+
 
 app.MapPost("/api/import/zvfexport/scan", async (
     ZvFScanRequest request,
@@ -145,62 +143,166 @@ app.MapGet("/api/import/bbpneo/status",
 // --------------------------------------
 // Status
 // --------------------------------------
-app.MapGet("/", (
-    ConfigService  config,
-    ImporterFacade facade) => {
-    var status = facade.GetZvFExportStatus();
-    var cfg    = config.Effective;
+app.MapGet("/api/status",
+    async (
+        [FromServices] ConfigService   config,
+        [FromServices] ImporterFacade  facade,
+        [FromServices] DatabaseService databaseService) => {
 
-    return Results.Ok(new {
-        application = "BauFahrplanMonitor.Api",
-        session     = config.SessionKey,
-        name        = cfg.System.Name,
-        version     = cfg.System.Version,
-        time        = DateTime.UtcNow,
+        var cfg = config.Effective;
 
-        datenbank = new {
-            cfg.Datenbank.Host,
-            cfg.Datenbank.Port,
-            cfg.Datenbank.Database,
-            cfg.Datenbank.User,
-            cfg.Datenbank.EFLogging,
-            cfg.Datenbank.EFSensitiveLogging,
-            cfg.Datenbank.ExpectedSchemaVersion,
-        },
+        // =================================================
+        // Datenbankstatus
+        // =================================================
+        var expectedSchema =
+            cfg.Datenbank.ExpectedSchemaVersion;
 
-        datei = new {
-            cfg.Datei.Importpfad,
-            cfg.Datei.Archivpfad,
-            cfg.Datei.Archivieren,
-            cfg.Datei.NachImportLoeschen
-        },
+        DatabaseService.DatabaseCheckResult? dbResult = null;
+        string                               dbMessage;
 
-        allgemein = new {
-            cfg.Allgemein.ImportThreads,
-            cfg.Allgemein.Debugging,
-            cfg.Allgemein.StopAfterException
-        },
+        try {
+            dbResult =
+                await databaseService.CheckDatabaseAsync(expectedSchema);
 
-        zvfExport = new {
-            status.State,
-            status.TotalFiles,
-            status.ProcessedFiles,
-            status.Errors
-        },
+            dbMessage = dbResult.Status switch {
+                DatabaseService.DatabaseHealthStatus.Ok =>
+                    $"Schema OK: {dbResult.CurrentSchemaVersion}",
 
-        endpoints = new[] {
-            "/api/import/zvfexport/start", 
-            "/api/import/zvfexport/status", 
-            "/api/import/zvfexport/cancel",
-            "/api/import/netzfahrplan/start",
-            "/api/import/netzfahrplan/status",
-            "/api/import/netzfahrplan/cancel",
-            "/api/import/bbpneo/start",
-            "/api/import/bbpneo/status",
-            "/api/import/bbpneo/cancel",
+                DatabaseService.DatabaseHealthStatus.Warning =>
+                    $"Schema: {dbResult.CurrentSchemaVersion}, erwartet: {expectedSchema}",
+
+                DatabaseService.DatabaseHealthStatus.Error =>
+                    "Datenbankfehler",
+
+                _ => "Unbekannter Status"
+            };
         }
+        catch (Exception ex) {
+            dbMessage = $"Fehler: {ex.Message}";
+        }
+
+        // =================================================
+        // Datei-Pfade (Import / Archiv)
+        // =================================================
+        var importPath  = cfg.Datei.Importpfad;
+        var archivePath = cfg.Datei.Archivpfad;
+
+        string importStatus;
+        string importMessage;
+
+        if (!Directory.Exists(importPath)) {
+            importStatus  = "Error";
+            importMessage = "Importpfad existiert nicht";
+        }
+        else {
+            importStatus  = "Ok";
+            importMessage = "Importpfad existiert";
+        }
+
+        string archiveStatus;
+        string archiveMessage;
+
+        if (!Directory.Exists(archivePath)) {
+            archiveStatus  = "Error";
+            archiveMessage = "Archivpfad existiert nicht";
+        }
+        else if (!CanWriteToDirectory(archivePath)) {
+            archiveStatus = "Warning";
+            archiveMessage =
+                "Archivpfad existiert, ist aber nicht beschreibbar";
+        }
+        else {
+            archiveStatus = "Ok";
+            archiveMessage =
+                "Archivpfad existiert und ist beschreibbar";
+        }
+
+        // =================================================
+        // Importer-Status (ZvFExport)
+        // =================================================
+        var zvfStatus = facade.GetZvFExportStatus();
+
+        // =================================================
+        // Antwort
+        // =================================================
+        return Results.Ok(new {
+            application = "BauFahrplanMonitor.Api",
+            session     = config.SessionKey,
+            name        = cfg.System.Name,
+            version     = cfg.System.Version,
+            time        = DateTime.UtcNow,
+
+            datenbank = new {
+                cfg.Datenbank.Host,
+                cfg.Datenbank.Port,
+                cfg.Datenbank.Database,
+                cfg.Datenbank.User,
+                cfg.Datenbank.EFLogging,
+                cfg.Datenbank.EFSensitiveLogging,
+                cfg.Datenbank.ExpectedSchemaVersion,
+            },
+
+            databaseStatus = new {
+                status = dbResult?.Status
+                         ?? DatabaseService.DatabaseHealthStatus.Error,
+
+                currentSchemaVersion =
+                    dbResult?.CurrentSchemaVersion,
+
+                expectedSchemaVersion = expectedSchema,
+
+                message = dbMessage
+            },
+
+            paths = new {
+                import = new {
+                    path    = importPath,
+                    status  = importStatus,
+                    message = importMessage
+                },
+                archive = new {
+                    path    = archivePath,
+                    status  = archiveStatus,
+                    message = archiveMessage
+                }
+            },
+
+            datei = new {
+                cfg.Datei.Importpfad,
+                cfg.Datei.Archivpfad,
+                cfg.Datei.Archivieren,
+                cfg.Datei.NachImportLoeschen
+            },
+
+            allgemein = new {
+                cfg.Allgemein.ImportThreads,
+                cfg.Allgemein.Debugging,
+                cfg.Allgemein.StopAfterException,
+                cfg.System.Name,
+                cfg.System.Version,
+                Environment.MachineName
+            }
+        });
     });
-});
 
 
 app.Run();
+return;
+
+static bool CanWriteToDirectory(string path) {
+    try {
+        var testFile = Path.Combine(
+            path,
+            $".write_test_{Guid.NewGuid():N}");
+
+        using (File.Create(testFile)) {
+        }
+
+        File.Delete(testFile);
+
+        return true;
+    }
+    catch {
+        return false;
+    }
+}

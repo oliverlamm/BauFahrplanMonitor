@@ -1,0 +1,136 @@
+.bs-page {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.bs-filter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+}
+
+.bs-filter-left {
+    flex: 1;
+}
+
+.bs-filter-left select {
+    width: 100%;
+}
+
+.bs-filter-right {
+    display: flex;
+    gap: 16px;
+    font-size: 14px;
+}
+
+.bs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: stretch;   /* 🔑 gleiche Höhe */
+}
+
+.bs-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.bs-form {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.bs-form td {
+    padding: 8px 6px;
+    font-size: 14px;
+}
+
+.bs-form input,
+.bs-form select {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background: #f5f5f5;
+}
+
+.bs-map {
+    height: 300px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.bs-geo {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.bs-geo th,
+.bs-geo td {
+    padding: 6px 8px;
+    text-align: left;
+}
+
+.btn.full {
+    margin-top: auto;   /* 🔑 drückt Button nach unten */
+    width: 100%;
+}
+
+/* RL100-Auswahlzeile */
+.rl100-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+/* Dropdown selbst */
+.rl100-select {
+    width: 220px;          /* visuell ca. 14 Zeichen */
+    max-width: 220px;
+}
+
+.rl100-filter {
+    display: flex;
+    align-items: center;   /* 🔑 vertikale Ausrichtung */
+    gap: 16px;
+    white-space: nowrap;
+}
+
+.rl100-filter label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: linear-gradient(180deg, #111827, #030712);
+    color: #ffffff;
+    border: none;
+}
+
+.btn-secondary {
+    background: #ffffff;
+    color: #6b7280;
+}
