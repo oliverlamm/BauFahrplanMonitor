@@ -1,6 +1,4 @@
-using System;
-
-namespace BauFahrplanMonitor.Helpers;
+namespace BauFahrplanMonitor.Core.Helpers;
 
 public sealed class ImportDbInfo {
     public string?    FileName        { get; init; } = string.Empty;

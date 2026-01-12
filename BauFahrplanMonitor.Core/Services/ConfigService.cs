@@ -60,29 +60,15 @@ public class ConfigService {
     // SessionKey bestimmen
     // ------------------------------------------------------------
     private static string ResolveSessionKey(string[]? args) {
-        if (args != null) {
-            for (var i = 0; i < args.Length - 1; i++) {
-                if (args[i].Equals("--session", StringComparison.OrdinalIgnoreCase)) {
-                    return args[i + 1].Trim();
-                }
+        if (args == null)
+            return Environment.MachineName.Trim();
+        for (var i = 0; i < args.Length - 1; i++) {
+            if (args[i].Equals("--session", StringComparison.OrdinalIgnoreCase)) {
+                return args[i + 1].Trim();
             }
         }
 
         return Environment.MachineName.Trim();
-    }
-
-    // ------------------------------------------------------------
-    // ConnectionString
-    // ------------------------------------------------------------
-    public string GetConnectionString() {
-        var db = Effective.Datenbank;
-
-        return
-            $"Host={db.Host};"         +
-            $"Port={db.Port};"         +
-            $"Username={db.User};"     +
-            $"Password={db.Password};" +
-            $"Database={db.Database}";
     }
 
     // ------------------------------------------------------------
@@ -189,11 +175,17 @@ public class ConfigService {
 
     public string BuildConnectionString() {
         var c = Effective.Datenbank;
-        return
-            $"Host={c.Host};"         +
-            $"Port={c.Port};"         +
-            $"Username={c.User};"     +
-            $"Password={c.Password};" +
-            $"Database={c.Database}";
+        var cs =
+            $"Host={c.Host};"                      +
+            $"Port={c.Port};"                      +
+            $"Database={c.Database};"              +
+            $"Username={c.User};"                  +
+            $"Password={c.Password};"              +
+            $"Application Name=BauFahrplanMonitor;" + // 🔑 wichtig
+            $"Maximum Pool Size=50;"                + // 🔑 wichtig
+            $"Timeout=15;"                          +
+            $"Command Timeout=120;"                 +
+            $"Include Error Detail=true;";
+        return cs;
     }
 }

@@ -125,7 +125,9 @@ public sealed class FploDtoMapper : IFploDtoMapper {
         return dto;
     }
 
-    private void MapHaltausfall(ZvFExportBaumassnahmenBaumassnahme bm, FploXmlDocumentDto dto) {
+    private void MapHaltausfall(
+        ZvFExportBaumassnahmenBaumassnahme bm,
+        FploXmlDocumentDto                 dto) {
         var has = bm.Zuege?.Haltausfall;
         if (has == null) return;
 
@@ -133,17 +135,19 @@ public sealed class FploDtoMapper : IFploDtoMapper {
             var basisVerkehrstag =
                 DateOnly.FromDateTime(ha.Verkehrstag);
 
-            var haDto = new FploHaltausfallDto {
-                ZugNr                 = ha.Zugnr,
-                Verkehrstag           = basisVerkehrstag,
-                AusfallenderHaltDs100 = ha.AusfallenderHalt?.Ds100 ?? string.Empty,
-                ErsatzHaltDs100       = ha.Ersatzhalt?.Ds100       ?? string.Empty,
-            };
+            dto.Document.Haltausfall.Add(new FploHaltausfallDto {
+                ZugNr       = ha.Zugnr,
+                Verkehrstag = basisVerkehrstag,
 
-            dto.Document.Haltausfall.Add(haDto);
+                AusfallenderHaltDs100 = ha.AusfallenderHalt?.Ds100,
+                AusfallenderHaltName  = ha.AusfallenderHalt?.Value,
+
+                ErsatzHaltDs100 = ha.Ersatzhalt?.Ds100,
+                ErsatzHaltName  = ha.Ersatzhalt?.Value
+            });
         }
     }
-
+    
     private void MapZurueckgehalten(
         ZvFExportBaumassnahmenBaumassnahme bm,
         FploXmlDocumentDto                 dto) {
@@ -438,7 +442,7 @@ public sealed class FploDtoMapper : IFploDtoMapper {
     private static readonly Regex TeillieferungRegex = new(@"_T\d+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex NachtragRegex = new(@"_N\d+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-       
+
     private static bool IsEntwurfFile(string fileName) {
         if (string.IsNullOrWhiteSpace(fileName))
             return false;

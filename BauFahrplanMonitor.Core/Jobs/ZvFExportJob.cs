@@ -5,7 +5,6 @@ using BauFahrplanMonitor.Core.Importer.Helper;
 using BauFahrplanMonitor.Core.Resolver;
 using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -56,43 +55,6 @@ public sealed class ZvFExportJob {
     // Cancel
     // --------------------------------------------------
     public void Cancel() => _cts?.Cancel();
-
-    // --------------------------------------------------
-    // ScanFiles
-    // --------------------------------------------------
-    private List<string> ScanFiles(ZvFFileFilter filter) {
-        var root = _config.Effective.Datei.Importpfad;
-
-        _logger.LogInformation(
-            "ZvFExport Scan gestartet | Importpfad='{Importpfad}' | Filter={Filter}",
-            root,
-            filter);
-
-        if (string.IsNullOrWhiteSpace(root)) {
-            _logger.LogError(
-                "ZvFExport Scan abgebrochen: Importpfad ist leer");
-            throw new InvalidOperationException(
-                "Config.Effective.Datei.Importpfad ist nicht gesetzt.");
-        }
-
-        if (!Directory.Exists(root)) {
-            _logger.LogError(
-                "ZvFExport Scan abgebrochen: Importpfad existiert nicht | {Importpfad}",
-                root);
-            throw new InvalidOperationException(
-                $"Importpfad existiert nicht: {root}");
-        }
-
-        var files = Directory
-            .EnumerateFiles(root, "*.xml", SearchOption.AllDirectories)
-            .ToList();
-
-        _logger.LogInformation(
-            "ZvFExport Scan: {Count} Dateien gefunden",
-            files.Count);
-
-        return files;
-    }
 
     // --------------------------------------------------
     // StartScanAsync
@@ -278,7 +240,7 @@ public sealed class ZvFExportJob {
                 try {
                     worker.CurrentFile = item.FilePath;
 
-                    await ImportOneAsync(item, ct);
+                    await ImportOneAsync(worker, item, ct);
 
                     _status.IncrementImportProcessed();
                     completedSuccessfully = true;
@@ -321,8 +283,9 @@ public sealed class ZvFExportJob {
     // ImportOneAsync
     // --------------------------------------------------
     private async Task ImportOneAsync(
-        ImportFileItem    item,
-        CancellationToken token) {
+        ImportWorkerStatus worker,
+        ImportFileItem     item,
+        CancellationToken  token) {
         token.ThrowIfCancellationRequested();
 
         using (_logger.BeginScope(new Dictionary<string, object> {
@@ -336,9 +299,15 @@ public sealed class ZvFExportJob {
 
             var lastLog = DateTime.MinValue;
 
-            // 🔑 Progress NUR für Logging – KEIN Zählen!
             var progress = new Progress<ImportProgressInfo>(p => {
 
+                // 🔑 1) IMMER in den Worker-Status schreiben
+                lock (_lock) {
+                    worker.ProgressMessage = p.StepText;
+                    worker.CurrentFile     = p.FileName;
+                }
+
+                // 🔑 2) OPTIONAL: Logging wie bisher
                 if (!_logger.IsEnabled(LogLevel.Debug))
                     return;
 
@@ -348,11 +317,11 @@ public sealed class ZvFExportJob {
                 lastLog = DateTime.UtcNow;
 
                 _logger.LogDebug(
-                    "Import läuft | {File} | {Current}/{Total}",
+                    "Import läuft | {File} | {Step}",
                     item.FilePath,
-                    p.ProcessedItems,
-                    p.TotalItems);
+                    p.StepText);
             });
+
 
             _status.CurrentFile = item.FilePath;
 

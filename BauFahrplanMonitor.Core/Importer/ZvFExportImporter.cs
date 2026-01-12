@@ -6,7 +6,6 @@ using BauFahrplanMonitor.Core.Importer.Helper;
 using BauFahrplanMonitor.Core.Interfaces;
 using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Helpers;
 using NLog;
 
 namespace BauFahrplanMonitor.Core.Importer;
@@ -57,22 +56,43 @@ public sealed class ZvFExportImporter(
         ArgumentNullException.ThrowIfNull(item);
         token.ThrowIfCancellationRequested();
 
-        switch (item.FileType) {
-            case ImportMode.ZvF:
-                await ImportZvFAsync(db, item.FilePath, progress, token);
-                break;
+        try {
+            switch (item.FileType) {
+                case ImportMode.ZvF:
+                    await ImportZvFAsync(db, item.FilePath, progress, token);
+                    break;
 
-            case ImportMode.UeB:
-                await ImportUeBAsync(db, item.FilePath, progress, token);
-                break;
+                case ImportMode.UeB:
+                    await ImportUeBAsync(db, item.FilePath, progress, token);
+                    break;
 
-            case ImportMode.Fplo:
-                await ImportFploAsync(db, item.FilePath, progress, token);
-                break;
+                case ImportMode.Fplo:
+                    await ImportFploAsync(db, item.FilePath, progress, token);
+                    break;
 
-            default:
-                throw new InvalidOperationException(
-                    $"Unbekannter FileType: {item.FileType}");
+                default:
+                    throw new InvalidOperationException(
+                        $"Unbekannter FileType: {item.FileType}");
+            }
+        }
+        catch (InvalidOperationException ex)
+            when (ex.Message.Contains("error in XML document", StringComparison.OrdinalIgnoreCase)) {
+            // --------------------------------------------------
+            // 🔑 XML kaputt → Datei überspringen
+            // --------------------------------------------------
+            Logger.Error(
+                ex,
+                "Ungültiges XML – Datei wird übersprungen: {File}",
+                item.FilePath);
+
+            progress?.Report(new ImportProgressInfo {
+                FileName  = Path.GetFileName(item.FilePath),
+                StepText  = "Ungültiges XML – Datei übersprungen",
+                StepIndex = ImportSteps.Read
+            });
+
+            // ❗ WICHTIG: NICHT weiterwerfen
+            return;
         }
     }
 
@@ -224,9 +244,7 @@ public sealed class ZvFExportImporter(
 
         var stopwatch = Stopwatch.StartNew();
 
-        using (ScopeContext.PushProperty(
-                   "ImportFile",
-                   Path.GetFileName(filePath))) {
+        using (ScopeContext.PushProperty("ImportFile", Path.GetFileName(filePath))) {
             try {
                 Report(progress, filePath, ImportSteps.Read, "Start");
 
@@ -258,10 +276,7 @@ public sealed class ZvFExportImporter(
                                 .UnsafeRelaxedJsonEscaping
                         });
 
-                    Logger.Debug(
-                        "ÜB DTO nach Mapping:{0}{1}",
-                        Environment.NewLine,
-                        json);
+                    Logger.Debug("ÜB DTO nach Mapping:{0}{1}", Environment.NewLine, json);
                 }
 
                 token.ThrowIfCancellationRequested();

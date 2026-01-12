@@ -95,22 +95,15 @@ public partial class UjBauDbContext {
         // ------------------------------------------------------
         // Connection String bauen
         // ------------------------------------------------------
-        var cs =
-            $"Host={db.Host};"                      +
-            $"Port={db.Port};"                      +
-            $"Database={db.Database};"              +
-            $"Username={db.User};"                  +
-            $"Password={db.Password};"              +
-            $"Application Name=BauFahrplanMonitor;" + // 🔑 wichtig
-            $"Maximum Pool Size=50;"                + // 🔑 wichtig
-            $"Timeout=15;"                          +
-            $"Command Timeout=120;";
-
+        var cs = _config.BuildConnectionString();
+        
         // ------------------------------------------------------
         // EF Core konfigurieren
         // ------------------------------------------------------
-        var efLogger = LogManager.GetLogger("EFCore.SQL");
-
+        optionsBuilder
+            .EnableDetailedErrors()        // 🔍 liefert DETAIL aus PostgreSQL
+            .EnableSensitiveDataLogging(); // ⚠️ zeigt Parameterwerte (nur Debug!)
+        
         optionsBuilder.UseNpgsql(
             cs,
             o => {
@@ -119,23 +112,5 @@ public partial class UjBauDbContext {
                 // 🔑 Performance: Batch Inserts / Updates
                 o.MaxBatchSize(100);
             });
-
-        // ------------------------------------------------------
-        // Optionales SQL-Logging
-        // ------------------------------------------------------
-        if (db.EFLogging == true) {
-            optionsBuilder
-                .LogTo(
-                    efLogger.Debug,
-                    [DbLoggerCategory.Database.Command.Name],
-                    LogLevel.Information)
-                .EnableDetailedErrors();
-        }
-
-        // ------------------------------------------------------
-        // Sensitive Data Logging (optional!)
-        // ------------------------------------------------------
-        if (db.EFSensitiveLogging == true)
-            optionsBuilder.EnableSensitiveDataLogging();
     }
 }

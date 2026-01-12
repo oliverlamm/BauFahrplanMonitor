@@ -10,19 +10,19 @@ export function mapImporterStatus(
             return { cls: "status-bereit", text: "Bereit" };
 
         case "Starting":
-            return { cls: "status-scan", text: "Starte…" };
+            return { cls: "status-scan", text: "Starte" };
 
         case "Scanning":
-            return { cls: "status-scan", text: "Scannen…" };
+            return { cls: "status-scan", text: "Scannen" };
 
         case "Scanned":
             return { cls: "status-success", text: "Scan abgeschlossen" };
 
         case "Running":
-            return { cls: "status-running", text: "Import läuft…" };
+            return { cls: "status-running", text: "Importiere" };
 
         case "Stopping":
-            return { cls: "status-warning", text: "Stoppt…" };
+            return { cls: "status-warning", text: "Stoppt" };
 
         case "Finished":
             return { cls: "status-success", text: "Abgeschlossen" };

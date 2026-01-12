@@ -2,7 +2,6 @@
 using System.Text.RegularExpressions;
 using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Importer.Dto.Shared;
-using BauFahrplanMonitor.Core.Importer.Helper;
 using BauFahrplanMonitor.Core.Interfaces;
 using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Models;
@@ -13,175 +12,98 @@ using Npgsql;
 namespace BauFahrplanMonitor.Core.Resolver;
 
 /// <summary>
-/// Zentrale Referenzauflösung für alle Importer.
+/// Zentrale, threadsichere Referenzauflösung.
+/// Alle CREATE-Operationen laufen in eigenen DbContexts.
 /// </summary>
-public class SharedReferenceResolver {
-    private static readonly Logger Logger =
-        LogManager.GetLogger("SharedReferenceResolver");
+public sealed class SharedReferenceResolver(IDbContextFactory<UjBauDbContext> dbFactory) {
 
-    // ----------------------------------------------
-    // Dokument-Locks (Key: Vorgang + Dateiname)
-    // ----------------------------------------------
-    private static readonly ConcurrentDictionary<string, SemaphoreSlim> VorgangLocks = new();
+    private static readonly Logger Logger = LogManager.GetLogger("SharedReferenceResolver");
 
-    private static readonly ConcurrentDictionary<(string Name, string Vorname, string Mail), SemaphoreSlim>
-        SenderLocks = new();
+    // ==========================================================
+    // LOCKS (prozesslokal)
+    // ==========================================================
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
-    // =====================================================================
-    // CACHES
-    // =====================================================================
+    private SemaphoreSlim GetLock(string scope, string key)
+        => _locks.GetOrAdd($"{scope}:{key}", _ => new SemaphoreSlim(1, 1));
 
-    private readonly ConcurrentDictionary<string, long> _regionCache = new();
-
+    // ==========================================================
+    // CACHES (NUR committed IDs!)
+    // ==========================================================
+    private readonly ConcurrentDictionary<string, long>      _bstCache     = new();
+    private readonly ConcurrentDictionary<string, long>      _kundeCache   = new();
+    private readonly ConcurrentDictionary<long, long>        _streckeCache = new();
+    private readonly ConcurrentDictionary<string, long>      _bst2StrCache = new();
+    private readonly ConcurrentDictionary<string, long>      _regionCache  = new();
+    private readonly ConcurrentDictionary<(long, int), long> _vorgangCache = new();
     private readonly ConcurrentDictionary<(string Name, string Vorname, string Mail), long>
         _senderCache = new();
-
-    private readonly ConcurrentDictionary<string, long> _kundeCache   = new();
-    private readonly ConcurrentDictionary<string, long> _bstCache     = new();
-    private readonly ConcurrentDictionary<long, long>   _streckeCache = new();
-    private readonly ConcurrentDictionary<string, long> _bst2StrCache = new();
-
     private readonly ConcurrentDictionary<(long VorgangRef, string Bbmn), byte>
         _bbmnCache = new();
 
-    private readonly ConcurrentDictionary<(long MasterFplo, int Fahrplanjahr), long>
-        _vorgangCache = new();
-
-    private readonly RegionCacheStats _regionStats = new();
-    // =====================================================================
-    // LOGGING HELPERS
-    // =====================================================================
-
-    private static void LogStart(string scope, string msg, params object?[] args) {
-        if (!Logger.IsDebugEnabled) return;
-        Logger.Debug($"→ {scope} {string.Format(msg, args)}");
-    }
-
-    private static void LogHit(string scope, string source, string msg, params object?[] args) {
-        if (!Logger.IsDebugEnabled) return;
-        Logger.Debug($"← {scope} ({source}) {string.Format(msg, args)}");
-    }
-
-    private static void LogCreated(string scope, string msg, params object?[] args) {
-        // Created ist für dich besonders wichtig → Info
-        Logger.Info($"＋ {scope} {string.Format(msg, args)}");
-    }
-
-    // =====================================================================
-    // SENDER
-    // =====================================================================
-    public async Task<long> ResolveOrCreateSenderAsync(
-        UjBauDbContext    db,
-        SharedHeaderDto   header,
+    // ==========================================================
+    // BETRIEBSSTELLE
+    // ==========================================================
+    public async Task<long> ResolveOrCreateBetriebsstelleAsync(
+        UjBauDbContext    _,
+        string?           raw,
         CancellationToken token) {
-        ArgumentNullException.ThrowIfNull(header);
+        var key = Ds100Normalizer.Clean(raw)?.ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(key))
+            return 0; // FK-safe
 
-        var key = (
-            Name: Norm(header.SenderName),
-            Vorname: Norm(header.SenderVorname),
-            Mail: Norm(header.SenderMail)
-        );
+        if (_bstCache.TryGetValue(key, out var cached))
+            return cached;
 
-        LogStart("[Sender.ResolveOrCreate]", "name='{0}', vorname='{1}', mail='{2}', file='{3}'",
-            key.Name, key.Vorname, key.Mail, header.FileName);
-
-        // -------------------------------------------------
-        // Fast Path: Cache vor Lock
-        // -------------------------------------------------
-        if (_senderCache.TryGetValue(key, out var cachedId))
-            return cachedId;
-
-        // -------------------------------------------------
-        // Lock (prozesslokal)
-        // -------------------------------------------------
-        var sem = GetSenderLock(key);
+        var sem = GetLock("BST", key);
         await sem.WaitAsync(token);
 
         try {
-            if (_senderCache.TryGetValue(key, out cachedId))
-                return cachedId;
+            if (_bstCache.TryGetValue(key, out cached))
+                return cached;
 
-            // -------------------------------------------------
-            // DB Lookup (normalisiert)
-            // -------------------------------------------------
-            var sender = await db.UjbauSender.FirstOrDefaultAsync(
-                s =>
-                    (s.Name    ?? "").Trim().ToLower() == key.Name    &&
-                    (s.Vorname ?? "").Trim().ToLower() == key.Vorname &&
-                    (s.Email   ?? "").Trim().ToLower() == key.Mail,
-                token);
+            await using var ctx = await dbFactory.CreateDbContextAsync(token);
 
-            var isNew     = false;
-            var isChanged = false;
+            var id = await ctx.BasisBetriebsstelle
+                .AsNoTracking()
+                .Where(b => b.Rl100 != null && b.Rl100.ToUpper() == key)
+                .Select(b => b.Id)
+                .FirstOrDefaultAsync(token);
 
-            if (sender == null) {
-                // CREATE (null-safe)
-                sender = new UjbauSender {
-                    Name      = (header.SenderName).Trim(),
-                    Vorname   = (header.SenderVorname).Trim(),
-                    Email     = (header.SenderMail).Trim(),
-                    Abteilung = header.SenderAbteilung,
-                    Telefon   = header.SenderTelefon,
-                    Strasse   = header.SenderAdresse,
-                    Stadt     = header.SenderStadt,
-                    Plz       = header.SenderPlz // int? oder int → passt
-                };
-
-                db.UjbauSender.Add(sender);
-                isNew = true;
-            }
-            else {
-                var s = sender;
-                isChanged |= UpdateIfDifferent(sender.Abteilung, header.SenderAbteilung, v => s.Abteilung = v);
-                isChanged |= UpdateIfDifferent(sender.Telefon, header.SenderTelefon, v => s.Telefon       = v);
-                isChanged |= UpdateIfDifferent(sender.Strasse, header.SenderAdresse, v => s.Strasse       = v);
-                isChanged |= UpdateIfDifferent(sender.Stadt, header.SenderStadt, v => s.Stadt             = v);
-
-                // UpdateIfDifferent ist nur für string → PLZ explizit
-                if (sender.Plz != header.SenderPlz) {
-                    sender.Plz = header.SenderPlz;
-                    isChanged  = true;
-                }
-
-                if (isChanged) {
-                    Logger.Info($"[Sender] aktualisiert: {sender.Name} {sender.Vorname} <{sender.Email}> id={sender.Id}");
-                }
-                else {
-                    LogHit("[Sender.ResolveOrCreate]", "NoChange", "{0} {1} <{2}> → {3}",
-                        sender.Name, sender.Vorname, sender.Email, sender.Id);
-                }
+            if (id > 0) {
+                _bstCache[key] = id;
+                return id;
             }
 
-            // -------------------------------------------------
-            // Persist + Unique-Catch
-            // -------------------------------------------------
+            var bst = new BasisBetriebsstelle {
+                Rl100             = key,
+                NetzbezirkRef     = 0,
+                TypRef            = 0,
+                RegionRef         = 0,
+                Zustand           = "in Betrieb",
+                IstBasisDatensatz = false
+            };
+
+            ctx.BasisBetriebsstelle.Add(bst);
+
             try {
-                if (isNew || isChanged) {
-                    await db.SaveChangesAsync(token);
-                    db.Entry(sender).State = EntityState.Unchanged;
-                }
+                await ctx.SaveChangesAsync(token);
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex)) {
-                // anderer Thread war schneller → Re-Read
-                sender = await db.UjbauSender.SingleAsync(
-                    s =>
-                        (s.Name    ?? "").Trim().ToLower() == key.Name    &&
-                        (s.Vorname ?? "").Trim().ToLower() == key.Vorname &&
-                        (s.Email   ?? "").Trim().ToLower() == key.Mail,
-                    token);
+                id = await ctx.BasisBetriebsstelle
+                    .AsNoTracking()
+                    .Where(b => b.Rl100 != null && b.Rl100.ToUpper() == key)
+                    .Select(b => b.Id)
+                    .FirstAsync(token);
+
+                _bstCache[key] = id;
+                return id;
             }
 
-            // -------------------------------------------------
-            // Cache NACH erfolgreichem Persistieren
-            // -------------------------------------------------
-            _senderCache[key] = sender.Id;
+            _bstCache[key] = bst.Id;
+            Logger.Warn("[Bst] angelegt: {0} → {1}", key, bst.Id);
 
-            if (isNew) {
-                LogCreated($"[Sender]", "angelegt: {0} {1} <{2}> → id={3}",
-                    sender.Name, sender.Vorname, sender.Email, sender.Id);
-            }
-
-            return sender.Id;
+            return bst.Id;
         }
         finally {
             sem.Release();
@@ -189,41 +111,289 @@ public class SharedReferenceResolver {
     }
 
     // =====================================================================
-    // VORGANG
+    // BETRIEBSSTELLE (SMART)
     // =====================================================================
-    public async Task<long> ResolveOrCreateVorgangAsync(
+    public async Task<long> ResolveOrCreateBetriebsstelleSmartAsync(
         UjBauDbContext    db,
-        SharedVorgangDto  dto,
-        ImportMode        importMode,
+        string?           ds100,
+        string?           nameFallback,
+        string            context,
+        long?             zugNr,
+        DateOnly?         verkehrstag,
         CancellationToken token) {
-        ArgumentNullException.ThrowIfNull(dto);
+        // 1) Primär: DS100
+        if (!string.IsNullOrWhiteSpace(ds100)) {
+            var key = Ds100Normalizer.Clean(ds100);
+            if (!string.IsNullOrWhiteSpace(key)) {
+                var id = await ResolveOrCreateBetriebsstelleAsync(db, key, token);
+                if (id > 0)
+                    return id;
+            }
+        }
 
-        if (dto.MasterFplo <= 0)
-#pragma warning disable CA2208
-            throw new ArgumentException("MasterFplo muss > 0 sein", nameof(dto.MasterFplo));
-#pragma warning restore CA2208
+        // 2) Fallback: Name
+        if (!string.IsNullOrWhiteSpace(nameFallback)) {
+            var key = Ds100Normalizer.Clean(nameFallback);
+            if (!string.IsNullOrWhiteSpace(key)) {
+                var id = await ResolveOrCreateBetriebsstelleAsync(db, key, token);
+                if (id > 0) {
+                    Logger.Info(
+                        "[Bst.ResolveSmart] Fallback über Name | Context={Context}, '{Name}'",
+                        context,
+                        nameFallback);
+                    return id;
+                }
+            }
+        }
 
-        if (!dto.FahrplanJahr.HasValue)
-#pragma warning disable CA2208
-            throw new ArgumentException("Fahrplanjahr muss gesetzt sein", nameof(dto.FahrplanJahr));
-#pragma warning restore CA2208
+        // 3) Logging mit Fachkontext
+        Logger.Warn(
+            "[Bst.ResolveSmart] Nicht auflösbar | Context={Context}, Zug={Zug}/{Tag}, ds100='{Ds100}', name='{Name}'",
+            context,
+            zugNr?.ToString()                   ?? "-",
+            verkehrstag?.ToString("yyyy-MM-dd") ?? "-",
+            ds100                               ?? "",
+            nameFallback                        ?? ""
+        );
 
-        var cacheKey = (dto.MasterFplo, dto.FahrplanJahr.Value);
+        return 0; // FK-safe
+    }
 
-        // -------------------------------------------------
-        // Cache
-        // -------------------------------------------------
-        if (_vorgangCache.TryGetValue(cacheKey, out var cachedId))
-            return cachedId;
+    // =====================================================================
+    // BETRIEBSSTELLE (CACHED WRAPPER)
+    // =====================================================================
+    public async Task<long> ResolveOrCreateBetriebsstelleCachedAsync(
+        UjBauDbContext    db,
+        string?           raw,
+        CancellationToken token) {
+        var key = Ds100Normalizer.Clean(raw);
 
-        var sem = GetVorgangLock(dto.MasterFplo, dto.FahrplanJahr);
+        if (string.IsNullOrWhiteSpace(key))
+            return 0; // 🔑 FK-safe
+
+        // --------------------------------------------------
+        // Cache nur lesen (niemals schreiben!)
+        // --------------------------------------------------
+        if (_bstCache.TryGetValue(key, out var cached) && cached > 0)
+            return cached;
+
+        // --------------------------------------------------
+        // Delegation an die saubere Core-Methode
+        // --------------------------------------------------
+        var id = await ResolveOrCreateBetriebsstelleAsync(db, key, token);
+
+        // --------------------------------------------------
+        // Cache NUR, wenn Datensatz bereits existierte
+        // (ResolveOrCreateBetriebsstelleAsync cached selbst
+        // nur bei DB-Treffern)
+        // --------------------------------------------------
+        return id;
+    }
+
+    // ==========================================================
+    // KUNDE
+    // ==========================================================
+    public async Task<long> ResolveOrCreateKundeAsync(
+        UjBauDbContext    _,
+        string?           kundeCode,
+        CancellationToken token) {
+        var key = string.IsNullOrWhiteSpace(kundeCode)
+            ? "UNKNOWN"
+            : kundeCode.Trim();
+
+        if (_kundeCache.TryGetValue(key, out var cached))
+            return cached;
+
+        var sem = GetLock("KUNDE", key);
         await sem.WaitAsync(token);
 
         try {
-            if (_vorgangCache.TryGetValue(cacheKey, out var cachedAfterLock))
-                return cachedAfterLock;
+            if (_kundeCache.TryGetValue(key, out cached))
+                return cached;
 
-            var vorgang = await db.UjbauVorgang
+            await using var ctx = await dbFactory.CreateDbContextAsync(token);
+
+            var id = await ctx.BasisKunde
+                .AsNoTracking()
+                .Where(k => k.Kdnnr == key)
+                .Select(k => k.Id)
+                .FirstOrDefaultAsync(token);
+
+            if (id > 0) {
+                _kundeCache[key] = id;
+                return id;
+            }
+
+            var kunde = new BasisKunde {
+                Kdnnr = key
+            };
+            ctx.BasisKunde.Add(kunde);
+
+            try {
+                await ctx.SaveChangesAsync(token);
+            }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex)) {
+                id = await ctx.BasisKunde
+                    .AsNoTracking()
+                    .Where(k => k.Kdnnr == key)
+                    .Select(k => k.Id)
+                    .FirstAsync(token);
+
+                _kundeCache[key] = id;
+                return id;
+            }
+
+            _kundeCache[key] = kunde.Id;
+            Logger.Info("[Kunde] angelegt: {0} → {1}", key, kunde.Id);
+
+            return kunde.Id;
+        }
+        finally {
+            sem.Release();
+        }
+    }
+
+    // ==========================================================
+    // STRECKE (read-only)
+    // ==========================================================
+    public async Task<long> ResolveStreckeAsync(
+        UjBauDbContext    db,
+        long?             vzgNr,
+        CancellationToken token = default) {
+        if (vzgNr is null or <= 0)
+            return 0;
+
+        if (_streckeCache.TryGetValue(vzgNr.Value, out var cached))
+            return cached;
+
+        var id = await db.BasisStrecke
+            .AsNoTracking()
+            .Where(s => s.VzgNr == vzgNr)
+            .Select(s => s.Id)
+            .FirstOrDefaultAsync(token);
+
+        _streckeCache[vzgNr.Value] = id;
+        return id;
+    }
+
+    // ==========================================================
+    // BETRIEBSSTELLE ↔ STRECKE
+    // ==========================================================
+    public async Task<long> ResolveBst2StrAsync(
+        UjBauDbContext    _,
+        long              bstRef,
+        long              strRef,
+        string?           kmL   = null,
+        CancellationToken token = default) {
+        var key = $"{bstRef}|{strRef}";
+
+        if (_bst2StrCache.TryGetValue(key, out var cached))
+            return cached;
+
+        var sem = GetLock("BST2STR", key);
+        await sem.WaitAsync(token);
+
+        try {
+            if (_bst2StrCache.TryGetValue(key, out cached))
+                return cached;
+
+            await using var ctx = await dbFactory.CreateDbContextAsync(token);
+
+            var id = await ctx.BasisBetriebsstelle2strecke
+                .AsNoTracking()
+                .Where(x => x.BstRef == bstRef && x.StreckeRef == strRef)
+                .Select(x => x.Id)
+                .FirstOrDefaultAsync(token);
+
+            if (id > 0) {
+                _bst2StrCache[key] = id;
+                return id;
+            }
+
+            var neu = new BasisBetriebsstelle2strecke {
+                BstRef            = bstRef,
+                StreckeRef        = strRef,
+                KmL               = string.IsNullOrWhiteSpace(kmL) ? null : kmL,
+                IstBasisDatensatz = false
+            };
+
+            ctx.BasisBetriebsstelle2strecke.Add(neu);
+
+            try {
+                await ctx.SaveChangesAsync(token);
+            }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex)) {
+                id = await ctx.BasisBetriebsstelle2strecke
+                    .AsNoTracking()
+                    .Where(x => x.BstRef == bstRef && x.StreckeRef == strRef)
+                    .Select(x => x.Id)
+                    .FirstAsync(token);
+
+                _bst2StrCache[key] = id;
+                return id;
+            }
+
+            _bst2StrCache[key] = neu.Id;
+            return neu.Id;
+        }
+        finally {
+            sem.Release();
+        }
+    }
+
+    // ==========================================================
+    // REGION (read-only)
+    // ==========================================================
+    public async Task<long> ResolveRegionAsync(
+        UjBauDbContext    db,
+        string?           raw,
+        CancellationToken token) {
+        var key = NormalizeRegionKey(raw);
+        if (string.IsNullOrWhiteSpace(key))
+            return 0;
+
+        if (_regionCache.TryGetValue(key, out var cached))
+            return cached;
+
+        var id = await db.BasisRegion
+            .AsNoTracking()
+            .Where(r =>
+                r.Bezeichner != null && r.Bezeichner.ToLower() == key ||
+                r.Langname   != null && r.Langname.ToLower()   == key ||
+                r.Kbez       != null && r.Kbez.ToLower()       == key)
+            .Select(r => r.Id)
+            .FirstOrDefaultAsync(token);
+
+        _regionCache[key] = id;
+        return id;
+    }
+
+    // ==========================================================
+    // VORGANG 
+    // ==========================================================
+    public async Task<long> ResolveOrCreateVorgangAsync(
+        UjBauDbContext    _,
+        SharedVorgangDto  dto,
+        ImportMode        importMode,
+        CancellationToken token) {
+        if (dto.MasterFplo <= 0 || !dto.FahrplanJahr.HasValue)
+            throw new ArgumentException("Ungültiger Vorgang");
+
+        var key = (dto.MasterFplo, dto.FahrplanJahr.Value);
+
+        if (_vorgangCache.TryGetValue(key, out var cached))
+            return cached;
+
+        var sem = GetLock("VORGANG", $"{key.MasterFplo}:{dto.FahrplanJahr.Value}");
+        await sem.WaitAsync(token);
+
+        try {
+            if (_vorgangCache.TryGetValue(key, out cached))
+                return cached;
+
+            await using var ctx = await dbFactory.CreateDbContextAsync(token);
+
+            var vorgang = await ctx.UjbauVorgang
                 .FirstOrDefaultAsync(v =>
                         v.VorgangNr    == dto.MasterFplo &&
                         v.Fahrplanjahr == dto.FahrplanJahr,
@@ -235,45 +405,30 @@ public class SharedReferenceResolver {
                 vorgang = new UjbauVorgang {
                     VorgangNr    = dto.MasterFplo,
                     Fahrplanjahr = dto.FahrplanJahr,
-                    Kategorie = string.IsNullOrWhiteSpace(dto.Kategorie)
-                        ? "A"
-                        : dto.Kategorie
+                    Kategorie    = string.IsNullOrWhiteSpace(dto.Kategorie) ? "A" : dto.Kategorie
                 };
-
-                db.UjbauVorgang.Add(vorgang);
+                ctx.UjbauVorgang.Add(vorgang);
                 isNew = true;
             }
 
-            if (dto is IExtendedVorgangDto extended) {
-                if (isNew || importMode != ImportMode.UeB) {
-                    extended.ApplyTo(vorgang);
-                }
-                else {
-                    extended.ApplyIfEmptyTo(vorgang);
-                }
+            if (dto is IExtendedVorgangDto ext) {
+                if (isNew || importMode != ImportMode.UeB)
+                    ext.ApplyTo(vorgang);
+                else
+                    ext.ApplyIfEmptyTo(vorgang);
             }
 
             try {
-                await db.SaveChangesAsync(token);
-                db.Entry(vorgang).State = EntityState.Unchanged;
+                await ctx.SaveChangesAsync(token);
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex)) {
-                vorgang = await db.UjbauVorgang
-                    .SingleAsync(v =>
-                            v.VorgangNr    == dto.MasterFplo &&
-                            v.Fahrplanjahr == dto.FahrplanJahr,
-                        token);
+                vorgang = await ctx.UjbauVorgang.SingleAsync(v =>
+                        v.VorgangNr    == dto.MasterFplo &&
+                        v.Fahrplanjahr == dto.FahrplanJahr,
+                    token);
             }
 
-            _vorgangCache[cacheKey] = vorgang.Id;
-
-            if (isNew)
-                LogCreated("[Vorgang]", "angelegt: masterFplo={0}, fahrplanJahr={1} → id={2}",
-                    dto.MasterFplo, dto.FahrplanJahr, vorgang.Id);
-            else
-                LogHit("[Vorgang.ResolveOrCreate]", "Resolved", "{0}/{1} → {2}",
-                    dto.MasterFplo, dto.FahrplanJahr, vorgang.Id);
-
+            _vorgangCache[key] = vorgang.Id;
             return vorgang.Id;
         }
         finally {
@@ -281,350 +436,103 @@ public class SharedReferenceResolver {
         }
     }
 
-    // =====================================================================
-    // KUNDE
-    // =====================================================================
-    public async Task<long> ResolveOrCreateKundeAsync(
-        UjBauDbContext    db,
-        string?           kundeCode,
+    // ==========================================================
+    // SENDER
+    // ==========================================================
+    public async Task<long> ResolveOrCreateSenderAsync(
+        UjBauDbContext    _,
+        SharedHeaderDto   header,
         CancellationToken token) {
-        var key = string.IsNullOrWhiteSpace(kundeCode)
-            ? "UNKNOWN"
-            : kundeCode.Trim();
+        var key = (
+            Name: (header.SenderName).Trim().ToLowerInvariant(),
+            Vorname: (header.SenderVorname).Trim().ToLowerInvariant(),
+            Mail: (header.SenderMail).Trim().ToLowerInvariant()
+        );
 
-        LogStart("[Kunde.ResolveOrCreate]", "kundeCode='{0}' key='{1}'", kundeCode, key);
-
-        // -------------------------
-        // Cache
-        // -------------------------
-        if (_kundeCache.TryGetValue(key, out var cached)) {
-            LogHit("[Kunde.ResolveOrCreate]", "Cache", "{0} → {1}", key, cached);
+        if (_senderCache.TryGetValue(key, out var cached))
             return cached;
-        }
 
-        // -------------------------
-        // Database lookup
-        // -------------------------
-        var kunde = await db.BasisKunde
-            .FirstOrDefaultAsync(k => k.Kdnnr == key, token);
-
-        if (kunde != null) {
-            _kundeCache[key] = kunde.Id;
-            LogHit("[Kunde.ResolveOrCreate]", "Database", "{0} → {1}", key, kunde.Id);
-            return kunde.Id;
-        }
-
-        // -------------------------
-        // Create (minimal!)
-        // -------------------------
-        kunde = new BasisKunde {
-            Kdnnr = key
-        };
-
-        db.BasisKunde.Add(kunde);
+        var sem = GetLock("SENDER", $"{key.Name}|{key.Vorname}|{key.Mail}");
+        await sem.WaitAsync(token);
 
         try {
-            await db.SaveChangesAsync(token);
+            if (_senderCache.TryGetValue(key, out cached))
+                return cached;
 
-            _kundeCache[key] = kunde.Id;
+            await using var ctx = await dbFactory.CreateDbContextAsync(token);
 
-            LogCreated("[Kunde]", "angelegt: '{0}' → id={1}", key, kunde.Id);
+            var sender = await ctx.UjbauSender.FirstOrDefaultAsync(s =>
+                    (s.Name    ?? "").ToLower() == key.Name    &&
+                    (s.Vorname ?? "").ToLower() == key.Vorname &&
+                    (s.Email   ?? "").ToLower() == key.Mail,
+                token);
 
-            return kunde.Id;
-        }
-        catch (DbUpdateException ex) {
-            // Race condition: anderer Thread war schneller
-            Logger.Warn(ex, "[Kunde] INSERT Race: '{0}' → Re-Read", key);
+            if (sender == null) {
+                sender = new UjbauSender {
+                    Name      = header.SenderName.Trim(),
+                    Vorname   = header.SenderVorname.Trim(),
+                    Email     = header.SenderMail.Trim(),
+                    Abteilung = header.SenderAbteilung,
+                    Telefon   = header.SenderTelefon,
+                    Strasse   = header.SenderAdresse,
+                    Stadt     = header.SenderStadt,
+                    Plz       = header.SenderPlz
+                };
+                ctx.UjbauSender.Add(sender);
 
-            var id = await db.BasisKunde
-                .Where(k => k.Kdnnr == key)
-                .Select(k => k.Id)
-                .FirstOrDefaultAsync(token);
-
-            _kundeCache[key] = id;
-
-            LogHit("[Kunde.ResolveOrCreate]", "RaceWinner", "{0} → {1}", key, id);
-
-            return id;
-        }
-    }
-
-    // =====================================================================
-    // REGION
-    // =====================================================================
-    public async Task<long> ResolveRegionAsync(
-        UjBauDbContext    db,
-        string?           raw,
-        CancellationToken token) {
-        var key = NormalizeRegionKey(raw);
-
-        if (string.IsNullOrEmpty(key)) {
-            Interlocked.Increment(ref _regionStats.CacheMisses);
-            return 0;
-        }
-
-        // 1️⃣ Cache (Normalfall!)
-        if (_regionCache.TryGetValue(key, out var cached)) {
-            Interlocked.Increment(ref _regionStats.CacheHits);
-            return cached;
-        }
-
-        // 2️⃣ Fallback: NUR rohe Vergleiche (EF-kompatibel)
-        var rawLower = raw!.Trim().ToLowerInvariant();
-
-        var region = await db.BasisRegion
-            .AsNoTracking()
-            .Where(r =>
-                (r.Bezeichner != null && r.Bezeichner.ToLower() == rawLower) ||
-                (r.Langname   != null && r.Langname.ToLower()   == rawLower) ||
-                (r.Kbez       != null && r.Kbez.ToLower()       == rawLower)
-            )
-            .Select(r => r.Id)
-            .FirstOrDefaultAsync(token);
-
-        if (region > 0) {
-            _regionCache[key] = region; // 🔑 normierter Key
-            Interlocked.Increment(ref _regionStats.DbHits);
-            return region;
-        }
-
-        _regionCache[key] = 0;
-        Interlocked.Increment(ref _regionStats.CacheMisses);
-        return 0;
-    }
-    
-    // =====================================================================
-    // BETRIEBSSTELLE
-    // =====================================================================
-    public async Task<long> ResolveOrCreateBetriebsstelleAsync(
-        UjBauDbContext    db,
-        string?           raw,
-        CancellationToken token) {
-        var key = Ds100Normalizer.Clean(raw);
-
-        LogStart("[Bst.ResolveOrCreate]", "raw='{0}' key='{1}'", raw, key);
-
-        if (string.IsNullOrWhiteSpace(key)) {
-            Logger.Error($"Kein Key für {raw} gefunden");
-            return -1;
-        }
-
-        // Cache
-        if (_bstCache.TryGetValue(key, out var cached) && cached > 0) {
-            LogHit("[Bst.ResolveOrCreate]", "Cache", "{0} → {1}", key, cached);
-            return cached;
-        }
-
-        // DB Lookup
-        var bst = await db.BasisBetriebsstelle
-            .FirstOrDefaultAsync(b => b.Rl100 != null && b.Rl100.ToUpper() == key, token);
-
-        if (bst != null) {
-            _bstCache[key] = bst.Id;
-            LogHit("[Bst.ResolveOrCreate]", "Database", "{0} → {1}", key, bst.Id);
-            return bst.Id;
-        }
-
-        // CREATE Dummy
-        bst = new BasisBetriebsstelle {
-            Rl100             = key,
-            NetzbezirkRef     = 0,
-            TypRef            = 0,
-            RegionRef         = 0,
-            Zustand           = "in Betrieb",
-            IstBasisDatensatz = false
-        };
-
-        db.BasisBetriebsstelle.Add(bst);
-        await db.SaveChangesAsync(token);
-
-        _bstCache[key] = bst.Id;
-
-        Logger.Warn("[Bst] Betriebsstelle angelegt: RL100='{0}', id={1}", key, bst.Id);
-
-        return bst.Id;
-    }
-
-    public async Task<long> ResolveOrCreateBetriebsstelleCachedAsync(
-        UjBauDbContext    db,
-        string?           raw,
-        CancellationToken token) {
-
-        var key = Ds100Normalizer.Clean(raw);
-        if (string.IsNullOrWhiteSpace(key))
-            return -1;
-
-        if (_bstCache.TryGetValue(key, out var cached))
-            return cached;
-
-        var id = await ResolveOrCreateBetriebsstelleAsync(db, key, token);
-
-        if (id > 0)
-            _bstCache.TryAdd(key, id);
-
-        return id;
-    }
-
-    // =====================================================================
-    // STRECKE
-    // =====================================================================
-    public async Task<long> ResolveStreckeAsync(UjBauDbContext db, long? vzgNr, CancellationToken token = default) {
-        LogStart("[Strecke.Resolve]", "vzgNr={0}", vzgNr);
-
-        if (vzgNr is null or <= 0) {
-            LogHit("[Strecke.Resolve]", "Invalid", "vzgNr={0} → 0", vzgNr);
-            return 0;
-        }
-
-        if (_streckeCache.TryGetValue(vzgNr.Value, out var cached)) {
-            LogHit("[Strecke.Resolve]", "Cache", "{0} → {1}", vzgNr.Value, cached);
-            return cached;
-        }
-
-        var strecke = await db.BasisStrecke
-            .FirstOrDefaultAsync(s => s.VzgNr == vzgNr, cancellationToken: token);
-
-        if (strecke != null) {
-            _streckeCache[vzgNr.Value] = strecke.Id;
-            LogHit("[Strecke.Resolve]", "Database", "{0} → {1}", vzgNr.Value, strecke.Id);
-            return strecke.Id;
-        }
-
-        _streckeCache[vzgNr.Value] = 0;
-        LogHit("[Strecke.Resolve]", "Miss", "{0} → 0", vzgNr.Value);
-        return 0;
-    }
-
-    // =====================================================================
-    // BETRIEBSSTELLE ↔ STRECKE
-    // =====================================================================
-    public async Task<long> ResolveBst2StrAsync(
-        UjBauDbContext    db,
-        long              bstRef,
-        long              strRef,
-        string?           kmL   = null,
-        CancellationToken token = default) {
-        LogStart("[Bst2Str.Resolve]", "bstRef={0}, vzgNr={1}, kmL='{2}'", bstRef, strRef, kmL);
-
-        var key = $"{bstRef}|{strRef}";
-
-        if (_bst2StrCache.TryGetValue(key, out var cached)) {
-            LogHit("[Bst2Str.Resolve]", "Cache", "{0} → {1}", key, cached);
-            return cached;
-        }
-
-        var existing = await db.BasisBetriebsstelle2strecke
-            .FirstOrDefaultAsync(x => x.BstRef == bstRef && x.StreckeRef == strRef, token);
-
-        if (existing != null) {
-            _bst2StrCache[key] = existing.Id;
-            LogHit("[Bst2Str.Resolve]", "Database", "{0} → {1}", key, existing.Id);
-            return existing.Id;
-        }
-
-        var neu = new BasisBetriebsstelle2strecke {
-            BstRef            = bstRef,
-            StreckeRef        = strRef,
-            KmL               = string.IsNullOrWhiteSpace(kmL) ? null : kmL,
-            IstBasisDatensatz = false,
-        };
-
-        db.BasisBetriebsstelle2strecke.Add(neu);
-
-        try {
-            await db.SaveChangesAsync(token);
-            _bst2StrCache[key] = neu.Id;
-
-            LogCreated("[Bst2Str]", "angelegt: {0} → id={1}", key, neu.Id);
-            LogHit("[Bst2Str.Resolve]", "Created", "{0} → {1}", key, neu.Id);
-
-            return neu.Id;
-        }
-        catch (DbUpdateException ex) {
-            Logger.Warn(ex, "[Bst2Str] INSERT Race → Re-Read: {0}", key);
-
-            var winner = await db.BasisBetriebsstelle2strecke
-                .FirstOrDefaultAsync(x => x.BstRef == bstRef && x.StreckeRef == strRef, token);
-
-            if (winner != null) {
-                _bst2StrCache[key] = winner.Id;
-
-                LogHit("[Bst2Str.Resolve]", "RaceWinner", "{0} → {1}", key, winner.Id);
-
-                return winner.Id;
+                try {
+                    await ctx.SaveChangesAsync(token);
+                }
+                catch (DbUpdateException ex) when (IsUniqueViolation(ex)) {
+                    sender = await ctx.UjbauSender.SingleAsync(s =>
+                            (s.Name    ?? "").ToLower() == key.Name    &&
+                            (s.Vorname ?? "").ToLower() == key.Vorname &&
+                            (s.Email   ?? "").ToLower() == key.Mail,
+                        token);
+                }
             }
 
-            // ❗ DAS ist wichtig:
-            // Kein Datensatz → kein Race → echter Fehler
-            Logger.Error(ex, "[Bst2Str.Resolve] FK-Race ohne Gewinner: bstRef={0}, strRef={1}", bstRef, strRef);
-
-            throw;
+            _senderCache[key] = sender.Id;
+            return sender.Id;
+        }
+        finally {
+            sem.Release();
         }
     }
 
-    // =====================================================================
+
+    // ==========================================================
     // HELPER
-    // =====================================================================
-    private static bool UpdateIfDifferent(
-        string?        current,
-        string?        incoming,
-        Action<string> setter) {
-        var newValue = incoming ?? string.Empty;
-        var oldValue = current  ?? string.Empty;
-
-        if (oldValue == newValue)
-            return false;
-
-        setter(newValue);
-        return true;
-    }
-
-    private static string Norm(string? value) =>
-        (value ?? string.Empty)
-        .Trim()
-        .ToLowerInvariant();
-
-    private static SemaphoreSlim GetVorgangLock(long masterFplo, int? fahrplanjahr) {
-        var key = $"VORGANG:{masterFplo}:{fahrplanjahr}";
-        return VorgangLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
-    }
-
-    private static SemaphoreSlim GetSenderLock(
-        (string Name, string Vorname, string Mail) key) {
-        return SenderLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
-    }
-
+    // ==========================================================
     private static bool IsUniqueViolation(DbUpdateException ex)
         => ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
-
-    public bool TryRegisterBbmn(long vorgangRef, string bbmn)
-        => _bbmnCache.TryAdd((vorgangRef, bbmn), 0);
 
     private static string NormalizeRegionKey(string? raw) {
         if (string.IsNullOrWhiteSpace(raw))
             return string.Empty;
 
-        Logger.Info($"[NormalizeRegionKey] => Eingang: {raw}");
-        
         var s = raw.Trim().ToLowerInvariant();
-
-        // 🔑 RB / Rb / rb entfernen
         if (s.StartsWith("rb "))
             s = s[3..];
 
-        /*s = s
-            .Replace("ü", "ue")
-            .Replace("ö", "oe")
-            .Replace("ä", "ae")
-            .Replace("ß", "ss");
-        */
         s = Regex.Replace(s, @"\s+", " ");
-
-        Logger.Info($"[NormalizeRegionKey] => Ausgang: {s}");
-        
         return s;
     }
 
+    // =====================================================================
+    // BBMN (In-Memory Dedup pro Importlauf)
+    // =====================================================================
+    public bool TryRegisterBbmn(long vorgangRef, string bbmn) {
+        if (vorgangRef <= 0)
+            return false;
+
+        return !string.IsNullOrWhiteSpace(bbmn) && _bbmnCache.TryAdd((vorgangRef, bbmn.Trim()), 0);
+
+    }
+
+    // =====================================================================
+    // Befüllen des RegionCache
+    // =====================================================================
     public async Task WarmUpRegionCacheAsync(
         UjBauDbContext    db,
         CancellationToken token) {
@@ -649,9 +557,6 @@ public class SharedReferenceResolver {
                 _regionCache.TryAdd(NormalizeRegionKey(r.Langname), r.Id);
         }
 
-        Logger.Info($"[Region.Cache] Warm-Up abgeschlossen: {RegionCacheSize} Einträge");
+        Logger.Info($"[Region.Cache] Warm-Up abgeschlossen: {_regionCache.Count} Einträge");
     }
-
-    public int              RegionCacheSize  => _regionCache.Count;
-    public RegionCacheStats GetRegionStats() => _regionStats;
 }

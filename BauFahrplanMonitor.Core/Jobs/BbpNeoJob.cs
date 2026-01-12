@@ -3,7 +3,6 @@ using BauFahrplanMonitor.Core.Importer;
 using BauFahrplanMonitor.Core.Importer.Helper;
 using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Helpers;
 using Microsoft.EntityFrameworkCore;
 
 namespace BauFahrplanMonitor.Core.Jobs;

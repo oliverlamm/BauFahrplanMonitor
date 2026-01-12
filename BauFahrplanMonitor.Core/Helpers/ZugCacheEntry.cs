@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
-using System.Threading;
 
-namespace BauFahrplanMonitor.Helpers;
+namespace BauFahrplanMonitor.Core.Helpers;
 
 public sealed class ZugCacheEntry {
     /// <summary>

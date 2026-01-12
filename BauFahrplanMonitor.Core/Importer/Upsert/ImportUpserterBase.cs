@@ -1,5 +1,5 @@
+using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Services;
-using BauFahrplanMonitor.Helpers;
 using NLog;
 
 namespace BauFahrplanMonitor.Core.Importer.Upsert;

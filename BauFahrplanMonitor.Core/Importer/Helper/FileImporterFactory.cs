@@ -1,5 +1,5 @@
+using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Interfaces;
-using BauFahrplanMonitor.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BauFahrplanMonitor.Core.Importer.Helper;

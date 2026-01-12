@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace BauFahrplanMonitor.Helpers;
+namespace BauFahrplanMonitor.Core.Helpers;
 
 internal static class ObjectHelper {
 

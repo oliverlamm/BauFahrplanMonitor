@@ -4,10 +4,14 @@ using BauFahrplanMonitor.Core.Importer.Dto.ZvF;
 using BauFahrplanMonitor.Core.Importer.Helper;
 using BauFahrplanMonitor.Core.Importer.Xml;
 using BauFahrplanMonitor.Core.Interfaces;
+using NLog;
 
 namespace BauFahrplanMonitor.Core.Importer.Mapper;
 
 public sealed class ZvFDtoMapper : IZvFDtoMapper {
+    private static readonly Logger Logger =
+        LogManager.GetCurrentClassLogger();
+    
     public ZvFXmlDocumentDto Map(ZvFExport export, string sourceFile) {
         if (export.Header == null)
             throw new InvalidOperationException("ZvFExport.Header fehlt");
@@ -146,10 +150,19 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
                 Aenderung    = zug.Aenderung
             };
 
+            var firstBstRl100 = zug.FirstBst?.Trim(); // oder .Value?.Trim()
+            Logger.Debug(
+                "MapZuege.Debug: Zug={0}, Tag={1}, firstbst(raw)='{2}'",
+                zug.Zugnr,
+                effektiverVerkehrstag,
+                zug.FirstBst
+            );
+            
             var abw = ZvFAbweichungFactory.Create(
                 zug.Abweichung,
                 zug.Zugnr,
-                effektiverVerkehrstag
+                effektiverVerkehrstag,
+                firstBstRl100
             );
 
             if (abw != null)
@@ -277,18 +290,26 @@ public sealed class ZvFDtoMapper : IZvFDtoMapper {
     private static void MapStreckenabschnitte(
         ZvFExportBaumassnahmenBaumassnahme bm,
         ZvFXmlDocumentDto                  dto) {
-        // ⚠️ Property-Namen ggf. an dein ZvFExport.cs anpassen:
-        // Ich gehe davon aus, dass bm.Streckenabschnitte eine Liste/Collection ist.
+        
+        if (bm.Streckenabschnitte == null || bm.Streckenabschnitte.Length == 0)
+            return;
+        
         var src = bm.Streckenabschnitte;
         if (src == null)
             return;
 
-        // Wenn du SharedStreckeDto nutzt (aus Teil 2), füllen wir dto.Document.Strecken.
-        // Falls deine DocumentDTO anders heißt: entsprechend anpassen.
         foreach (var s in src) {
+            var vzg = string.Join(
+                ", ",
+                s.VzGListe?
+                    .Select(x => x.ToString())
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                ?? []
+            );
+            
             dto.Document.Strecken.Add(new SharedStreckeDto {
                 Grund                = s.Grund,
-                Vzg                  = string.Join(",", s.VzGListe),
+                Vzg                  = vzg,
                 Export               = s.Export,
                 Massnahme            = s.Massnahme,
                 StartBst             = s.Startbst,

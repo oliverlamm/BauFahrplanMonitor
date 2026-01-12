@@ -1,6 +1,6 @@
 using System.Xml;
+using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
-using BauFahrplanMonitor.Helpers;
 using NLog;
 
 namespace BauFahrplanMonitor.Core.Importer.Xml;

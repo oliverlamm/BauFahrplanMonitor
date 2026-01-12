@@ -1,4 +1,4 @@
-using BauFahrplanMonitor.Helpers;
+using BauFahrplanMonitor.Core.Helpers;
 
 namespace BauFahrplanMonitor.Core.Interfaces;
 

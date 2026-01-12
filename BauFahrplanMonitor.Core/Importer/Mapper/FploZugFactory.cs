@@ -105,10 +105,10 @@ public static class FploZugFactory {
         Dictionary<FploZugKey, Dictionary<FploRegelungsKey, FploRegelungDto>> map,
         FploZugKey                                                            zugKey,
         FploZugDto                                                            zug) {
-        
+
         if (zug.IstErsatzzug)
             return;
-        
+
         // 1️⃣ XML → interner Fachtyp
         if (!TryParseFploAbschnitt(zug.FploAbschnitt, out var type)) {
             Logger.Warn(
@@ -158,7 +158,7 @@ public static class FploZugFactory {
 
             return;
         }
-        
+
         // 4️⃣ Regelung anlegen (JsonRaw = null bei Abschnitt!)
         AddRegelung(
             map,
@@ -177,7 +177,7 @@ public static class FploZugFactory {
         FploDocumentDto                                                       document,
         Dictionary<FploZugKey, FploZugDto>                                    zugMap,
         Dictionary<FploZugKey, Dictionary<FploRegelungsKey, FploRegelungDto>> regelungen) {
-        
+
         foreach (var zp in document.Zugparameter) {
             if (zp.ZugNr is not { } zugNr)
                 continue;
@@ -211,7 +211,7 @@ public static class FploZugFactory {
         FploDocumentDto                                                       document,
         Dictionary<FploZugKey, FploZugDto>                                    zugMap,
         Dictionary<FploZugKey, Dictionary<FploRegelungsKey, FploRegelungDto>> regelungen) {
-        
+
         foreach (var zg in document.Zurueckgehalten) {
             if (zg.ZugNr is not { } zugNr)
                 continue;
@@ -245,19 +245,41 @@ public static class FploZugFactory {
         FploDocumentDto                                                       document,
         Dictionary<FploZugKey, FploZugDto>                                    zugMap,
         Dictionary<FploZugKey, Dictionary<FploRegelungsKey, FploRegelungDto>> regelungen) {
-        
-        foreach (var ha in document.Haltausfall) {
-            if (ha.ZugNr is not { } zugNr)
-                continue;
 
-            if (ha.Verkehrstag is not { } verkehrstag)
+        foreach (var ha in document.Haltausfall) {
+
+            var zugNr       = ha.ZugNr;
+            var verkehrstag = ha.Verkehrstag;
+
+            // -------------------------------
+            // Guard: Pflichtfelder
+            // -------------------------------
+            if (zugNr <= 0 || verkehrstag == default)
                 continue;
 
             var key = new FploZugKey(zugNr, verkehrstag);
 
-            if (!zugMap.ContainsKey(key))
-                continue;
+            // -------------------------------
+            // 🔑 NEU: Zug ggf. minimal anlegen
+            // -------------------------------
+            if (!zugMap.TryGetValue(key, out var zug)) {
 
+                zug = new FploZugDto {
+                    Zugnummer   = zugNr,
+                    Verkehrstag = verkehrstag,
+
+                    // 🔑 Minimal-Zug
+                    AbgangDs100 = "#N/A",
+                    ZielDs100   = "#N/A",
+                    Betreiber   = "#N/A"
+                };
+
+                zugMap[key] = zug;
+            }
+
+            // -------------------------------
+            // Anchor bestimmen
+            // -------------------------------
             var anchor =
                 ha.AusfallenderHaltDs100 ??
                 ha.ErsatzHaltDs100;
@@ -265,17 +287,21 @@ public static class FploZugFactory {
             if (string.IsNullOrWhiteSpace(anchor))
                 continue;
 
+            // -------------------------------
+            // Regelung hinzufügen
+            // -------------------------------
             AddRegelung(
                 regelungen,
                 key,
                 new FploRegelungDto {
                     Art         = RegelungsArt.Haltausfall,
                     AnchorRl100 = anchor,
-                    JsonRaw     = NormalizeJson(JsonSerializer.Serialize(ha))
+                    JsonRaw = NormalizeJson(
+                        JsonSerializer.Serialize(ha))
                 });
         }
     }
-    
+
     // =====================================================================
     // Regelung: SEV
     // =====================================================================
@@ -285,7 +311,7 @@ public static class FploZugFactory {
             AnchorRl100 = sev.AusfallVonDs100,
             JsonRaw     = NormalizeJson(JsonSerializer.Serialize(sev))
         };
-    
+
     // =====================================================================
     // Zug-Erzeugung
     // =====================================================================
@@ -295,8 +321,12 @@ public static class FploZugFactory {
             Verkehrstag   = sev.Verkehrstag!.Value,
             FploAbschnitt = "SEV",
             Regelweg = new ZvFExportBaumassnahmenBaumassnahmeZuegeZugRegelweg {
-                Abgangsbahnhof = new BetriebsstelleDS100 { Ds100 = sev.StartDs100 },
-                Zielbahnhof    = new BetriebsstelleDS100 { Ds100 = sev.EndDs100 }
+                Abgangsbahnhof = new BetriebsstelleDS100 {
+                    Ds100 = sev.StartDs100
+                },
+                Zielbahnhof = new BetriebsstelleDS100 {
+                    Ds100 = sev.EndDs100
+                }
             }
         };
 
@@ -305,13 +335,17 @@ public static class FploZugFactory {
 
         return new FploZugDto {
             IstErsatzzug = true,
-            Zugnummer   = ez.Zugnummer,
-            Verkehrstag = ez.Verkehrstag!,
+            Zugnummer    = ez.Zugnummer,
+            Verkehrstag  = ez.Verkehrstag!,
 
             FploAbschnitt = "Ersatzzug",
             Regelweg = new ZvFExportBaumassnahmenBaumassnahmeZuegeZugRegelweg {
-                Abgangsbahnhof = new BetriebsstelleDS100 { Ds100 = ez.AbgangDs100 },
-                Zielbahnhof    = new BetriebsstelleDS100 { Ds100 = ez.ZielDs100 }
+                Abgangsbahnhof = new BetriebsstelleDS100 {
+                    Ds100 = ez.AbgangDs100
+                },
+                Zielbahnhof = new BetriebsstelleDS100 {
+                    Ds100 = ez.ZielDs100
+                }
             }
         };
     }
@@ -402,7 +436,7 @@ public static class FploZugFactory {
                 $"Kein DB-Mapping für AbschnittType '{type}'")
         };
     }
-    
+
     private static void AddRegelung(
         Dictionary<FploZugKey, Dictionary<FploRegelungsKey, FploRegelungDto>> map,
         FploZugKey                                                            zugKey,
@@ -420,5 +454,5 @@ public static class FploZugFactory {
 
         regs.TryAdd(key, regelung);
     }
-    
+
 }

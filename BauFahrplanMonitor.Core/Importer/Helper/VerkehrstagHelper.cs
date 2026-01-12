@@ -8,7 +8,7 @@ public static class VerkehrstagHelper {
     public static DateOnly ApplyTagwechsel(
         DateOnly basisVerkehrstag,
         int      tagwechsel) {
-        if (tagwechsel is < -1 or > 1)
+        if (tagwechsel is < -2 or > 2)
             throw new ArgumentOutOfRangeException(
                 nameof(tagwechsel),
                 tagwechsel,

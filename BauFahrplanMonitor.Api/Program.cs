@@ -30,11 +30,39 @@ services.ConfigureHttpJsonOptions(options => {
 
 
 // ----------- DB -----------------------
+// ----------- DB -----------------------
 services.AddDbContextFactory<UjBauDbContext>((sp, options) => {
-    var cfg = sp.GetRequiredService<ConfigService>();
-    var cs  = cfg.BuildConnectionString();
-    options.UseNpgsql(cs, npg => npg.UseNetTopologySuite());
+    var cfg = sp.GetRequiredService<ConfigService>()
+        .Effective
+        .Datenbank;
+
+    var cs = sp.GetRequiredService<ConfigService>()
+        .BuildConnectionString();
+
+    options.UseNpgsql(
+        cs,
+        npg => {
+            npg.UseNetTopologySuite();
+            npg.MaxBatchSize(100);
+        });
+
+    // =================================================
+    // 🔑 EF-CORE SQL LOGGING – NUR HIER
+    // =================================================
+    if (!cfg.EFLogging)
+        return;
+    options.LogTo(
+        msg => LogManager
+            .GetLogger("EFCore.SQL")
+            .Info(msg),
+        Microsoft.Extensions.Logging.LogLevel.Information);
+
+    if (cfg.EFSensitiveLogging)
+        options.EnableSensitiveDataLogging();
+
+    options.EnableDetailedErrors();
 });
+
 
 // -------- Importer --------------------
 services.AddImporterServices();
@@ -49,8 +77,7 @@ var app = builder.Build();
 app.MapPost("/api/import/zvfexport/scan",
     async Task<IResult> (
         ZvFScanRequest request,
-        ZvFExportJob   job) =>
-    {
+        ZvFExportJob   job) => {
         await job.TriggerScanAsync(
             request.Filter,
             CancellationToken.None);
@@ -64,8 +91,7 @@ app.MapPost("/api/import/zvfexport/scan",
 app.MapPost("/api/import/zvfexport/import",
     async (
         ImporterFacade    facade,
-        CancellationToken token) =>
-    {
+        CancellationToken token) => {
         await facade.StartZvFExportImportAsync(token);
 
         return Results.Accepted(value: new {
@@ -74,8 +100,7 @@ app.MapPost("/api/import/zvfexport/import",
     });
 
 app.MapPost("/api/import/zvfexport/cancel",
-    (ImporterFacade facade) =>
-    {
+    (ImporterFacade facade) => {
         facade.CancelZvFExport();
 
         return Results.Accepted(value: new {

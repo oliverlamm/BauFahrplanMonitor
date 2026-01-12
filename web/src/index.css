@@ -38,6 +38,12 @@ html, body {
   line-height: 1.2;
 }
 
+.header-logo {
+  height: 30px;
+  width: auto;
+  object-fit: contain;
+}
+
 .app-title {
   font-size: 14px;
   font-weight: 600;
@@ -87,6 +93,7 @@ html, body {
 .session-value {
   font-size: 13px;
   font-weight: 500;
+  color: #EA000D;
 }
 
 /* Body */

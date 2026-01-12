@@ -7,7 +7,6 @@ using BauFahrplanMonitor.Core.Interfaces;
 using BauFahrplanMonitor.Core.Resolver;
 using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Helpers;
 using BauFahrplanMonitor.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -34,6 +33,7 @@ public sealed class ZvFUpserter(
         ZvFXmlDocumentDto              dto,
         IProgress<UpsertProgressInfo>? progress,
         CancellationToken              token) {
+
         _stats = new ZvFImportStats();
 
         // -------------------------------------------------
@@ -60,10 +60,13 @@ public sealed class ZvFUpserter(
             await UpsertBbmnAsync(dto, token, db, vorgangRef);
 
             // -------------------------------------------------
-            // ZÜGE + ENTFALLENE (Bulk)
+            // ZÜGE + ABWEICHUNGEN + ENTFALLENE (Bulk)
             // -------------------------------------------------
             db.ChangeTracker.AutoDetectChangesEnabled = false;
 
+            // -----------------------------
+            // ZÜGE + ABWEICHUNGEN
+            // -----------------------------
             var totalZuege = dto.Document.Zuege.Count;
             var index      = 0;
 
@@ -80,14 +83,27 @@ public sealed class ZvFUpserter(
                 }
 
                 var zugRef = await ResolveOrInsertZugAsync(db, zug, dokumentRef, token);
+
+                // ✅ Hier bleibt der Parameter korrekt: zug (Dto)
                 await UpsertAbweichungenAsync(db, zug, zugRef, token);
             }
 
-            // ENTFALLENE
-            var totalEntfall = dto.Document.Entfallen.Count;
+            // -----------------------------
+            // ENTFALLENE (dedupe + upsert)
+            // -----------------------------
+            var distinctEntfallen = dto.Document.Entfallen
+                .GroupBy(x => new {
+                    x.Zugnr,
+                    x.Verkehrstag,
+                    x.RegelungsartAlt
+                })
+                .Select(g => g.First())
+                .ToList();
+
+            var totalEntfall = distinctEntfallen.Count;
             index = 0;
 
-            foreach (var e in dto.Document.Entfallen) {
+            foreach (var e in distinctEntfallen) {
                 token.ThrowIfCancellationRequested();
                 index++;
 
@@ -99,7 +115,7 @@ public sealed class ZvFUpserter(
                     });
                 }
 
-                await UpsertEntfallenAsync(db, e, dokumentRef);
+                await UpsertEntfallenAsync(db, e, dokumentRef, token);
             }
 
             db.ChangeTracker.AutoDetectChangesEnabled = true;
@@ -138,88 +154,97 @@ public sealed class ZvFUpserter(
     // =====================================================================
     // Streckenabschnitte
     // =====================================================================
-    private static async Task UpsertStreckenabschnitteAsync(ZvFXmlDocumentDto dto, CancellationToken token,
-        UjBauDbContext                                                        db,  long              dokumentRef) {
-        if (dto.Document.Strecken is { Count: > 0 }) {
-            // Alte Einträge für dieses Dokument entfernen
-            // (Dokument ist die einzige Identität)
-            await db.ZvfDokumentStreckenabschnitte
-                .Where(x => x.ZvfDokumentRef == dokumentRef)
-                .ExecuteDeleteAsync(token);
+    private static async Task UpsertStreckenabschnitteAsync(
+        ZvFXmlDocumentDto dto,
+        CancellationToken token,
+        UjBauDbContext    db,
+        long              dokumentRef) {
 
-            var uniqueStrecken = dto.Document.Strecken
-                .GroupBy(s => new {
-                    s.StartBst,
-                    s.EndBst,
-                    s.Massnahme,
-                    s.Betriebsweise,
-                    s.Grund,
-                    s.Baubeginn,
-                    s.Bauende
-                })
-                .Select(g => g.First())
-                .ToList();
+        if (dto.Document.Strecken is not { Count: > 0 })
+            return;
 
-            foreach (var strecke in uniqueStrecken) {
-                token.ThrowIfCancellationRequested();
+        // Alte Einträge für dieses Dokument entfernen
+        await db.ZvfDokumentStreckenabschnitte
+            .Where(x => x.ZvfDokumentRef == dokumentRef)
+            .ExecuteDeleteAsync(token);
 
-                if (strecke.Baubeginn == null || strecke.Bauende == null)
-                    throw new InvalidOperationException(
-                        $"Streckenabschnitt ohne Bauzeit (DokRef={dokumentRef}, " +
-                        $"Start={strecke.StartBst}, Ende={strecke.EndBst})");
+        var uniqueStrecken = dto.Document.Strecken
+            .GroupBy(s => new {
+                s.StartBst,
+                s.EndBst,
+                s.Massnahme,
+                s.Betriebsweise,
+                s.Grund,
+                s.Baubeginn,
+                s.Bauende
+            })
+            .Select(g => g.First())
+            .ToList();
 
-                db.ZvfDokumentStreckenabschnitte.Add(
-                    new ZvfDokumentStreckenabschnitte {
-                        ZvfDokumentRef       = dokumentRef,
-                        StartBstRl100        = strecke.StartBst      ?? string.Empty,
-                        EndBstRl100          = strecke.EndBst        ?? string.Empty,
-                        Massnahme            = strecke.Massnahme     ?? string.Empty,
-                        Betriebsweise        = strecke.Betriebsweise ?? string.Empty,
-                        Grund                = strecke.Grund         ?? string.Empty,
-                        Baubeginn            = strecke.Baubeginn.Value,
-                        Bauende              = strecke.Bauende.Value,
-                        ZeitraumUnterbrochen = strecke.ZeitraumUnterbrochen,
-                        VzgStrecke           = strecke.Vzg
-                    });
-            }
+        foreach (var strecke in uniqueStrecken) {
+            token.ThrowIfCancellationRequested();
+
+            if (strecke.Baubeginn == null || strecke.Bauende == null)
+                throw new InvalidOperationException(
+                    $"Streckenabschnitt ohne Bauzeit (DokRef={dokumentRef}, Start={strecke.StartBst}, Ende={strecke.EndBst})");
+
+            db.ZvfDokumentStreckenabschnitte.Add(
+                new ZvfDokumentStreckenabschnitte {
+                    ZvfDokumentRef       = dokumentRef,
+                    StartBstRl100        = strecke.StartBst      ?? string.Empty,
+                    EndBstRl100          = strecke.EndBst        ?? string.Empty,
+                    Massnahme            = strecke.Massnahme     ?? string.Empty,
+                    Betriebsweise        = strecke.Betriebsweise ?? string.Empty,
+                    Grund                = strecke.Grund         ?? string.Empty,
+                    Baubeginn            = strecke.Baubeginn.Value,
+                    Bauende              = strecke.Bauende.Value,
+                    ZeitraumUnterbrochen = strecke.ZeitraumUnterbrochen,
+                    VzgStrecke           = strecke.Vzg
+                });
         }
     }
 
     // =====================================================================
     // Bbmn
     // =====================================================================
-    private async Task UpsertBbmnAsync(ZvFXmlDocumentDto dto, CancellationToken token, UjBauDbContext db,
-        long                                             vorgangRef) {
-        if (dto.Vorgang.Bbmn is { Count: > 0 }) {
-            var bbmns = dto.Vorgang.Bbmn
-                .Select(b => b.Trim())
-                .Where(b => !string.IsNullOrWhiteSpace(b))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+    private async Task UpsertBbmnAsync(
+        ZvFXmlDocumentDto dto,
+        CancellationToken token,
+        UjBauDbContext    db,
+        long              vorgangRef) {
 
-            if (bbmns.Count > 0) {
-                var existing = new HashSet<string>(
-                    await db.UjbauVorgangBbmn
-                        .Where(x => x.UjVorgangRef == vorgangRef)
-                        .Select(x => x.Bbmn)
-                        .ToListAsync(token),
-                    StringComparer.OrdinalIgnoreCase);
+        if (dto.Vorgang.Bbmn is not { Count: > 0 })
+            return;
 
-                foreach (var bbmn in bbmns) {
-                    // 🔑 globaler Cache (threadsicher)
-                    if (!resolver.TryRegisterBbmn(vorgangRef, bbmn))
-                        continue;
+        var bbmns = dto.Vorgang.Bbmn
+            .Select(b => b.Trim())
+            .Where(b => !string.IsNullOrWhiteSpace(b))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-                    // DB-Duplikate vermeiden
-                    if (existing.Contains(bbmn))
-                        continue;
+        if (bbmns.Count == 0)
+            return;
 
-                    db.UjbauVorgangBbmn.Add(new UjbauVorgangBbmn {
-                        UjVorgangRef = vorgangRef,
-                        Bbmn         = bbmn
-                    });
-                }
-            }
+        var existing = new HashSet<string>(
+            await db.UjbauVorgangBbmn
+                .Where(x => x.UjVorgangRef == vorgangRef)
+                .Select(x => x.Bbmn)
+                .ToListAsync(token),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var bbmn in bbmns) {
+            // 🔑 globaler Cache (threadsicher)
+            if (!resolver.TryRegisterBbmn(vorgangRef, bbmn))
+                continue;
+
+            // DB-Duplikate vermeiden
+            if (existing.Contains(bbmn))
+                continue;
+
+            db.UjbauVorgangBbmn.Add(new UjbauVorgangBbmn {
+                UjVorgangRef = vorgangRef,
+                Bbmn         = bbmn
+            });
         }
     }
 
@@ -239,67 +264,157 @@ public sealed class ZvFUpserter(
     }
 
     // =====================================================================
-    // ABWEICHUNGEN
+    // ABWEICHUNGEN (aggregiert -> einzelne Upserts, FK-sicher)
     // =====================================================================
     private async Task UpsertAbweichungenAsync(
         UjBauDbContext    db,
         ZvFZugDto         zug,
         long              zugRef,
         CancellationToken token) {
-        var grouped = zug.Abweichungen
+        // --------------------------------------------------
+        // 0) Alte Abweichungen dieses Zuges löschen
+        // --------------------------------------------------
+        await DeleteExistingAbweichungenAsync(db, zugRef, token);
+
+        if (zug.Abweichungen.Count == 0)
+            return;
+
+        // --------------------------------------------------
+        // 1) Fachlich aggregieren (nach Regelungsart)
+        // --------------------------------------------------
+        var aggregated = zug.Abweichungen
             .GroupBy(a => a.Regelungsart)
-            .Select(g => new ZvFZugAbweichung {
-                Zugnummer    = g.First().Zugnummer,
-                Verkehrstag  = g.First().Verkehrstag,
-                Regelungsart = g.Key,
-
-                // 🔑 fachliche Aggregation
-                JsonRaw = JsonSerializer.Serialize(
-                    g.Select(x => JsonDocument.Parse(x.JsonRaw).RootElement),
-                    new JsonSerializerOptions {
-                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                    }),
-
-                // Anchor: erster sinnvoller (oder null)
-                AnchorRl100 = g
+            .Select(g => {
+                // 🔑 Anchor-RL100 bestimmen (genau 1 erlaubt)
+                var anchors = g
                     .Select(x => x.AnchorRl100)
-                    .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(Ds100Normalizer.Clean)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct()
+                    .ToList();
+
+                var anchor =
+                    anchors.Count == 1
+                        ? anchors[0]
+                        : null;
+
+                return new ZvFZugAbweichung {
+                    Zugnummer    = g.First().Zugnummer,
+                    Verkehrstag  = g.First().Verkehrstag,
+                    Regelungsart = g.Key,
+                    AnchorRl100  = anchor,
+
+                    JsonRaw = JsonSerializer.Serialize(
+                        g.Select(x =>
+                            JsonDocument.Parse(x.JsonRaw).RootElement),
+                        new JsonSerializerOptions {
+                            DefaultIgnoreCondition =
+                                JsonIgnoreCondition.WhenWritingNull
+                        })
+                };
             })
             .ToList();
 
-        foreach (var abw in grouped) {
-            await UpsertAbweichungAsync(db, abw, zugRef, token);
+        // --------------------------------------------------
+        // 2) Persistieren
+        // --------------------------------------------------
+        foreach (var abw in aggregated) {
+            if (string.IsNullOrWhiteSpace(abw.AnchorRl100)) {
+                _stats.AbweichungSkippedNoAnchor++;
+                continue;
+            }
+
+            await InsertAbweichungAsync(db, abw, zugRef, token);
         }
 
         Logger.Debug(
-            "Zug {0}/{1}: {2} Abweichungen → {3} aggregiert",
+            "Zug {0}/{1}: {2} Abweichungen → {3} gespeichert, {4} ohne Anchor übersprungen",
             zug.Zugnummer,
             zug.Verkehrstag,
             zug.Abweichungen.Count,
-            grouped.Count);
+            aggregated.Count - _stats.AbweichungSkippedNoAnchor,
+            _stats.AbweichungSkippedNoAnchor);
     }
 
+    private async Task InsertAbweichungAsync(
+        UjBauDbContext    db,
+        ZvFZugAbweichung  abw,
+        long              zugRef,
+        CancellationToken token) {
+        // --------------------------------------------------
+        // Betriebsstelle auflösen / anlegen
+        // --------------------------------------------------
+        var bstRef = await resolver.ResolveOrCreateBetriebsstelleAsync(
+            db,
+            abw.AnchorRl100,
+            token);
+
+        if (bstRef <= 0) {
+            Logger.Error(
+                "Abweichung verworfen – Betriebsstelle ungültig: RL100='{0}'",
+                abw.AnchorRl100);
+
+            _stats.AbweichungSkippedInvalidBst++;
+            bstRef = 0;
+        }
+
+        // --------------------------------------------------
+        // Insert
+        // --------------------------------------------------
+        db.ZvfDokumentZugAbweichung.Add(
+            new ZvfDokumentZugAbweichung {
+                ZvfDokumentZugRef = zugRef,
+                Art               = abw.Regelungsart,
+                Abweichung        = abw.JsonRaw,
+                AbBstRef          = bstRef > 0 ? bstRef : 0
+            });
+
+        _stats.AbweichungInserted++;
+    }
+    
     // =====================================================================
-    // Entfallen 
+    // Entfallen (idempotent, constraint-sicher)
     // =====================================================================
-    private Task UpsertEntfallenAsync(
+    private async Task UpsertEntfallenAsync(
         UjBauDbContext     db,
         ZvFZugEntfallenDto e,
-        long               dokumentRef) {
-        var entity = new ZvfDokumentZugEntfallen {
+        long               dokumentRef,
+        CancellationToken  token) {
+
+        var zugnr = (int)e.Zugnr;
+
+        // 🔑 1) Bereits im ChangeTracker?
+        var alreadyTracked = db.ChangeTracker
+            .Entries<ZvfDokumentZugEntfallen>()
+            .Any(x =>
+                x.Entity.ZvfDokumentRef == dokumentRef   &&
+                x.Entity.Zugnr          == zugnr         &&
+                x.Entity.Verkehrstag    == e.Verkehrstag &&
+                x.Entity.Art            == e.RegelungsartAlt);
+
+        if (alreadyTracked)
+            return;
+
+        // 🔑 2) DB-Zustand bereinigen (UniqueConstraint sicher)
+        await db.Database.ExecuteSqlInterpolatedAsync($@"
+            DELETE FROM ujbaudb.zvf_dokument_zug_entfallen
+            WHERE zvf_dokument_ref = {dokumentRef}
+              AND zugnr            = {zugnr}
+              AND verkehrstag      = {e.Verkehrstag}
+              AND art              = {e.RegelungsartAlt};
+            ", token);
+
+        // 🔑 3) Neu hinzufügen
+        db.ZvfDokumentZugEntfallen.Add(new ZvfDokumentZugEntfallen {
             ZvfDokumentRef = dokumentRef,
-            Zugnr          = (int)e.Zugnr,
+            Zugnr          = zugnr,
             Zugbez         = e.Zugbez,
             Verkehrstag    = e.Verkehrstag,
             Art            = e.RegelungsartAlt
-        };
+        });
 
         _stats.EntfallenInserted++;
-        db.ZvfDokumentZugEntfallen.Add(entity);
-        return Task.CompletedTask;
-
-        // ❗ KEIN SaveChanges
-        // ❗ KEIN AnyAsync
     }
 
     // =====================================================================
@@ -311,9 +426,8 @@ public sealed class ZvFUpserter(
         long              vorgangRef,
         long?             senderRef,
         CancellationToken token) {
-        // -------------------------------------------------
+
         // Fast Lookup (read-only)
-        // -------------------------------------------------
         var existing = await db.ZvfDokument
             .AsNoTracking()
             .FirstOrDefaultAsync(d =>
@@ -324,9 +438,7 @@ public sealed class ZvFUpserter(
         if (existing != null)
             return existing.Id;
 
-        // -------------------------------------------------
         // Region auflösen
-        // -------------------------------------------------
         if (string.IsNullOrWhiteSpace(dto.Document.MasterRegion))
             throw new InvalidOperationException("Masterniederlassung fehlt");
 
@@ -339,9 +451,7 @@ public sealed class ZvFUpserter(
             throw new InvalidOperationException(
                 $"Region '{dto.Document.MasterRegion}' konnte nicht aufgelöst werden");
 
-        // -------------------------------------------------
         // Create
-        // -------------------------------------------------
         var doc = new ZvfDokument {
             UjbauVorgangRef = vorgangRef,
             SenderRef       = senderRef ?? throw new InvalidOperationException("SenderRef fehlt"),
@@ -391,9 +501,8 @@ public sealed class ZvFUpserter(
         ZvFZugDto         zug,
         long              dokumentRef,
         CancellationToken token) {
-        // -------------------------------------------------
-        // 1) Exists?
-        // -------------------------------------------------
+
+        // Exists?
         var existing = await db.ZvfDokumentZug
             .AsTracking()
             .FirstOrDefaultAsync(z =>
@@ -402,27 +511,35 @@ public sealed class ZvFUpserter(
                     z.Verkehrstag    == zug.Verkehrstag,
                 token);
 
-        // -------------------------------------------------
-        // 2) Referenzen auflösen (FKs sind NOT NULL)
-        // -------------------------------------------------
-        var kundeRef = await resolver.ResolveOrCreateKundeAsync(
+        // Referenzen auflösen (FKs sind NOT NULL)
+        var kundeRef = await resolver.ResolveOrCreateKundeAsync(db, zug.Betreiber, token);
+
+        var abgangBstRef = await resolver.ResolveOrCreateBetriebsstelleSmartAsync(
             db,
-            zug.Betreiber,
+            zug.Regelweg?.Abgangsbahnhof?.Ds100,
+            zug.Regelweg?.Abgangsbahnhof?.Value,
+            "ResolveOrInsertZugAsync",
+            zug.Zugnummer,
+            zug.Verkehrstag,
             token);
 
-        var abgangBstRef = await resolver.ResolveOrCreateBetriebsstelleAsync(
+        var zielBstRef = await resolver.ResolveOrCreateBetriebsstelleSmartAsync(
             db,
-            zug.Regelweg?.Abgangsbahnhof?.Ds100 ?? string.Empty,
+            zug.Regelweg?.Zielbahnhof?.Ds100,
+            zug.Regelweg?.Zielbahnhof?.Value,
+            "ResolveOrInsertZugAsync",
+            zug.Zugnummer,
+            zug.Verkehrstag,
             token);
 
-        var zielBstRef = await resolver.ResolveOrCreateBetriebsstelleAsync(
-            db,
-            zug.Regelweg?.Zielbahnhof?.Ds100 ?? string.Empty,
-            token);
+        if (abgangBstRef < 0 || zielBstRef < 0) {
+            Logger.Warn(
+                "Ungültige Betriebsstellen-Refs ignoriert: Abgang={0}, Ziel={1}, Zug={2}/{3}",
+                abgangBstRef, zielBstRef, zug.Zugnummer, zug.Verkehrstag);
+            throw (new Exception("Abbruch"));
+        }
 
-        // -------------------------------------------------
-        // 3) INSERT
-        // -------------------------------------------------
+        // INSERT
         if (existing == null) {
             var entity = new ZvfDokumentZug {
                 ZvfDokumentRef = dokumentRef,
@@ -443,78 +560,33 @@ public sealed class ZvFUpserter(
                 Bedarf        = zug.Bedarf,
                 Sonderzug     = zug.Sonder,
             };
+
             _stats.ZuegeInserted++;
 
             db.ZvfDokumentZug.Add(entity);
-            await db.SaveChangesAsync(token);
+            await db.SaveChangesAsync(token); // (wie bei dir; kann man später noch optimieren)
 
             return entity.Id;
         }
 
-        // -------------------------------------------------
-        // 4) UPDATE (nur bei echten Änderungen)
-        // -------------------------------------------------
-        SetIfDifferent(existing.Zugbez,    zug.Zugbez,    v => existing.Zugbez    = v);
-        SetIfDifferent(existing.Aenderung, zug.Aenderung, v => existing.Aenderung = v);
-        SetIfDifferent(existing.RegelwegLinie, zug.Regelweg?.LinienNr ?? string.Empty,
-            v => existing.RegelwegLinie = v);
-        SetIfDifferent(existing.Klv,       zug.Klv,         v => existing.Klv       = v);
-        SetIfDifferent(existing.Skl,       zug.Skl,         v => existing.Skl       = v);
-        SetIfDifferent(existing.Bza,       zug.Bza,         v => existing.Bza       = v);
-        SetIfDifferent(existing.Bemerkung, zug.Bemerkungen, v => existing.Bemerkung = v);
-        SetIfDifferent(existing.Bedarf,    zug.Bedarf,      v => existing.Bedarf    = v);
-        SetIfDifferent(existing.Sonderzug, zug.Sonder,      v => existing.Sonderzug = v);
+        // UPDATE (nur bei echten Änderungen)
+        SetIfDifferent(existing.Zugbez, zug.Zugbez, v => existing.Zugbez                                           = v);
+        SetIfDifferent(existing.Aenderung, zug.Aenderung, v => existing.Aenderung                                  = v);
+        SetIfDifferent(existing.RegelwegLinie, zug.Regelweg?.LinienNr ?? string.Empty, v => existing.RegelwegLinie = v);
+        SetIfDifferent(existing.Klv, zug.Klv, v => existing.Klv                                                    = v);
+        SetIfDifferent(existing.Skl, zug.Skl, v => existing.Skl                                                    = v);
+        SetIfDifferent(existing.Bza, zug.Bza, v => existing.Bza                                                    = v);
+        SetIfDifferent(existing.Bemerkung, zug.Bemerkungen, v => existing.Bemerkung                                = v);
+        SetIfDifferent(existing.Bedarf, zug.Bedarf, v => existing.Bedarf                                           = v);
+        SetIfDifferent(existing.Sonderzug, zug.Sonder, v => existing.Sonderzug                                     = v);
 
         // FK-Refs
-        SetIfDifferent(existing.KundeRef,             kundeRef,     v => existing.KundeRef             = v);
+        SetIfDifferent(existing.KundeRef, kundeRef, v => existing.KundeRef                             = v);
         SetIfDifferent(existing.RegelwegAbgangBstRef, abgangBstRef, v => existing.RegelwegAbgangBstRef = v);
-        SetIfDifferent(existing.RegelwegZielBstRef,   zielBstRef,   v => existing.RegelwegZielBstRef   = v);
+        SetIfDifferent(existing.RegelwegZielBstRef, zielBstRef, v => existing.RegelwegZielBstRef       = v);
 
         _stats.ZuegeUpdated++;
         return existing.Id;
-    }
-
-
-    // =====================================================================
-    // Abweichung
-    // =====================================================================
-    private async Task UpsertAbweichungAsync(
-        UjBauDbContext    db,
-        ZvFZugAbweichung  abw,
-        long              zugRef,
-        CancellationToken token) {
-        long? ankerBstRef = null;
-
-        if (!string.IsNullOrWhiteSpace(abw.AnchorRl100)) {
-            ankerBstRef = await resolver.ResolveOrCreateBetriebsstelleAsync(
-                db,
-                abw.AnchorRl100,
-                token);
-        }
-
-        if (ankerBstRef is null or <= 0) {
-            Logger.Warn(
-                "Regelung ohne RL100-Anker erkannt | Art={Art}, Zug={Zug}, Tag={Tag}, AnchorRl100='{Ab}', Json={Json}",
-                abw.Regelungsart,
-                abw.Zugnummer,
-                abw.Verkehrstag.ToString("yyyy-MM-dd"),
-                abw.AnchorRl100,
-                abw.JsonRaw
-            );
-
-        }
-
-        var entity = new ZvfDokumentZugAbweichung {
-            ZvfDokumentZugRef = zugRef,
-            Art               = abw.Regelungsart,
-            Abweichung        = abw.JsonRaw,
-            AbBstRef          = ankerBstRef
-        };
-
-        _stats.AbweichungenInserted++;
-        db.ZvfDokumentZugAbweichung.Add(entity);
-        // ❗ KEIN SaveChanges hier
-        // ❗ UniqueConstraint + zentraler SaveChanges reichen aus
     }
 
     // =====================================================================
@@ -523,11 +595,19 @@ public sealed class ZvFUpserter(
     private static bool IsUniqueViolation(DbUpdateException ex)
         => ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
-    private static void SetIfDifferent<T>(T current,
-        T                                   next,
-        Action<T>                           setter) {
-        if (EqualityComparer<T>.Default.Equals(current, next)) return;
+    private static void SetIfDifferent<T>(T current, T next, Action<T> setter) {
+        if (EqualityComparer<T>.Default.Equals(current, next))
+            return;
 
         setter(next);
+    }
+
+    private static async Task DeleteExistingAbweichungenAsync(
+        UjBauDbContext    db,
+        long              zugRef,
+        CancellationToken token) {
+        await db.ZvfDokumentZugAbweichung
+            .Where(x => x.ZvfDokumentZugRef == zugRef)
+            .ExecuteDeleteAsync(token);
     }
 }

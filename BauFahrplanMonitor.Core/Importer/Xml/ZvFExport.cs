@@ -412,9 +412,9 @@ public class ZvFExportBaumassnahmenBaumassnahmeZuegeZug {
     [XmlElement(ElementName = "abweichung")]
     public ZvFExportBaumassnahmenBaumassnahmeZuegeZugAbweichung? Abweichung { get; set; }
 
-    [XmlAttribute(AttributeName = "firstbst")]
+    [XmlElement(ElementName = "firstbst")]
     public string? FirstBst { get; set; }
-
+    
     [XmlAttribute(AttributeName = "aenderung")]
     public string? Aenderung { get; set; }
 

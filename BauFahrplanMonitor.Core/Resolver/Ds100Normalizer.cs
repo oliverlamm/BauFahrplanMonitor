@@ -67,7 +67,7 @@ public static class Ds100Normalizer {
         foreach( var ch in trimmed ) {
 
             if( char.IsLetterOrDigit(ch) ) {
-                sb.Append(ch);
+                sb.Append(char.ToUpperInvariant(ch));
                 lastSpace = false;
             }
             else if( char.IsWhiteSpace(ch) ) {

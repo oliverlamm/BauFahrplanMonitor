@@ -92,16 +92,8 @@
     overflow: hidden;
 }
 
-.progress-bar.progress-scan .progress-value {
-    background-color: #2563eb; /* blau */
-}
-
-.progress-bar.progress-import .progress-value {
-    background-color: #16a34a; /* grün */
-}
-
-.progress-bar.progress-error .progress-value {
-    background-color: #dc2626; /* rot */
+.progress-bar .progress-value {
+    background-color: #EA000D; /* DB rot */
 }
 
 

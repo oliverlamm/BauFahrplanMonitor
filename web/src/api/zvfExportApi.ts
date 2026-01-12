@@ -30,7 +30,7 @@ export interface ImportWorkerStatus {
     startedAt: string | null;
     processedItems: number;
     errors: number;
-    progress: string;
+    progressMessage: string;
 }
 
 export interface ScanStat {

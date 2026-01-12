@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
+using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Interfaces;
-using BauFahrplanMonitor.Helpers;
 
 namespace BauFahrplanMonitor.Core.Importer.Helper;
 

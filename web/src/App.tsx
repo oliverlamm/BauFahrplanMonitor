@@ -7,6 +7,9 @@ import BbpNeoPage from "./pages/BbpNeo/BbpNeoPage";
 import ZvFExportPage from "./pages/ZvFExport/ZvFExportPage";
 import BetriebsstellenPage from "./pages/Betriebsstellen/BetriebsstellenPage";
 
+import dbInfraGoLogo from "./assets/DBInfrago.png";
+
+
 type Page =
     | "status"
     | "netzfahrplan"
@@ -39,12 +42,7 @@ export default function App() {
             default: return null;
         }
     };
-
-    const dbStatus = data.databaseStatus.status.toLowerCase();
-    const systemReady =
-        dbStatus === "error" ? "System nicht bereit" : "System bereit";
-
-    
+    data.databaseStatus.status.toLowerCase();
     return (
         <div className="app">
             {/* Header */}
@@ -62,8 +60,11 @@ export default function App() {
 
                 <div className="header-right">
                     <div className="session">
-                        <div className="session-label">Session</div>
-                        <div className="session-value">{data.allgemein.machineName}</div>
+                        <img
+                            src={dbInfraGoLogo}
+                            alt="DB InfraGO"
+                            className="header-logo"
+                        />
                     </div>
                 </div>
             </header>
@@ -153,8 +154,10 @@ export default function App() {
                 </div>
 
                 <div className="footer-right">
-                    <span className={`status-dot ${dbStatus}`} />
-                    &nbsp;{systemReady}
+                    <div className="session">
+                        <span className="session-label">Session: </span>
+                        <span className="session-value">{data.allgemein.machineName}</span>
+                    </div>
                 </div>
             </footer>
         </div>

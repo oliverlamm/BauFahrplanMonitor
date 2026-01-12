@@ -3,6 +3,7 @@ using System.Text.Json;
 using BauFahrplanMonitor.Core.Importer.Dto.ZvF;
 using BauFahrplanMonitor.Core.Importer.Dto.ZvF.Abweichungen;
 using BauFahrplanMonitor.Core.Importer.Xml;
+using BauFahrplanMonitor.Core.Resolver;
 using NLog;
 
 namespace BauFahrplanMonitor.Core.Importer.Mapper;
@@ -49,32 +50,24 @@ public static class ZvFAbweichungFactory {
     // ENTRYPOINT
     // =====================================================================
 
-    /// <summary>
-    /// Erzeugt ein <see cref="ZvFAbweichungDto"/> aus einer XML-Abweichung.
-    /// </summary>
-    /// <param name="src">XML-Abweichungsknoten</param>
-    /// <param name="zugnummer">Zugnummer</param>
-    /// <param name="verkehrstag">Verkehrstag</param>
-    /// <param name="ankerBstRef">
-    /// Platzhalter für die Betriebsstellen-Referenz
-    /// (wird später im Upsert aufgelöst)
-    /// </param>
-    /// <returns>
-    /// Strukturierte Abweichung oder <c>null</c>, wenn keine Abweichung vorliegt.
-    /// </returns>
-    /// <exception cref="NotSupportedException">
-    /// Wird geworfen, wenn die Regelungsart unbekannt ist.
-    /// </exception>
+    
     public static ZvFZugAbweichung? Create(
         ZvFExportBaumassnahmenBaumassnahmeZuegeZugAbweichung? src,
         long zugnummer,
-        DateOnly verkehrstag
+        DateOnly verkehrstag,
+        string? firstBstRl100
     ) {
         if (src == null)
             return null;
 
         var art = src.Art?.Trim().ToLowerInvariant() ?? "";
-
+        
+        Logger.Debug("AnchorDebug: art={0}, firstbst='{1}', umleitweg={2}",
+            art,
+            firstBstRl100,
+            src.Umleitweg?.Length
+        );
+        
         // --------------------------------------
         // Regelungsart auswählen
         // --------------------------------------
@@ -93,16 +86,31 @@ public static class ZvFAbweichungFactory {
         // --------------------------------------
         // Anker RL100 bestimmen (wird später in DB-ID umgewandelt)
         // --------------------------------------
-        var anchorRl100 = art switch {
-            "umleitung" => src.Umleitweg is { Length: > 0 } ? src.Umleitweg[0] : null,
-            "ersatzhalte" => src.Haltliste is { Length: > 0 } ? src.Haltliste[0].Ausfall?.Ds100 : null,
-            "verspaetung" or "verspätung" => src.Verspaetungab?.Ds100,
-            "vorplan" => src.Vorplanab?.Ds100,
-            "ausfall" => src.Ausfallvon?.Ds100,
-            "regelung" => src.Regelungsliste is { Length: > 0 } ? src.Regelungsliste[0].GiltIn?.Ds100 : null,
-            _ => throw new Exception($"Keinen passenden Anker gefunden für {art}")
-        };
 
+        var anchorRl100 =
+            // 1) Umleitweg schlägt alles
+            src.Umleitweg?
+                .Select(x => x?.Trim())
+                .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))
+
+            // 2) Regelung: gilt_in
+            ?? src.Regelungsliste?
+                .Select(x => x.GiltIn?.Ds100?.Trim())
+                .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))
+
+            // 3) Ersatzhalte
+            ?? src.Haltliste?
+                .Select(x => x.Ausfall?.Ds100?.Trim())
+                .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))
+
+            // 4) Explizite Abweichungsanker
+            ?? src.Verspaetungab?.Ds100?.Trim()
+            ?? src.Vorplanab?.Ds100?.Trim()
+            ?? src.Ausfallvon?.Ds100?.Trim()
+
+            // 5) 🔑 FINALER FALLBACK: firstbst
+            ?? firstBstRl100?.Trim();
+        
         if (string.IsNullOrWhiteSpace(anchorRl100)) {
             Logger.Warn(
                 "ZvFAbweichung ohne Anker: Art={0}, Zugnr={1}, Verkehrstag={2}",
@@ -119,7 +127,9 @@ public static class ZvFAbweichungFactory {
             Verkehrstag  = verkehrstag,
             Regelungsart = art,
             JsonRaw      = json,
-            AnchorRl100  = anchorRl100,
+            AnchorRl100 = string.IsNullOrWhiteSpace(anchorRl100)
+                ? null
+                : Ds100Normalizer.Clean(anchorRl100),
         };
     }
 

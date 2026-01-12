@@ -95,8 +95,9 @@ export default function ZvFExportPage() {
     const {cls, text} = mapImporterStatus(importerState);
     
     const canStart =
-        importerState === "Idle" ||
-        importerState === "Scanned";
+        importerState === "Scanned" &&
+        status.scanTotalFiles > 0 &&
+        !loading;
 
     const canCancel =
         importerState === "Starting" ||
@@ -129,7 +130,7 @@ export default function ZvFExportPage() {
                             <label>Verzeichnis</label>
                             <input
                                 type="text"
-                                value="c:/Users/mail/Documents/DBNetz/import"
+                                value={cfg.datei.importpfad}
                                 readOnly
                             />
                         </div>
@@ -202,7 +203,10 @@ export default function ZvFExportPage() {
                             <button
                                 className="btn"
                                 disabled={!canStart || loading}
-                                onClick={startImport}
+                                onClick={() => {
+                                    if (!canStart) return;
+                                    startImport();
+                                }}
                             >
                                 <i className="fa-solid fa-play"/> Start
                             </button>
@@ -306,16 +310,13 @@ export default function ZvFExportPage() {
                                     </div>
 
                                     <div className="thread-status">
-                                        Status: {text}
+                                        Status: {worker.progressMessage}
                                     </div>
 
                                     <div className="thread-count">
                                         {worker.errors > 0 && (
                                             <> — ⚠ {worker.errors} Fehler</>
                                         )}
-                                    </div>
-                                    <div className="thread-progress">
-                                        {worker.progress}
                                     </div>
                                 </div>
                             );

@@ -6,7 +6,10 @@ public sealed class ZvFImportStats {
     public int AbweichungenInserted { get; set; }
     public int EntfallenInserted    { get; set; }
 
-    public int ZuegeGesamt => ZuegeInserted + ZuegeUpdated;
+    public int ZuegeGesamt                 => ZuegeInserted + ZuegeUpdated;
+    public int AbweichungSkippedNoAnchor   { get; set; }
+    public int AbweichungInserted          { get; set; }
+    public int AbweichungSkippedInvalidBst { get; set; }
 
     public string ToSummaryString() =>
         $"Züge={ZuegeGesamt}, Entfallen={EntfallenInserted}";

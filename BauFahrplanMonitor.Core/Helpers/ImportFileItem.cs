@@ -1,7 +1,4 @@
-using System;
-using BauFahrplanMonitor.Core.Helpers;
-
-namespace BauFahrplanMonitor.Helpers;
+namespace BauFahrplanMonitor.Core.Helpers;
 
 public class ImportFileItem {
     public string     FilePath      { get; }
