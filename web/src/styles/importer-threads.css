@@ -48,6 +48,7 @@
     border-radius: 999px;
     background: #f3f4f6;
     color: #374151;
+    font-weight: 600;
 }
 
 .badge.ready {
@@ -60,8 +61,23 @@
 }
 
 .badge.error {
-    background: #fee2e2;
-    color: #b91c1c;
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.badge.ok {
+    background: #00A63E;
+    color: #fef2f2;
+}
+
+.badge.warning {
+    background: #D08700;
+    color: #fef2f2;
+}
+
+.badge.neutral {
+    background: #f3f4f6;
+    color: #374151;
 }
 
 /* =========================================================

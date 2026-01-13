@@ -41,6 +41,11 @@
     border-color: #a7f3d0;
 }
 
+.status-card.error {
+    background-color: #fff1f1;        
+    border-color: #fca5a5;
+}
+
 /* Card header */
 .status-card-header {
     display: flex;
@@ -53,27 +58,6 @@
     margin: 0;
     font-size: 15px;
     font-weight: 500;
-    color: #374151;
-}
-
-/* Badge */
-.badge.ok {
-    background: #00A63E;
-    color: #fef2f2;
-}
-
-.badge.warning {
-    background: #D08700;
-    color: #fef2f2;
-}
-
-.badge.error {
-    background: #991b1b;
-    color: #fef2f2;
-}
-
-.badge.neutral {
-    background: #f3f4f6;
     color: #374151;
 }
 

@@ -74,3 +74,44 @@
     gap: 4px;
     font-size: 14px;
 }
+
+/* =========================================================
+   Importer Status Badge
+   ========================================================= */
+
+.importer-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 4px 10px;
+    border-radius: 999px;
+
+    font-size: 13px;
+    font-weight: 500;
+
+    border: 1px solid;
+    user-select: none;
+}
+
+/* Status: OK / Bereit */
+.importer-badge.ok {
+    background: #ecfdf5;           /* grünlich */
+    border-color: #10b981;
+    color: #065f46;
+}
+
+.importer-badge.ok .badge-dot {
+    background: #10b981;
+}
+
+/* Status: RUNNING */
+.importer-badge.running {
+    background: #eff6ff;           /* blau */
+    border-color: #3b82f6;
+    color: #1e3a8a;
+}
+
+.importer-badge.running .badge-dot {
+    background: #3b82f6;
+}
