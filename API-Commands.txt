@@ -1,3 +1,5 @@
+ZvFExport API
+
 Scannen:
 
 curl -X POST http://localhost:5222/api/import/zvfexport/scan \
@@ -15,3 +17,27 @@ curl -X POST http://localhost:5222/api/import/zvfexport/import
 Cancel:
 
 curl -X POST http://localhost:5222/api/import/zvfexport/cancel
+
+Netzfahrplan API
+
+Scannen:
+curl -X POST \
+  http://localhost:5000/api/import/netzfahrplan/scan \
+  -H "Accept: application/json"
+
+Status:
+curl -X GET \
+  http://localhost:5000/api/import/netzfahrplan/status \
+  -H "Accept: application/json"
+
+
+Import: 
+curl -X POST \
+  http://localhost:5000/api/import/netzfahrplan/start \
+  -H "Accept: application/json"
+
+Abbrechen:
+curl -X POST \
+  http://localhost:5000/api/import/netzfahrplan/cancel \
+  -H "Accept: application/json"
+

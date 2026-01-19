@@ -5,7 +5,7 @@ using BauFahrplanMonitor.Data;
 namespace BauFahrplanMonitor.Core.Interfaces;
 
 public interface IFileImporter {
-    Task ImportAsync(
+    Task<ImportFileOutcome> ImportAsync(
         UjBauDbContext                db,
         ImportFileItem                item,
         IProgress<ImportProgressInfo> progress,

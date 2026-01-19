@@ -1,10 +1,69 @@
 import "./BbpNeoPage.css";
+import "../../styles/importer-threads.css";
 
+import { ImporterStatusBadge } from "../../components/importer/ImporterStatusBadge";
+import { useBbpNeo } from "../../hooks/useBbpNeo";
+import { mapImporterStatus } from "../../utils/importerStatusMapper";
+import type { ImportJobState } from "../../models/importer-status";
+
+/* ------------------------------------------------------------ */
+function uiStateFromJob(
+    state: ImportJobState
+): "neutral" | "running" | "ok" | "warning" | "error" {
+    switch (state) {
+        case "Running":
+            return "running";
+        case "Finished":
+            return "ok";
+        case "FinishedWithErrors":
+            return "warning";
+        case "Cancelled":
+        case "Failed":
+            return "error";
+        default:
+            return "neutral";
+    }
+}
+
+function progressPercent(done: number, total: number): number {
+    if (!total || total <= 0) return 0;
+    return Math.min(100, Math.round((done / total) * 100));
+}
+
+/* ============================================================ */
 export default function BbpNeoPage() {
+    const {
+        status,
+        files,
+        selectedFile,
+        setSelectedFile,
+        loading,
+        error,
+        startImport,
+        cancelImport,
+        reloadFiles
+    } = useBbpNeo();
+
+    const badge = mapImporterStatus(status.state as ImportJobState);
+
+    const percent = progressPercent(
+        status.massnahmenFertig,
+        status.massnahmenGesamt
+    );
+
+    const canStart =
+        (status.state === "Idle" ||
+            status.state === "Finished" ||
+            status.state === "FinishedWithErrors" ||
+            status.state === "Cancelled") &&
+        !!selectedFile &&
+        !loading;
+
+    const canCancel = status.state === "Running";
+
     return (
         <div className="importer-page">
-
-            <section className="importer-card">
+            <section className={`importer-card ${uiStateFromJob(status.state)}`}>
 
                 {/* Header */}
                 <header className="importer-header">
@@ -14,106 +73,125 @@ export default function BbpNeoPage() {
                             Import für Maßnahmen aus BBPNeo
                         </div>
                     </div>
+
+                    <ImporterStatusBadge status={badge.cls} text={badge.text} />
                 </header>
-                
+
+                {/* Controls */}
                 <section className="bbp-controls">
 
-                    {/* Verzeichnis */}
                     <div className="bbp-row">
                         <div className="bbp-row-left">
                             <label>Datei</label>
-                            <input
-                                type="text"
-                                value="c:/Users/mail/Documents/DBNetz/import/BBP.xml"
-                                readOnly
-                            />
+                            <select
+                                value={selectedFile ?? ""}
+                                onChange={e =>
+                                    setSelectedFile(
+                                        e.target.value || null
+                                    )
+                                }
+                                disabled={loading}
+                            >
+                                <option value="">
+                                    — BBP-Datei auswählen —
+                                </option>
+
+                                {files.map(f => (
+                                    <option key={f.fileName} value={f.fileName}>
+                                        {f.fileName} —{" "}
+                                        {(f.sizeBytes / 1024 / 1024).toFixed(0)} MB
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         <div className="bbp-row-right">
-                            <button className="btn">
-                                <i className="fa fa-folder-open" /> Öffnen
+                            <button
+                                className="btn"
+                                onClick={reloadFiles}
+                                disabled={loading}
+                                title="Dateiliste neu laden"
+                            >
+                                <i className="fa-solid fa-rotate" />
                             </button>
                         </div>
                     </div>
 
-                    {/* Filter + Actions */}
                     <div className="bbp-row">
-                        <div className="bbp-row-left">
-                            
-                        </div>
+                        <div className="bbp-row-left" />
 
                         <div className="bbp-row-right">
-                            <button className="btn btn-primary">
+                            <button
+                                className="btn btn-primary"
+                                disabled={!canStart}
+                                onClick={startImport}
+                            >
                                 <i className="fa-solid fa-play" /> Start
                             </button>
-                            <button className="btn btn-secondary">
+
+                            <button
+                                className="btn btn-secondary"
+                                disabled={!canCancel}
+                                onClick={cancelImport}
+                            >
                                 <i className="fa-solid fa-xmark" /> Stopp
                             </button>
                         </div>
                     </div>
 
+                    {error && (
+                        <div className="importer-error">
+                            <i className="fa-solid fa-triangle-exclamation" />
+                            &nbsp;{error}
+                        </div>
+                    )}
                 </section>
-                
-                {/* Gesamtfortschritt */}
+
+                {/* Progress */}
                 <section className="progress-block">
                     <div className="progress-label">
-                        <span>Gesamtfortschritt</span>
-                        <span>0%</span>
+                        <span>Import-Fortschritt</span>
+                        <span>{percent}%</span>
                     </div>
+
                     <div className="progress-bar">
-                        <div className="progress-value" style={{ width: "0%" }} />
+                        <div
+                            className="progress-value"
+                            style={{ width: `${percent}%` }}
+                        />
+                    </div>
+
+                    <div className="progress-subline">
+                        {status.massnahmenFertig.toLocaleString()}
+                        {" / "}
+                        {status.massnahmenGesamt.toLocaleString()}
+                        {" Maßnahmen"}
+
+                        {status.errors > 0 && (
+                            <> — ⚠ {status.errors} Fehler</>
+                        )}
                     </div>
                 </section>
 
-                {/* Details */}
-                <section className="bbp-details">
+                {/* Statistik */}
+                <section className="bbpneo-stats">
+                    <h4>Statistik</h4>
 
-                    {/* Thread */}
-                    <div className="bbpneo-thread">
-                        <div className="thread-header">
-                            <span>Import Thread</span>
-                            <span className="badge status-ready">Bereit</span>
-                        </div>
-
-                        <div className="thread-status">Warte auf Start</div>
-                        <div className="thread-count">0 / 50.000 Datensätze</div>
-                        <div className="thread-meta">&nbsp;</div>
-                        <div className="stat-row">
-                            <span>Queue-Größe</span>
-                            <span>0</span>
-                        </div>
-                        <div className="stat-row">
-                            <span>Consumer aktiv</span>
-                            <span>0</span>
-                        </div>
-                        
-
+                    <div className="stat-row">
+                        <span>Regelungen</span>
+                        <span>{status.regelungen}</span>
                     </div>
-
-                    {/* Statistik */}
-                    <div className="bbpneo-stats">
-                        <h4>Statistik</h4>
-
-                        <div className="stat-row">
-                            <span>Anzahl Maßnahmen</span>
-                            <span>0</span>
-                        </div>
-                        <div className="stat-row">
-                            <span>Anzahl Regelungen</span>
-                            <span>0</span>
-                        </div>
-                        <div className="stat-row">
-                            <span>Anzahl BvE</span>
-                            <span>0</span>
-                        </div>
-                        <div className="stat-row">
-                            <span>Anzahl APS</span>
-                            <span>0</span>
-                        </div>
-                        <div className="stat-row">
-                            <span>Anzahl IAV</span>
-                            <span>0</span>
-                        </div>
+                    <div className="stat-row">
+                        <span>Betriebsverfahren</span>
+                        <span>{status.betriebsverfahren}</span>
+                    </div>
+                    <div className="stat-row">
+                        <span>APS</span>
+                        <span>{status.aps}</span>
+                    </div>
+                    <div className="stat-row">
+                        <span>IAV</span>
+                        <span>{status.iav}</span>
                     </div>
                 </section>
 

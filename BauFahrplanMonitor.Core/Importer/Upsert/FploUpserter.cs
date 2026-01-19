@@ -24,7 +24,7 @@ public sealed class FploUpserter(
     SharedReferenceResolver           resolver,
     ConfigService                     config)
     : ImportUpserterBase(config, LogManager.GetCurrentClassLogger()), IFploUpserter {
-    
+
     private FploImportStats Stats { get; set; } = new();
 
     // =====================================================================
@@ -37,7 +37,9 @@ public sealed class FploUpserter(
         CancellationToken             token) {
         token.ThrowIfCancellationRequested();
 
-        Stats = new FploImportStats { Dokumente = 1 };
+        Stats = new FploImportStats {
+            Dokumente = 1
+        };
         var sw = Stopwatch.StartNew();
 
         DebugTraceHelper.TraceDocumentRegions(Logger, "Upsert.Entry", dto);
@@ -66,8 +68,8 @@ public sealed class FploUpserter(
                 await UpsertStreckenabschnitteAsync(dto, token, db, dokumentRef);
                 var factoryResult = FploZugFactory.Build(dto.Document);
 
-                Stats.SevsGelesen              += factoryResult.SevsGelesen;
-                
+                Stats.SevsGelesen += factoryResult.SevsGelesen;
+
                 var total = factoryResult.Zuege.Count;
                 var index = 0;
 
@@ -82,7 +84,7 @@ public sealed class FploUpserter(
                             zug.Verkehrstag);
                         continue;
                     }
-                    
+
                     progress?.Report(new UpsertProgressInfo {
                         Phase   = UpsertPhase.Zuege,
                         Current = index,
@@ -109,9 +111,9 @@ public sealed class FploUpserter(
                         }
                         catch (Exception ex) {
                             HandleException(ex, "FploUpsert", new {
-                                    dto.Document.Dateiname,
-                                    dto.Vorgang.MasterFplo
-                                });
+                                dto.Document.Dateiname,
+                                dto.Vorgang.MasterFplo
+                            });
                         }
                     }
                 }
@@ -163,6 +165,11 @@ public sealed class FploUpserter(
                     db, fp.BstDs100, token);
             }
 
+            if (bstRef < 0) {
+                Logger.Warn("Ungültige Betriebsstellen-Refs ignoriert: Ds100={0}", bstRef);
+                throw (new Exception("Abbruch"));
+            }
+            
             db.FploDokumentZugFahrplan.Add(
                 new FploDokumentZugFahrplan {
                     FploDokumentZugRef = zugRef,
@@ -224,26 +231,16 @@ public sealed class FploUpserter(
                 zug.Regelweg?.Abgangsbahnhof?.Ds100,
                 token);
 
-        if (regelwegAbBstRef <= 0)
-        {
-            throw new InvalidOperationException(
-                $"Regelweg-Abgangsbahnhof konnte nicht aufgelöst werden | "        +
-                $"Zug={zug.Zugnummer}, Verkehrstag={zug.Verkehrstag:yyyy-MM-dd}, " +
-                $"Wert='{zug.Regelweg?.Abgangsbahnhof?.Ds100}'");
-        }
-
         var regelwegZielBstRef =
             await resolver.ResolveOrCreateBetriebsstelleAsync(
                 db,
                 zug.Regelweg?.Zielbahnhof?.Ds100,
                 token);
 
-        if (regelwegZielBstRef <= 0)
-        {
-            throw new InvalidOperationException(
-                $"Regelweg-Zielbahnhof konnte nicht aufgelöst werden | "           +
-                $"Zug={zug.Zugnummer}, Verkehrstag={zug.Verkehrstag:yyyy-MM-dd}, " +
-                $"Wert='{zug.Regelweg?.Zielbahnhof?.Ds100}'");
+        if (regelwegAbBstRef < 0 || regelwegZielBstRef < 0) {
+            Logger.Warn("Ungültige Betriebsstellen-Refs ignoriert: Abgang={0}, Ziel={1}, Zug={2}/{3}",
+                regelwegAbBstRef, regelwegZielBstRef, zug.Zugnummer, zug.Verkehrstag);
+            throw (new Exception("Abbruch"));
         }
 
         // Update
@@ -316,20 +313,17 @@ public sealed class FploUpserter(
                 db, zug.Betreiber, token);
 
         var empfaenger = dto.Header.Empfaenger;
-        if (empfaenger is { Count: 1 }) {
-            var kbez = empfaenger[0];
-            var id = await db.BasisKunde
-                .Where(k => k.Kbez == kbez)
-                .Select(k => k.Id)
-                .OrderBy(x => x)
-                .FirstOrDefaultAsync(token);
+        if (empfaenger is not { Count: 1 })
+            return 0;
+        var kbez = empfaenger[0];
+        var id = await db.BasisKunde
+            .Where(k => k.Kbez == kbez)
+            .Select(k => k.Id)
+            .OrderBy(x => x)
+            .FirstOrDefaultAsync(token);
 
-            if (id > 0) {
-                return id;
-            }
-        }
+        return id > 0 ? id : 0;
 
-        return 0;
     }
 
     // =====================================================================
@@ -367,16 +361,12 @@ public sealed class FploUpserter(
             throw new InvalidOperationException("Masterniederlassung fehlt");
 
         var masterRegionRef = await resolver.ResolveRegionAsync(db, dto.Document.MasterRegion, token);
-
         if (masterRegionRef <= 0)
-            throw new InvalidOperationException(
-                $"MasterRegion '{dto.Document.MasterRegion}' konnte nicht aufgelöst werden");
+            throw new InvalidOperationException($"MasterRegion '{dto.Document.MasterRegion}' konnte nicht aufgelöst werden");
 
         if (string.IsNullOrWhiteSpace(dto.Document.Region))
             throw new InvalidOperationException("Region fehlt");
-
         var regionRef = await resolver.ResolveRegionAsync(db, dto.Document.Region, token);
-
         if (regionRef <= 0)
             throw new InvalidOperationException($"Region '{dto.Document.Region}' konnte nicht aufgelöst werden");
 
@@ -426,8 +416,7 @@ public sealed class FploUpserter(
             if (winnerId > 0)
                 return winnerId;
 
-            throw new InvalidOperationException(
-                "UebDokument konnte nach UniqueViolation nicht erneut gelesen werden", ex);
+            throw new InvalidOperationException("FploDokument konnte nach UniqueViolation nicht erneut gelesen werden", ex);
         }
     }
 
@@ -462,7 +451,7 @@ public sealed class FploUpserter(
                 if (strecke.Baubeginn == null || strecke.Bauende == null)
                     throw new InvalidOperationException(
                         $"Streckenabschnitt ohne Baubeginn/Bauende (DokRef={dokumentRef})");
-                
+
                 db.FploDokumentStreckenabschnitte.Add(
                     new FploDokumentStreckenabschnitte {
                         FploDokumentRef = dokumentRef,
@@ -512,6 +501,8 @@ public sealed class FploUpserter(
                 AnkerBstRef        = ankerBstRef,
                 Regelung           = regelung.JsonRaw
             });
+        
+        
     }
 
     // =====================================================================

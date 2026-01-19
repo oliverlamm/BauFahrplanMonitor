@@ -1,7 +1,7 @@
-import type { ImporterStatus } from "../api/zvfExportApi";
+import type { ImportJobState } from "../models/importer-status";
 
 export function mapImporterStatus(
-    state: ImporterStatus
+    state: ImportJobState
 ): { cls: string; text: string } {
 
     switch (state) {
@@ -28,16 +28,19 @@ export function mapImporterStatus(
             return { cls: "status-success", text: "Abgeschlossen" };
 
         case "FinishedWithErrors":
-            return { cls: "status-warning", text: "Abgeschlossen (Fehler)" };
+            return {
+                cls: "status-warning",
+                text: "Abgeschlossen (Fehler)"
+            };
 
-        case "Aborted":
+        case "Cancelled":
             return { cls: "status-disabled", text: "Abgebrochen" };
 
         case "Failed":
             return { cls: "status-error", text: "Fehler" };
 
         default:
+            // defensive fallback
             return { cls: "status-bereit", text: state };
     }
 }
-

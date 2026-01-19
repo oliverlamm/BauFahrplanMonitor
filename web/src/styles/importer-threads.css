@@ -27,7 +27,8 @@
 
 /* Meta */
 .thread-file,
-.thread-status {
+.thread-status, 
+.thread-overall-counter {
     font-size: 13px;
     color: #6b7280;
 }

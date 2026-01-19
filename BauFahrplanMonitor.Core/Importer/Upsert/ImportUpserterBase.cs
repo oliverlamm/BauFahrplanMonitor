@@ -17,11 +17,39 @@ public abstract class ImportUpserterBase(
         Exception ex,
         string    context,
         object?   details = null) {
-        Logger.Error(ex, $"[Upsert:{context}] Fachlicher Fehler | Details={details}");
 
-        if (Config.Effective.Allgemein is not { Debugging: true, StopAfterException: true }) return;
-        Logger.Fatal($"[Upsert:{context}] StopAfterException aktiv → Import wird abgebrochen");
+        // ------------------------------------------------------------
+        // 1) Cancellation ist KEIN fachlicher Fehler
+        // ------------------------------------------------------------
+        if (ex is OperationCanceledException) {
+            Logger.Info(
+                ex,
+                "[Upsert:{Context}] Abgebrochen | Details={Details}",
+                context,
+                details);
+            return;
+        }
 
-        throw new StopAfterExceptionException("StopAfterException ausgelöst (Debug)");
+        // ------------------------------------------------------------
+        // 2) Echte fachliche / technische Fehler
+        // ------------------------------------------------------------
+        Logger.Error(
+            ex,
+            "[Upsert:{Context}] Fachlicher Fehler | Details={Details}",
+            context,
+            details);
+
+        // ------------------------------------------------------------
+        // 3) Debug-Policy: StopAfterException
+        // ------------------------------------------------------------
+        if (Config.Effective.Allgemein is not { Debugging: true, StopAfterException: true })
+            return;
+
+        Logger.Fatal(
+            "[Upsert:{Context}] StopAfterException aktiv → Import wird abgebrochen",
+            context);
+
+        throw new StopAfterExceptionException(
+            "StopAfterException ausgelöst (Debug)");
     }
 }

@@ -318,6 +318,9 @@ export default function ZvFExportPage() {
                                             <> — ⚠ {worker.errors} Fehler</>
                                         )}
                                     </div>
+                                    <div className="thread-overall-counter">
+                                        Anzahl: {worker.processedItems}
+                                    </div>
                                 </div>
                             );
                         })}

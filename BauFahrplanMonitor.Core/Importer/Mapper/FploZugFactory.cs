@@ -11,6 +11,13 @@ public static class FploZugFactory {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
     public static FploZugFactoryResult Build(FploDocumentDto document) {
+
+        // 🔑 Transformation-Stats
+        long sevsGelesen              = 0;
+        long sevsMitErsatzzug         = 0;
+        long zuegeAusSevErzeugt       = 0;
+        long ersatzzuegeAusSevErzeugt = 0;
+        
         var zugMap =
             new Dictionary<FploZugKey, FploZugDto>();
 
@@ -37,6 +44,8 @@ public static class FploZugFactory {
             if (sev.Verkehrstag is null)
                 continue;
 
+            sevsGelesen++;
+            
             var key = new FploZugKey(sev.ZugNr, sev.Verkehrstag.Value);
 
             if (!zugMap.TryGetValue(key, out var zug)) {
@@ -45,6 +54,7 @@ public static class FploZugFactory {
                 regelungen[key] = new Dictionary<FploRegelungsKey, FploRegelungDto>();
 
                 AddBasisFploAbschnittRegelung(regelungen, key, zug);
+                zuegeAusSevErzeugt++;  
             }
 
             // ➕ SEV-Regelung (Teilausfall)
@@ -55,7 +65,8 @@ public static class FploZugFactory {
             // -----------------------------
             if (sev.Ersatzzug is not { } ez)
                 continue;
-
+            
+            sevsMitErsatzzug++;
             var ezKey = new FploZugKey(ez.Zugnummer, ez.Verkehrstag);
 
             if (zugMap.ContainsKey(ezKey))
@@ -67,6 +78,7 @@ public static class FploZugFactory {
             regelungen[ezKey] = new Dictionary<FploRegelungsKey, FploRegelungDto>();
 
             AddBasisFploAbschnittRegelung(regelungen, ezKey, ersatzZug);
+            ersatzzuegeAusSevErzeugt++;
         }
 
         // -------------------------------------------------
@@ -90,11 +102,27 @@ public static class FploZugFactory {
                 }));
         }
 
+        var allRegelungen = regelungen
+            .SelectMany(x => x.Value.Values)
+            .ToList();
+
         return new FploZugFactoryResult {
             Zuege = zugMap.Values.ToList(),
             Regelungen = regelungen.ToDictionary(
                 x => x.Key,
-                x => x.Value.Values.ToList())
+                x => x.Value.Values.ToList()),
+
+            // Transformation
+            SevsGelesen              = sevsGelesen,
+            SevsMitErsatzzug         = sevsMitErsatzzug,
+            ZuegeAusSevErzeugt       = zuegeAusSevErzeugt,
+            ErsatzzuegeAusSevErzeugt = ersatzzuegeAusSevErzeugt,
+
+            // Fachliche Regelungen
+            SevRegelungen             = allRegelungen.Count(r => r.Art == RegelungsArt.Sev),
+            HaltausfallRegelungen     = allRegelungen.Count(r => r.Art == RegelungsArt.Haltausfall),
+            ZurueckgehaltenRegelungen = allRegelungen.Count(r => r.Art == RegelungsArt.Zurueckgehalten),
+            ZugparameterRegelungen    = allRegelungen.Count(r => r.Art == RegelungsArt.Zugparameter)
         };
     }
 

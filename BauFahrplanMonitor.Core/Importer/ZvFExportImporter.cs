@@ -48,7 +48,7 @@ public sealed class ZvFExportImporter(
     // ENTRYPOINT (Interface)
     // =====================================================================
 
-    public async Task ImportAsync(
+    public async Task<ImportFileOutcome> ImportAsync(
         UjBauDbContext                db,
         ImportFileItem                item,
         IProgress<ImportProgressInfo> progress,
@@ -91,9 +91,9 @@ public sealed class ZvFExportImporter(
                 StepIndex = ImportSteps.Read
             });
 
-            // ❗ WICHTIG: NICHT weiterwerfen
-            return;
+            return ImportFileOutcome.Skipped;
         }
+        return ImportFileOutcome.Success;
     }
 
     // =====================================================================

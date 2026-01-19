@@ -242,6 +242,10 @@ public sealed class ZvFExportJob {
 
                     await ImportOneAsync(worker, item, ct);
 
+                    // ✅ Worker
+                    worker.ProcessedItems++;
+
+                    // ✅ Job
                     _status.IncrementImportProcessed();
                     completedSuccessfully = true;
                 }
@@ -251,12 +255,17 @@ public sealed class ZvFExportJob {
                 }
                 catch (Exception ex) {
                     worker.State = WorkerState.Error;
+
+                    // ✅ Worker
+                    worker.Errors++;
+
+                    // ✅ Job
                     _status.IncrementImportErrors();
 
                     _logger.LogError(ex,
                         "Import fehlgeschlagen | Datei={File}",
                         item.FilePath);
-
+                    
                     if (_config.Effective.Allgemein.StopAfterException) {
                         worker.State         = WorkerState.Canceled;
                         _softCancelRequested = 1;

@@ -95,7 +95,7 @@ public sealed class NetzfahrplanJobStatus {
         StartedAt  = null;
         State      = ImportJobState.Idle;
     }
-    
+
     internal void IncrementActiveWorkers()
         => Interlocked.Increment(ref _activeWorkers);
 
@@ -104,5 +104,9 @@ public sealed class NetzfahrplanJobStatus {
 
     internal void IncrementProcessedFiles()
         => Interlocked.Increment(ref _processedFiles);
+
+    public void DecrementQueueCount() {
+        QueueCount = Math.Max(0, QueueCount - 1);
+    }
 
 }

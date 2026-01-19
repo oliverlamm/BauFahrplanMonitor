@@ -12,49 +12,73 @@ public sealed class BbpNeoJob {
     private readonly IDbContextFactory<UjBauDbContext> _dbFactory;
     private readonly ConfigService                     _config;
 
-    private readonly BbpNeoJobStatus _status;
+    private readonly object                   _lock = new();
+    private          CancellationTokenSource? _cts;
 
-    public BbpNeoJobStatus Status => _status;
+    private readonly BbpNeoJobStatus _status = new();
+    public           BbpNeoJobStatus Status => _status;
 
-    public async Task StartAsync(
-        string            file,
-        CancellationToken token) {
-        _status.State = ImportJobState.Running;
+    public async Task StartAsync(string file, CancellationToken externalToken) {
+        lock (_lock) {
+            if (_status.State == ImportJobState.Running)
+                throw new InvalidOperationException("BBPNeo-Import läuft bereits");
 
-        await using var db =
-            await _dbFactory.CreateDbContextAsync(token);
+            _status.Reset();
+            _status.State       = ImportJobState.Running;
+            _status.StartedAt   = DateTime.UtcNow;
+            _status.CurrentFile = file;
+        }
 
-        var item = new ImportFileItem(
-            file,
-            DateTime.Now,
-            ImportMode.None);
-
-        _status.Reset();
-        _status.State       = ImportJobState.Running;
-        _status.StartedAt   = DateTime.Now;
-        _status.CurrentFile = item.FilePath;
-
-        var progress = new Progress<ImportProgressInfo>(info => { _status.UpdateFrom(info); });
+        _cts = CancellationTokenSource.CreateLinkedTokenSource(externalToken);
 
         try {
+            await using var db =
+                await _dbFactory.CreateDbContextAsync(_cts.Token);
+
+            var item = new ImportFileItem(
+                file,
+                DateTime.UtcNow,
+                ImportMode.None);
+
+            var progress = new Progress<ImportProgressInfo>(info => {
+                lock (_lock) {
+                    _status.UpdateFrom(info);
+                }
+            });
+
             await _importer.ImportAsync(
                 db,
                 item,
                 progress,
-                token);
+                _cts.Token);
 
-            _status.MarkFinished(withErrors: _status.Errors > 0);
+            lock (_lock) {
+                _status.MarkFinished(withErrors: _status.Errors > 0);
+            }
         }
         catch (OperationCanceledException) {
-            _status.State = ImportJobState.Aborted;
+            lock (_lock) {
+                _status.State      = ImportJobState.Cancelled;
+                _status.FinishedAt = DateTime.UtcNow;
+            }
         }
         catch (Exception) {
-            _status.IncrementErrors();
-            _status.State = ImportJobState.Failed;
+            lock (_lock) {
+                _status.IncrementErrors();
+                _status.State      = ImportJobState.Failed;
+                _status.FinishedAt = DateTime.UtcNow;
+            }
+
             throw;
         }
+        finally {
+            lock (_lock) {
+                _status.CurrentFile = null;
+            }
+        }
     }
+
     public void RequestCancel() {
-        throw new NotImplementedException();
+        _cts?.Cancel();
     }
 }

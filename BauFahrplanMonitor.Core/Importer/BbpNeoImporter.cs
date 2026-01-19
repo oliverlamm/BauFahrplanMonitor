@@ -49,7 +49,7 @@ public sealed class BbpNeoImporter(
     // -------------------------------------------------
     // Import
     // -------------------------------------------------
-    public async Task ImportAsync(
+    public async Task<ImportFileOutcome> ImportAsync(
         UjBauDbContext                dbs,
         ImportFileItem                item,
         IProgress<ImportProgressInfo> progress,
@@ -152,6 +152,7 @@ public sealed class BbpNeoImporter(
 
         // Wait consumers
         await Task.WhenAll(workers);
+        return ImportFileOutcome.Success;
     }
 
     // -------------------------------------------------

@@ -142,19 +142,25 @@ app.MapGet("/api/import/netzfahrplan/status",
 // --------------------------------------
 app.MapPost("/api/import/bbpneo/start",
     async (
-        BbpNeoImportRequest      request,
-        [FromServices] BbpNeoJob job,
-        CancellationToken        token) => {
-        if (string.IsNullOrWhiteSpace(request.FilePath))
-            return Results.BadRequest("FilePath fehlt");
+        BbpNeoImportRequest          request,
+        [FromServices] ConfigService config,
+        [FromServices] BbpNeoJob     job,
+        CancellationToken            token) => {
+        if (string.IsNullOrWhiteSpace(request.FileName))
+            return Results.BadRequest("FileName fehlt");
 
-        await job.StartAsync(request.FilePath, token);
+        var importDir = config.Effective.Datei.Importpfad;
+        var fullPath  = Path.Combine(importDir, request.FileName);
 
-        return Results.Accepted(
-            value: new {
-                state = "started",
-                file  = request.FilePath
-            });
+        if (!File.Exists(fullPath))
+            return Results.BadRequest("Datei existiert nicht");
+
+        await job.StartAsync(fullPath, token);
+
+        return Results.Accepted(value: new {
+            state = "started",
+            file  = request.FileName
+        });
     });
 
 app.MapPost("/api/import/bbpneo/cancel",
@@ -168,7 +174,35 @@ app.MapPost("/api/import/bbpneo/cancel",
 
 app.MapGet("/api/import/bbpneo/status",
     ([FromServices] BbpNeoJob job) =>
-        Results.Ok(job.Status));
+        Results.Ok(job.Status.ToDto()));
+
+app.MapGet("/api/import/bbpneo/files",
+    ([FromServices] ConfigService config) => {
+        var root = config.Effective.Datei.Importpfad;
+
+        if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) {
+            return Results.Problem(
+                title: "Importpfad ungültig",
+                detail: $"Pfad existiert nicht: {root}"
+            );
+        }
+
+        var files = Directory
+            .EnumerateFiles(root, "BBP*.xml", SearchOption.TopDirectoryOnly)
+            .Select(f => {
+                var fi = new FileInfo(f);
+
+                return new {
+                    fileName        = fi.Name,
+                    sizeBytes       = fi.Length,
+                    lastModifiedUtc = fi.LastWriteTimeUtc
+                };
+            })
+            .OrderByDescending(f => f.lastModifiedUtc)
+            .ToList();
+
+        return Results.Ok(files);
+    });
 
 // --------------------------------------
 // Status

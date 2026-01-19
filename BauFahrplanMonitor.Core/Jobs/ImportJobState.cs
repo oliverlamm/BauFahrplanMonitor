@@ -10,5 +10,6 @@ public enum ImportJobState {
     Failed,
     FinishedWithErrors,
     Starting,
-    Stopping
+    Stopping,
+    Cancelled
 }

@@ -96,56 +96,90 @@ public sealed class NetzfahrplanJob {
                 ? 1
                 : Math.Max(1, _config.Effective.Allgemein.ImportThreads);
 
-        await Parallel.ForEachAsync(
-            _queue,
-            new ParallelOptions {
-                MaxDegreeOfParallelism = workerCount,
-                CancellationToken      = _cts.Token
-            },
-            async (item, ct) => {
-                if (_softCancel)
-                    return;
+        try {
+            await Parallel.ForEachAsync(
+                _queue,
+                new ParallelOptions {
+                    MaxDegreeOfParallelism = workerCount,
+                    CancellationToken      = _cts.Token
+                },
+                async (item, ct) => {
+                    // 🔴 HARTER Abbruch
+                    ct.ThrowIfCancellationRequested();
 
-                var worker = _status.AcquireWorker();
-                _status.IncrementActiveWorkers();
+                    if (_softCancel)
+                        ct.ThrowIfCancellationRequested();
 
-                try {
-                    worker.CurrentFile = item.FilePath;
+                    var worker = _status.AcquireWorker();
 
-                    await using var db =
-                        await _dbFactory.CreateDbContextAsync(ct);
+                    // 🔒 Status-Update beim Start
+                    lock (_lock) {
+                        worker.State       = WorkerState.Working;
+                        worker.CurrentFile = item.FilePath;
 
-                    await _importer.ImportAsync(
-                        db,
-                        item,
-                        progress: null,
-                        ct);
+                        _status.DecrementQueueCount();
+                        _status.IncrementActiveWorkers();
+                    }
 
-                    _status.IncrementProcessedFiles();
-                }
-                catch (OperationCanceledException) {
-                    worker.State = WorkerState.Canceled;
-                    throw;
-                }
-                catch (Exception ex) {
-                    worker.State = WorkerState.Error;
-                    _status.IncrementErrors();
+                    try {
+                        await using var db =
+                            await _dbFactory.CreateDbContextAsync(ct);
 
-                    _logger.LogError(
-                        ex,
-                        "Netzfahrplan Import fehlgeschlagen | Datei={File}",
-                        item.FilePath);
-                }
-                finally {
-                    _status.DecrementActiveWorkers();
-                    _status.ReleaseWorker(worker);
-                }
-            });
+                        await _importer.ImportAsync(
+                            db,
+                            item,
+                            progress: null,
+                            ct);
+
+                        lock (_lock) {
+                            _status.IncrementProcessedFiles();
+                            worker.ProcessedItems++;
+                        }
+                    }
+                    catch (OperationCanceledException) {
+                        lock (_lock) {
+                            worker.State = WorkerState.Canceled;
+                        }
+
+                        throw;
+                    }
+                    catch (Exception ex) {
+                        lock (_lock) {
+                            worker.State = WorkerState.Error;
+                            _status.IncrementErrors();
+                        }
+
+                        _logger.LogError(
+                            ex,
+                            "Netzfahrplan Import fehlgeschlagen | Datei={File}",
+                            item.FilePath);
+                    }
+                    finally {
+                        lock (_lock) {
+                            _status.DecrementActiveWorkers();
+
+                            worker.State       = WorkerState.Idle;
+                            worker.CurrentFile = null;
+
+                            _status.ReleaseWorker(worker);
+                        }
+                    }
+                });
+        }
+        catch (OperationCanceledException) {
+            // gewollt → Cancel
+        }
 
         lock (_lock) {
-            _status.State = _status.Errors > 0
-                    ? ImportJobState.FinishedWithErrors
-                    : ImportJobState.Finished;
+            if (_softCancel) {
+                _status.State = ImportJobState.Cancelled;
+            }
+            else {
+                _status.State =
+                    _status.Errors > 0
+                        ? ImportJobState.FinishedWithErrors
+                        : ImportJobState.Finished;
+            }
         }
     }
 
@@ -165,6 +199,8 @@ public sealed class NetzfahrplanJob {
             }
         }
 
-        _logger.LogInformation("Netzfahrplan Soft-Cancel angefordert");
+        _cts?.Cancel(); // 🔴 DAS ist der Schlüssel
+
+        _logger.LogInformation("Netzfahrplan Cancel angefordert");
     }
 }

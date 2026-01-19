@@ -1,3 +1,4 @@
+using BauFahrplanMonitor.Api.Dto;
 using BauFahrplanMonitor.Core.Importer.Helper;
 
 namespace BauFahrplanMonitor.Core.Jobs;
@@ -94,4 +95,24 @@ public sealed class BbpNeoJobStatus {
             ? ImportJobState.FinishedWithErrors
             : ImportJobState.Finished;
     }
+
+    public BbpNeoJobStatusDto ToDto() {
+        return new BbpNeoJobStatusDto {
+            State       = State,
+            StartedAt   = StartedAt,
+            FinishedAt  = FinishedAt,
+            CurrentFile = CurrentFile,
+
+            MassnahmenGesamt = _massnahmenGesamt,
+            MassnahmenFertig = _massnahmenFertig,
+
+            Regelungen        = _regelungen,
+            Betriebsverfahren = _betriebsverfahren,
+            Aps               = _aps,
+            Iav               = _iav,
+
+            Errors = _errors
+        };
+    }
+
 }

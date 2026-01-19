@@ -351,8 +351,7 @@ public sealed class ZvFUpserter(
             token);
 
         if (bstRef <= 0) {
-            Logger.Error(
-                "Abweichung verworfen – Betriebsstelle ungültig: RL100='{0}'",
+            Logger.Error("Abweichung verworfen – Betriebsstelle ungültig: RL100='{0}'",
                 abw.AnchorRl100);
 
             _stats.AbweichungSkippedInvalidBst++;
@@ -442,14 +441,10 @@ public sealed class ZvFUpserter(
         if (string.IsNullOrWhiteSpace(dto.Document.MasterRegion))
             throw new InvalidOperationException("Masterniederlassung fehlt");
 
-        var regionRef = await resolver.ResolveRegionAsync(
-            db,
-            dto.Document.MasterRegion,
-            token);
+        var regionRef = await resolver.ResolveRegionAsync(db, dto.Document.MasterRegion, token);
 
         if (regionRef <= 0)
-            throw new InvalidOperationException(
-                $"Region '{dto.Document.MasterRegion}' konnte nicht aufgelöst werden");
+            throw new InvalidOperationException($"Region '{dto.Document.MasterRegion}' konnte nicht aufgelöst werden");
 
         // Create
         var doc = new ZvfDokument {
@@ -533,8 +528,7 @@ public sealed class ZvFUpserter(
             token);
 
         if (abgangBstRef < 0 || zielBstRef < 0) {
-            Logger.Warn(
-                "Ungültige Betriebsstellen-Refs ignoriert: Abgang={0}, Ziel={1}, Zug={2}/{3}",
+            Logger.Warn("Ungültige Betriebsstellen-Refs ignoriert: Abgang={0}, Ziel={1}, Zug={2}/{3}",
                 abgangBstRef, zielBstRef, zug.Zugnummer, zug.Verkehrstag);
             throw (new Exception("Abbruch"));
         }

@@ -146,6 +146,12 @@ public sealed class UeBUpserter(
         var regelwegZielBstRef =
             await resolver.ResolveOrCreateBetriebsstelleAsync(db, zug.Regelweg?.Zielbahnhof?.Ds100, token);
         
+        if (regelwegAbBstRef < 0 || regelwegZielBstRef < 0) {
+            Logger.Warn("Ungültige Betriebsstellen-Refs ignoriert: Abgang={0}, Ziel={1}, Zug={2}/{3}",
+                regelwegAbBstRef, regelwegZielBstRef, zug.Zugnummer, zug.Verkehrstag);
+            throw (new Exception("Abbruch"));
+        }
+        
         if (existing != null) {
             existing.KundeRef            = kundeRef;
             existing.Bedarf              = zug.Bedarf;
@@ -214,20 +220,17 @@ public sealed class UeBUpserter(
                 db, zug.Betreiber, token);
 
         var empfaenger = dto.Header.Empfaenger;
-        if (empfaenger is { Count: 1 }) {
-            var kbez = empfaenger[0];
-            var id = await db.BasisKunde
-                .Where(k => k.Kbez == kbez)
-                .Select(k => k.Id)
-                .OrderBy(x => x)
-                .FirstOrDefaultAsync(token);
+        if (empfaenger is not { Count: 1 })
+            return 0;
+        var kbez = empfaenger[0];
+        var id = await db.BasisKunde
+            .Where(k => k.Kbez == kbez)
+            .Select(k => k.Id)
+            .OrderBy(x => x)
+            .FirstOrDefaultAsync(token);
 
-            if (id > 0) {
-                return id;
-            }
-        }
+        return id > 0 ? id : 0;
 
-        return 0;
     }
 
     // =====================================================================
@@ -258,14 +261,10 @@ public sealed class UeBUpserter(
         if (string.IsNullOrWhiteSpace(((SharedDocumentDto)dto.Document).MasterRegion))
             throw new InvalidOperationException("Masterniederlassung fehlt");
 
-        var regionRef = await resolver.ResolveRegionAsync(
-            db,
-            ((SharedDocumentDto)dto.Document).MasterRegion,
-            token);
+        var regionRef = await resolver.ResolveRegionAsync(db, ((SharedDocumentDto)dto.Document).MasterRegion, token);
 
         if (regionRef <= 0)
-            throw new InvalidOperationException(
-                $"Region '{((SharedDocumentDto)dto.Document).MasterRegion}' konnte nicht aufgelöst werden");
+            throw new InvalidOperationException($"Region '{((SharedDocumentDto)dto.Document).MasterRegion}' konnte nicht aufgelöst werden");
 
         // -------------------------------------------------
         // Create

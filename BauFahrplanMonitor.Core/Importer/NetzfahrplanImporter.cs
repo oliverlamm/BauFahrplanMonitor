@@ -21,7 +21,7 @@ public sealed class NetzfahrplanImporter(
     // ----------------------------
     // ImportAsync
     // ----------------------------
-    public async Task ImportAsync(
+    public async Task<ImportFileOutcome> ImportAsync(
         UjBauDbContext                db,
         ImportFileItem                item,
         IProgress<ImportProgressInfo> progress,
@@ -34,20 +34,21 @@ public sealed class NetzfahrplanImporter(
                 .StartsWith("KSS", StringComparison.OrdinalIgnoreCase)) {
             Logger.Info("Datei übersprungen (kein KSS): {0}", item.FilePath);
 
-            return;
+            return ImportFileOutcome.Skipped;
         }
 
         await ImportKssAsync(db, item.FilePath, progress, token);
+        return ImportFileOutcome.Success;
     }
 
     // =====================================================================
     // KSS
     // =====================================================================
     private async Task ImportKssAsync(
-        UjBauDbContext                db,
-        string                        filePath,
-        IProgress<ImportProgressInfo> progress,
-        CancellationToken             token) {
+        UjBauDbContext                 db,
+        string                         filePath,
+        IProgress<ImportProgressInfo>? progress,
+        CancellationToken              token) {
 
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("FilePath ist leer.", nameof(filePath));
@@ -91,23 +92,27 @@ public sealed class NetzfahrplanImporter(
                 // -------------------------------------------------
                 Report(progress, filePath, ImportSteps.Upsert, "Upsert starten");
 
-                var upsertProgress =
-                    new Progress<UpsertProgressInfo>(p => {
-                        var text = p.Phase switch {
-                            UpsertPhase.Zuege =>
-                                $"Upsert Züge {p.Current}/{p.Total}",
-                            _ => "Upsert"
-                        };
+                IProgress<UpsertProgressInfo>? upsertProgress = null;
 
-                        progress.Report(new ImportProgressInfo {
-                            FileName   = Path.GetFileName(filePath),
-                            StepText   = text,
-                            StepIndex  = ImportSteps.Upsert,
-                            TotalSteps = ImportSteps.TotalSteps,
-                            SubIndex   = p.Current,
-                            SubTotal   = p.Total
+                if (progress != null) {
+                    upsertProgress =
+                        new Progress<UpsertProgressInfo>(p => {
+                            var text = p.Phase switch {
+                                UpsertPhase.Zuege =>
+                                    $"Upsert Züge {p.Current}/{p.Total}",
+                                _ => "Upsert"
+                            };
+
+                            progress.Report(new ImportProgressInfo {
+                                FileName   = Path.GetFileName(filePath),
+                                StepText   = text,
+                                StepIndex  = ImportSteps.Upsert,
+                                TotalSteps = ImportSteps.TotalSteps,
+                                SubIndex   = p.Current,
+                                SubTotal   = p.Total
+                            });
                         });
-                    });
+                }
 
                 await upserter.UpsertAsync(db, dto, zugCache, upsertProgress, token);
 
