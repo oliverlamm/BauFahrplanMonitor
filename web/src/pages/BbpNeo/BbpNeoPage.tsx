@@ -182,8 +182,8 @@ export default function BbpNeoPage() {
                         <span>{status.regelungen}</span>
                     </div>
                     <div className="stat-row">
-                        <span>Betriebsverfahren</span>
-                        <span>{status.betriebsverfahren}</span>
+                        <span>BvE</span>
+                        <span>{status.bve}</span>
                     </div>
                     <div className="stat-row">
                         <span>APS</span>

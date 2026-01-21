@@ -97,6 +97,16 @@ public sealed class BbpNeoUpserter(SharedReferenceResolver resolver) : IBbpNeoUp
         CancellationToken             token) {
 
         foreach (var regelung in dtoRegelungen) {
+            if (regelung.Beginn == null) {
+                Logger.Warn("[BBPNeo] Regelung {RegId} ohne Beginn – übersprungen", regelung.RegId);
+                continue;
+            }
+
+            if (regelung.Ende == null) {
+                Logger.Warn("[BBPNeo] Regelung {RegId} ohne Ende – übersprungen", regelung.RegId);
+                continue;
+            }
+
             var reg =
                 db.BbpneoMassnahmeRegelung.SingleOrDefault(s =>
                     s.BbpneoMasRef == masRef &&
@@ -115,8 +125,8 @@ public sealed class BbpNeoUpserter(SharedReferenceResolver resolver) : IBbpNeoUp
             reg.RegId         = regelung.RegId;
             reg.Aktiv         = regelung.Aktiv;
             reg.Bplart        = regelung.BplArt   ?? string.Empty;
-            reg.Beginn        = regelung.Beginn   ?? throw new Exception($"Kein Beginndatum für RegID {regelung.RegId}");
-            reg.Ende          = regelung.Ende     ?? throw new Exception($"Kein Enddatum für RegId {regelung.RegId}");
+            reg.Beginn        = regelung.Beginn.Value;
+            reg.Ende          = regelung.Ende.Value;
             reg.Zeitraum      = regelung.Zeitraum ?? string.Empty;
             reg.Richtung      = regelung.Richtung;
             reg.RegelungKurz  = regelung.RegelungKurz;
@@ -127,9 +137,9 @@ public sealed class BbpNeoUpserter(SharedReferenceResolver resolver) : IBbpNeoUp
             reg.Bst2strBisRef = regBisBst2StrRef;
 
             try {
+                onRegelungUpserted();
                 db.BbpneoMassnahmeRegelung.Update(reg);
                 await db.SaveChangesAsync(token);
-                onRegelungUpserted();
             }
             catch (Exception ex) {
                 Logger.Fatal($"Fehler beim Einfügen einer Regelung {regelung.RegId} in die Datenbank: {ex.Message}\n{ex.InnerException}\n{ex.StackTrace}");
@@ -185,9 +195,9 @@ public sealed class BbpNeoUpserter(SharedReferenceResolver resolver) : IBbpNeoUp
             b.Bst2strBisRef                    = bveBisBst2StrRef;
 
             try {
+                onBveUpserted();
                 db.BbpneoMassnahmeRegelungBve.Update(b);
                 await db.SaveChangesAsync(token);
-                onBveUpserted();
             }
             catch (Exception ex) {
                 Logger.Fatal($"Fehler beim Einfügen einer BvE {bve.BveId} in die Datenbank: {ex.Message}\n{ex.InnerException}\n{ex.StackTrace}");

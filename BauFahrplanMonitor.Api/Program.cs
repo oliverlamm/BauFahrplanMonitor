@@ -70,6 +70,20 @@ services.AddImporterServices();
 // --------------------------------------
 var app = builder.Build();
 
+app.Use(async (ctx, next) => {
+    var logger = ctx.RequestServices
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger("BauFahrplanMonitor.Api.Requests");
+
+    logger.LogInformation(
+        "HTTP {method} {path}",
+        ctx.Request.Method,
+        ctx.Request.Path);
+
+    await next();
+});
+
+
 // --------------------------------------
 // ZvFExport Importer
 // --------------------------------------
@@ -142,20 +156,14 @@ app.MapGet("/api/import/netzfahrplan/status",
 // --------------------------------------
 app.MapPost("/api/import/bbpneo/start",
     async (
-        BbpNeoImportRequest          request,
-        [FromServices] ConfigService config,
-        [FromServices] BbpNeoJob     job,
-        CancellationToken            token) => {
+        BbpNeoImportRequest      request,
+        [FromServices] BbpNeoJob job,
+        CancellationToken        token) => {
+
         if (string.IsNullOrWhiteSpace(request.FileName))
             return Results.BadRequest("FileName fehlt");
 
-        var importDir = config.Effective.Datei.Importpfad;
-        var fullPath  = Path.Combine(importDir, request.FileName);
-
-        if (!File.Exists(fullPath))
-            return Results.BadRequest("Datei existiert nicht");
-
-        await job.StartAsync(fullPath, token);
+        await job.StartAsync(request.FileName, token);
 
         return Results.Accepted(value: new {
             state = "started",

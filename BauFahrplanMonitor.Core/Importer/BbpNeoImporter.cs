@@ -69,6 +69,21 @@ public sealed class BbpNeoImporter(
         var header = await ReadHeaderAsync(filePath, token);
         _expectedItems = header.AnzMas;
 
+        progress.Report(new ImportProgressInfo {
+            TotalItems     = _expectedItems,
+            ProcessedItems = 0,
+
+            MeasuresDone = 0,
+            Regelungen   = 0,
+            BvE          = 0,
+            APS          = 0,
+            IAV          = 0,
+
+            ActiveConsumers = 0,
+            TotalConsumers  = workerCount,
+            QueueDepth      = 0
+        });
+        
         // -----------------------------
         // Channel (bounded backpressure)
         // -----------------------------

@@ -13,11 +13,11 @@ public sealed class BbpNeoJobStatusDto {
     public int MassnahmenGesamt { get; init; }
     public int MassnahmenFertig { get; init; }
 
-    public int Regelungen        { get; init; }
-    public int Betriebsverfahren { get; init; }
-    public int Aps               { get; init; }
-    public int Iav               { get; init; }
+    public int Regelungen { get; init; }
+    public int BvE        { get; init; }
+    public int Aps        { get; init; }
+    public int Iav        { get; init; }
 
     public int Errors { get; init; }
-    
+
 }

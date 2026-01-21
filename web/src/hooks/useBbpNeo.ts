@@ -12,7 +12,7 @@ export interface BbpNeoStatus {
     massnahmenFertig: number;
 
     regelungen: number;
-    betriebsverfahren: number;
+    bve: number;
     aps: number;
     iav: number;
 
@@ -39,7 +39,7 @@ const INITIAL_STATUS: BbpNeoStatus = {
     massnahmenFertig: 0,
 
     regelungen: 0,
-    betriebsverfahren: 0,
+    bve: 0,
     aps: 0,
     iav: 0,
 
@@ -115,7 +115,7 @@ export function useBbpNeo() {
             const res = await fetch("/api/import/bbpneo/start", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ filePath: selectedFile })
+                body: JSON.stringify({ fileName: selectedFile })
             });
 
             if (!res.ok) {

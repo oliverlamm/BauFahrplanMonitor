@@ -18,7 +18,16 @@ public sealed class BbpNeoJob {
     private readonly BbpNeoJobStatus _status = new();
     public           BbpNeoJobStatus Status => _status;
 
-    public async Task StartAsync(string file, CancellationToken externalToken) {
+    public BbpNeoJob(
+        BbpNeoImporter                    importer,
+        IDbContextFactory<UjBauDbContext> dbFactory,
+        ConfigService                     config) {
+        _importer  = importer;
+        _dbFactory = dbFactory;
+        _config    = config; // 👈 WICHTIG
+    }
+
+    public async Task StartAsync(string fileName, CancellationToken externalToken) {
         lock (_lock) {
             if (_status.State == ImportJobState.Running)
                 throw new InvalidOperationException("BBPNeo-Import läuft bereits");
@@ -26,17 +35,25 @@ public sealed class BbpNeoJob {
             _status.Reset();
             _status.State       = ImportJobState.Running;
             _status.StartedAt   = DateTime.UtcNow;
-            _status.CurrentFile = file;
+            _status.CurrentFile = fileName;
         }
 
         _cts = CancellationTokenSource.CreateLinkedTokenSource(externalToken);
 
         try {
+            var importDir = _config.Effective.Datei.Importpfad;
+
+            var fullPath = Path.Combine(importDir, fileName);
+
+            if (!File.Exists(fullPath))
+                throw new FileNotFoundException(
+                    $"BBPNeo-Datei nicht gefunden: {fullPath}", fullPath);
+
             await using var db =
                 await _dbFactory.CreateDbContextAsync(_cts.Token);
 
             var item = new ImportFileItem(
-                file,
+                fullPath, // ← ab hier wieder echter Pfad
                 DateTime.UtcNow,
                 ImportMode.None);
 

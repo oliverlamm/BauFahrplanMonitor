@@ -20,10 +20,10 @@ public sealed class BbpNeoJobStatus {
     public int MassnahmenGesamt => _massnahmenGesamt;
     public int MassnahmenFertig => _massnahmenFertig;
 
-    public int Regelungen        => _regelungen;
-    public int Betriebsverfahren => _betriebsverfahren;
-    public int Aps               => _aps;
-    public int Iav               => _iav;
+    public int Regelungen => _regelungen;
+    public int BvE        => _bve;
+    public int Aps        => _aps;
+    public int Iav        => _iav;
 
     // -------------------------------------------------
     // Technisch
@@ -37,7 +37,7 @@ public sealed class BbpNeoJobStatus {
     private int _massnahmenFertig;
 
     private int _regelungen;
-    private int _betriebsverfahren;
+    private int _bve;
     private int _aps;
     private int _iav;
 
@@ -53,13 +53,13 @@ public sealed class BbpNeoJobStatus {
         FinishedAt  = null;
         CurrentFile = null;
 
-        _massnahmenGesamt  = 0;
-        _massnahmenFertig  = 0;
-        _regelungen        = 0;
-        _betriebsverfahren = 0;
-        _aps               = 0;
-        _iav               = 0;
-        _errors            = 0;
+        _massnahmenGesamt = 0;
+        _massnahmenFertig = 0;
+        _regelungen       = 0;
+        _bve              = 0;
+        _aps              = 0;
+        _iav              = 0;
+        _errors           = 0;
     }
 
     // -------------------------------------------------
@@ -77,13 +77,13 @@ public sealed class BbpNeoJobStatus {
 
         // ⚠️ hier NICHT addieren, sondern setzen
         // Importer liefert bereits kumulative Werte
-        _massnahmenGesamt = info.MassnahmenGesamt;
-        _massnahmenFertig = info.MassnahmenFertig;
+        _massnahmenGesamt = info.TotalItems;
+        _massnahmenFertig = info.ProcessedItems;
 
-        _regelungen        = info.Regelungen;
-        _betriebsverfahren = info.Betriebsverfahren;
-        _aps               = info.APS;
-        _iav               = info.IAV;
+        _regelungen = info.Regelungen;
+        _bve        = info.Betriebsverfahren;
+        _aps        = info.APS;
+        _iav        = info.IAV;
     }
 
     // -------------------------------------------------
@@ -107,12 +107,11 @@ public sealed class BbpNeoJobStatus {
             MassnahmenFertig = _massnahmenFertig,
 
             Regelungen        = _regelungen,
-            Betriebsverfahren = _betriebsverfahren,
+            BvE = _bve,
             Aps               = _aps,
             Iav               = _iav,
 
             Errors = _errors
         };
     }
-
 }

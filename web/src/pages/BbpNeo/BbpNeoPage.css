@@ -81,3 +81,46 @@
     gap: 8px;
     flex-shrink: 0;
 }
+
+/* === Select (BBPNeo Style) === */
+.bbp-row-left select {
+    flex: 1;
+    padding: 8px 36px 8px 12px; /* Platz für Pfeil */
+    height: 36px;
+
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background-color: #ffffff;
+
+    font-size: 14px;
+    color: #111827;
+
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    background-image:
+            url("data:image/svg+xml;utf8,\
+        <svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 20 20' fill='none'>\
+        <path d='M6 8l4 4 4-4' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>\
+        </svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 14px;
+}
+
+.bbp-row-left select:hover {
+    border-color: #d1d5db;
+}
+
+.bbp-row-left select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.bbp-row-left select:disabled {
+    background-color: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
