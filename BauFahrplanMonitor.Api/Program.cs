@@ -12,6 +12,10 @@ using NLog.Extensions.Logging;
 var builder  = WebApplication.CreateBuilder(args);
 var services = builder.Services;
 
+// ---------------- MVC Controller ----------------
+services.AddControllers();
+
+
 // ---------------- NLog ----------------
 var logger = LogManager.Setup()
     .LoadConfigurationFromFile("nlog.config", optional: false)
@@ -357,6 +361,8 @@ app.MapGet("/api/status",
         });
     });
 
+// ---------------- Controller ----------------
+app.MapControllers();
 
 app.Run();
 return;
