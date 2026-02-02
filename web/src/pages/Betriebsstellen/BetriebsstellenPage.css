@@ -237,3 +237,103 @@
         opacity: 1;
     }
 }
+
+/* ================= Untere Card ================= */
+
+.bs-bottom-card {
+    margin-top: 24px;
+    padding: 20px 24px;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: var(--card-shadow, 0 4px 16px rgba(0,0,0,.06));
+}
+
+/* obere Zeile */
+.bs-bottom-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.bs-bottom-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.bs-bottom-left select {
+    min-width: 80px;
+}
+
+/* ================= Fortschritt ================= */
+
+.bs-progress {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.bs-progress-label {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.bs-progress-bar {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.bs-progress-fill {
+    height: 100%;
+    background: linear-gradient(
+            90deg,
+            #0f172a,
+            #111827
+    );
+    transition: width 0.3s ease;
+}
+
+.bs-progress-percent {
+    font-size: 13px;
+    color: #6b7280;
+    min-width: 32px;
+    text-align: right;
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-badge.neutral {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.status-badge.running {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.status-badge.ok {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-badge.error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.bs-bottom-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}

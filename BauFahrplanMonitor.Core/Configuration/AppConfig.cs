@@ -6,6 +6,8 @@ public class AppConfig {
     public DateiConfig     Datei     { get; set; } = new();
     public SystemConfig    System    { get; set; } = new();
 
+    public TrassenfinderConfig Trassenfinder { get; init; } = null!;
+    
     // 🔥 MUSS so initialisiert sein
     public Dictionary<string, SessionConfig> Sessions { get; set; }
         = new(StringComparer.OrdinalIgnoreCase);

@@ -37,8 +37,8 @@ public class ConfigService {
 
         var builder = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json",       optional: false, reloadOnChange: true)
-            .AddJsonFile("appsettings.local.json", optional: true,  reloadOnChange: true);
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
 
         var cfg = builder.Build();
 
@@ -90,11 +90,12 @@ public class ConfigService {
         Logger.Info($"Session '{sessionKey}' erfolgreich geladen");
 
         return new AppConfig {
-            Datenbank = Merge(raw.Datenbank, session.Datenbank),
-            Allgemein = Merge(raw.Allgemein, session.Allgemein),
-            Datei     = Merge(raw.Datei,     session.Datei),
-            System    = raw.System,
-            Sessions  = raw.Sessions
+            Datenbank     = Merge(raw.Datenbank, session.Datenbank),
+            Allgemein     = Merge(raw.Allgemein, session.Allgemein),
+            Datei         = Merge(raw.Datei, session.Datei),
+            System        = raw.System,
+            Sessions      = raw.Sessions,
+            Trassenfinder = Merge(raw.Trassenfinder, session.Trassenfinder)
         };
     }
 
@@ -159,6 +160,23 @@ public class ConfigService {
             };
 
     // ------------------------------------------------------------
+    // Merge: Trassenfinder
+    // ------------------------------------------------------------
+    private static TrassenfinderConfig Merge(
+        TrassenfinderConfig  d,
+        TrassenfinderConfig? o)
+        => o == null
+            ? d
+            : new TrassenfinderConfig {
+                BaseUrl = string.IsNullOrWhiteSpace(o.BaseUrl)
+                    ? d.BaseUrl
+                    : o.BaseUrl,
+                ApiToken = string.IsNullOrWhiteSpace(o.ApiToken)
+                    ? d.ApiToken
+                    : o.ApiToken
+            };
+    
+    // ------------------------------------------------------------
     // Logging-Helfer
     // ------------------------------------------------------------
     private static void LogAvailableSessions(AppConfig config) {
@@ -176,11 +194,11 @@ public class ConfigService {
     public string BuildConnectionString() {
         var c = Effective.Datenbank;
         var cs =
-            $"Host={c.Host};"                      +
-            $"Port={c.Port};"                      +
-            $"Database={c.Database};"              +
-            $"Username={c.User};"                  +
-            $"Password={c.Password};"              +
+            $"Host={c.Host};"                       +
+            $"Port={c.Port};"                       +
+            $"Database={c.Database};"               +
+            $"Username={c.User};"                   +
+            $"Password={c.Password};"               +
             $"Application Name=BauFahrplanMonitor;" + // 🔑 wichtig
             $"Maximum Pool Size=50;"                + // 🔑 wichtig
             $"Timeout=15;"                          +

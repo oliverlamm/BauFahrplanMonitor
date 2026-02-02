@@ -1,0 +1,28 @@
+{
+  "runtime": "Net80",
+  "documentGenerator": {
+    "fromDocument": {
+      "json": "../openapi/trassenfinder-v9.json"
+    }
+  },
+  "codeGenerators": {
+    "openApiToCSharpClient": {
+      "className": "TrassenfinderClient",
+      "namespace": "BauFahrplanMonitor.Trassenfinder.Generated",
+      "output": "Generated/TrassenfinderClient.cs",
+
+      "generateClientClasses": true,
+      "generateClientInterfaces": false,
+      "generateDtoTypes": true,
+
+      "injectHttpClient": true,
+      "disposeHttpClient": false,
+      "useBaseUrl": false,
+
+      "generateOptionalParameters": false,
+      "operationGenerationMode": "SingleClientFromOperationId",
+
+      "useSystemTextJson": false
+    }
+  }
+}

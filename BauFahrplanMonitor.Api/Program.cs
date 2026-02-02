@@ -1,9 +1,11 @@
 using System.Text.Json.Serialization;
+using BauFahrplanMonitor.Api.Jobs;
 using BauFahrplanMonitor.Core;
 using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Jobs;
 using BauFahrplanMonitor.Core.Services;
 using BauFahrplanMonitor.Data;
+using BauFahrplanMonitor.Trassenfinder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NLog;
@@ -14,7 +16,6 @@ var services = builder.Services;
 
 // ---------------- MVC Controller ----------------
 services.AddControllers();
-
 
 // ---------------- NLog ----------------
 var logger = LogManager.Setup()
@@ -32,8 +33,11 @@ services.ConfigureHttpJsonOptions(options => {
         new JsonStringEnumConverter());
 });
 
+// ------------- Trassenfinder -------------------
+builder.Services.AddTrassenfinder(builder.Configuration);
+builder.Services.AddSingleton<TrassenfinderJobStore>();
 
-// ----------- DB -----------------------
+
 // ----------- DB -----------------------
 services.AddDbContextFactory<UjBauDbContext>((sp, options) => {
     var cfg = sp.GetRequiredService<ConfigService>()
