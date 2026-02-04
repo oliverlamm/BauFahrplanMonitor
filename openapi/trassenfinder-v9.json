@@ -1,0 +1,2349 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "contact" : {
+      "email" : "einfachbahn@deutschebahn.com",
+      "url" : "https://www.dbinfrago.com/einfachbahn"
+    },
+    "description" : "Die API erlaubt es, aufbauend auf den Funktionalitäten \ndes [Trassenfinder](https://www.trassenfinder.de), \nRoutensuchen für das in Deutschland vorliegende Schienennetz durchzuführen. \n \nEine Auflistung aller angebotenen Funktionen finden Sie Links in der Seitenleiste. \n \nDiese Dokumentation wurde aus der folgenden API-Spezifikation generiert: \n- <a class=\"specification-link\" href=\"./openapi.json\">JSON</a> \n- <a class=\"specification-link\" href=\"./openapi.yaml\">YAML</a>",
+    "license" : {
+      "name" : "Die Nutzungsbedingungen finden Sie unter",
+      "url" : "https://openapi.trassenfinder.de"
+    },
+    "title" : "Trassenfinder",
+    "version" : "9"
+  },
+  "servers" : [ {
+    "url" : "https://openapi.trassenfinder.de"
+  } ],
+  "paths" : {
+    "/api/v9/infrastrukturen" : {
+      "get" : {
+        "description" : "Gibt eine Zusammenfassung aller verfügbaren Infrastrukturen zurück.",
+        "operationId" : "get_infrastrukturen",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/infrastruktur_summary"
+                  }
+                }
+              }
+            },
+            "description" : "Abfragen der Infrastrukturen erfolgreich"
+          },
+          "304" : {
+            "description" : "Die Daten haben sich seit der letzen Anfrage nicht geändert und werden daher nicht erneut übertragen"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/invalid_request_error"
+                }
+              }
+            },
+            "description" : "Übermittelte Daten ungültig"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/not_found_error"
+                }
+              }
+            },
+            "description" : "Daten wurden aktualisiert/nicht gefunden"
+          },
+          "408" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/timeout_error"
+                }
+              }
+            },
+            "description" : "Anfrage konnte nicht bearbeitet werden (Timeout)"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/too_many_requests"
+                }
+              }
+            },
+            "description" : "Zu viele Anfragen gesendet"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/unexpected_error"
+                }
+              }
+            },
+            "description" : "Ein interner Serverfehler ist aufgetreten"
+          }
+        },
+        "summary" : "Abfragen der verfügbaren Infrastrukturen"
+      }
+    },
+    "/api/v9/infrastrukturen/{infrastrukturId}" : {
+      "get" : {
+        "description" : "Gibt die Betriebsstellen, Streckensegmente u.v.m. einer Infrastruktur zurück. Die zu übertragende Datenmenge ist im Normalfall nicht unerheblich.",
+        "operationId" : "get_infrastruktur",
+        "parameters" : [ {
+          "description" : "ID der Infrastruktur",
+          "in" : "path",
+          "name" : "infrastrukturId",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64",
+            "maximum" : 9223372036854775807,
+            "minimum" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/infrastruktur"
+                }
+              }
+            },
+            "description" : "Abfragen der Infrastruktur erfolgreich"
+          },
+          "304" : {
+            "description" : "Die Daten haben sich seit der letzen Anfrage nicht geändert und werden daher nicht erneut übertragen"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/invalid_request_error"
+                }
+              }
+            },
+            "description" : "Übermittelte Daten ungültig"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/not_found_error"
+                }
+              }
+            },
+            "description" : "Daten wurden aktualisiert/nicht gefunden"
+          },
+          "408" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/timeout_error"
+                }
+              }
+            },
+            "description" : "Anfrage konnte nicht bearbeitet werden (Timeout)"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/too_many_requests"
+                }
+              }
+            },
+            "description" : "Zu viele Anfragen gesendet"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/unexpected_error"
+                }
+              }
+            },
+            "description" : "Ein interner Serverfehler ist aufgetreten"
+          }
+        },
+        "summary" : "Abfragen einer Infrastruktur"
+      }
+    },
+    "/api/v9/routen/suche" : {
+      "post" : {
+        "description" : "Startet eine Routensuche inklusive Fahrzeit- und Trassenpreis-Berechnung. Falls die Trassenpreis-Berechnung fehlschlägt, wird das Ergebnis ohne Trassenpreis zurückgegeben.",
+        "operationId" : "suche",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/routensuche_request"
+              }
+            }
+          },
+          "description" : "Die zu bearbeitende Routenanfrage",
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/routensuche_response"
+                }
+              }
+            },
+            "description" : "Routensuche erfolgreich durchgeführt"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/invalid_request_error"
+                }
+              }
+            },
+            "description" : "Übermittelte Daten ungültig"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/not_found_error"
+                }
+              }
+            },
+            "description" : "Daten wurden aktualisiert/nicht gefunden"
+          },
+          "408" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/timeout_error"
+                }
+              }
+            },
+            "description" : "Anfrage konnte nicht bearbeitet werden (Timeout)"
+          },
+          "415" : {
+            "description" : "Ungültiges Anfrageformat"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/too_many_requests"
+                }
+              }
+            },
+            "description" : "Zu viele Anfragen gesendet"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/unexpected_error"
+                }
+              }
+            },
+            "description" : "Ein interner Serverfehler ist aufgetreten"
+          }
+        },
+        "summary" : "Durchführung einer Routensuche"
+      }
+    },
+    "/api/v9/routen/{routenId}" : {
+      "get" : {
+        "description" : "Diese Anfrage liefert das Ergebnis einer zuvor durchgeführten Routensuche zurück.",
+        "operationId" : "get_route",
+        "parameters" : [ {
+          "description" : "ID der Route",
+          "in" : "path",
+          "name" : "routenId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 1,
+            "pattern" : "^[a-z0-9]+$"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/routensuche_response"
+                }
+              }
+            },
+            "description" : "Abfragen der Route erfolgreich"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/invalid_request_error"
+                }
+              }
+            },
+            "description" : "Übermittelte Daten ungültig"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/not_found_error"
+                }
+              }
+            },
+            "description" : "Daten wurden aktualisiert/nicht gefunden"
+          },
+          "408" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/timeout_error"
+                }
+              }
+            },
+            "description" : "Anfrage konnte nicht bearbeitet werden (Timeout)"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/too_many_requests"
+                }
+              }
+            },
+            "description" : "Zu viele Anfragen gesendet"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/unexpected_error"
+                }
+              }
+            },
+            "description" : "Ein interner Serverfehler ist aufgetreten"
+          }
+        },
+        "summary" : "Abfragen eines Routenergebnisses"
+      }
+    },
+    "/api/v9/routen/{routenId}/pdf" : {
+      "get" : {
+        "description" : "Exportiert die Route als PDF-Datei.",
+        "operationId" : "get_pdf",
+        "parameters" : [ {
+          "description" : "ID der Route",
+          "in" : "path",
+          "name" : "routenId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 1,
+            "pattern" : "^[a-z0-9]+$"
+          }
+        }, {
+          "description" : "Routentyp zur Auswahl zwischen Optimierungsvarianten",
+          "in" : "query",
+          "name" : "route",
+          "schema" : {
+            "type" : "string",
+            "default" : "gewichtete",
+            "enum" : [ "kuerzeste", "schnellste", "sparsamste", "gewichtete" ],
+            "maxLength" : 20,
+            "pattern" : "^[a-z_]+$"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/pdf" : {
+                "schema" : {
+                  "format" : "binary"
+                }
+              }
+            },
+            "description" : "Dateiexport erfolgreich durchgeführt"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/invalid_request_error"
+                }
+              }
+            },
+            "description" : "Übermittelte Daten ungültig"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/not_found_error"
+                }
+              }
+            },
+            "description" : "Daten wurden aktualisiert/nicht gefunden"
+          },
+          "408" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/timeout_error"
+                }
+              }
+            },
+            "description" : "Anfrage konnte nicht bearbeitet werden (Timeout)"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/too_many_requests"
+                }
+              }
+            },
+            "description" : "Zu viele Anfragen gesendet"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/unexpected_error"
+                }
+              }
+            },
+            "description" : "Ein interner Serverfehler ist aufgetreten"
+          }
+        },
+        "summary" : "PDF-Export der Route"
+      }
+    },
+    "/api/v9/routen/{routenId}/png" : {
+      "get" : {
+        "description" : "Exportiert die Route als PNG-Datei.",
+        "operationId" : "get_png",
+        "parameters" : [ {
+          "description" : "ID der Route",
+          "in" : "path",
+          "name" : "routenId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 1,
+            "pattern" : "^[a-z0-9]+$"
+          }
+        }, {
+          "description" : "Routentyp zur Auswahl zwischen Optimierungsvarianten",
+          "in" : "query",
+          "name" : "route",
+          "schema" : {
+            "type" : "string",
+            "default" : "gewichtete",
+            "enum" : [ "kuerzeste", "schnellste", "sparsamste", "gewichtete" ],
+            "maxLength" : 20,
+            "pattern" : "^[a-z_]+$"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "image/png" : {
+                "schema" : {
+                  "format" : "binary"
+                }
+              }
+            },
+            "description" : "Dateiexport erfolgreich durchgeführt"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/invalid_request_error"
+                }
+              }
+            },
+            "description" : "Übermittelte Daten ungültig"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/not_found_error"
+                }
+              }
+            },
+            "description" : "Daten wurden aktualisiert/nicht gefunden"
+          },
+          "408" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/timeout_error"
+                }
+              }
+            },
+            "description" : "Anfrage konnte nicht bearbeitet werden (Timeout)"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/too_many_requests"
+                }
+              }
+            },
+            "description" : "Zu viele Anfragen gesendet"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/unexpected_error"
+                }
+              }
+            },
+            "description" : "Ein interner Serverfehler ist aufgetreten"
+          }
+        },
+        "summary" : "PNG-Export der Route"
+      }
+    },
+    "/api/v9/routen/{routenId}/suche-alternativroute" : {
+      "get" : {
+        "description" : "Startet die Suche nach einer Alternative zum gegebenen Routenergebnis. Falls die Trassenpreis-Berechnung fehlschlägt, wird das Ergebnis ohne Trassenpreis zurückgegeben.",
+        "operationId" : "suche_alternativroute",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "routenId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 1,
+            "pattern" : "^[a-z0-9]+$"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/routensuche_response"
+                }
+              }
+            },
+            "description" : "Routensuche erfolgreich durchgeführt"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/invalid_request_error"
+                }
+              }
+            },
+            "description" : "Übermittelte Daten ungültig"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/not_found_error"
+                }
+              }
+            },
+            "description" : "Daten wurden aktualisiert/nicht gefunden"
+          },
+          "408" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/timeout_error"
+                }
+              }
+            },
+            "description" : "Anfrage konnte nicht bearbeitet werden (Timeout)"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/too_many_requests"
+                }
+              }
+            },
+            "description" : "Zu viele Anfragen gesendet"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/unexpected_error"
+                }
+              }
+            },
+            "description" : "Ein interner Serverfehler ist aufgetreten"
+          }
+        },
+        "summary" : "Durchführung einer Alternativroutensuche"
+      }
+    },
+    "/api/v9/version" : {
+      "get" : {
+        "description" : "Gibt die aktuelle Version des Trassenfinders zurück.",
+        "operationId" : "get_version",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/version"
+                }
+              }
+            },
+            "description" : "Abfragen der Version erfolgreich"
+          },
+          "304" : {
+            "description" : "Die Daten haben sich seit der letzen Anfrage nicht geändert und werden daher nicht erneut übertragen"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/invalid_request_error"
+                }
+              }
+            },
+            "description" : "Übermittelte Daten ungültig"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/not_found_error"
+                }
+              }
+            },
+            "description" : "Daten wurden aktualisiert/nicht gefunden"
+          },
+          "408" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/timeout_error"
+                }
+              }
+            },
+            "description" : "Anfrage konnte nicht bearbeitet werden (Timeout)"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/too_many_requests"
+                }
+              }
+            },
+            "description" : "Zu viele Anfragen gesendet"
+          },
+          "500" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/unexpected_error"
+                }
+              }
+            },
+            "description" : "Ein interner Serverfehler ist aufgetreten"
+          }
+        },
+        "summary" : "Abfragen der Trassenfinder-Version"
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "bemerkung" : {
+        "type" : "object",
+        "description" : "Repräsentiert eine Bemerkung in einem Routenpunkt",
+        "properties" : {
+          "bemerkung_typ" : {
+            "type" : "string",
+            "description" : "Der Typ der Bemerkung",
+            "enum" : [ "einschraenkung", "sonstige" ],
+            "maxLength" : 20,
+            "pattern" : "^[a-z_]+$"
+          },
+          "text" : {
+            "type" : "string",
+            "description" : "Die Bemerkung",
+            "maxLength" : 1000
+          }
+        },
+        "required" : [ "bemerkung_typ", "text" ]
+      },
+      "betriebsstelle" : {
+        "type" : "object",
+        "description" : "Betriebsstelle sind Bahnanlagen wie Bahnhöfe oder Haltestellen.\nBsp.: Im Hauptbahnhof der Stadt Mainz können mehrere Bahnhofsteile ausgewählt werden, die jeweils einer Betriebsstelle entsprechen",
+        "properties" : {
+          "bahnhof" : {
+            "type" : "boolean"
+          },
+          "betriebsstellentypen" : {
+            "type" : "array",
+            "description" : "Die Betriebsstellentypen am Routenpunkt",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "ohne", "abzweigstelle", "anschlussstelle", "ausweichanschlussstelle", "bahnhof", "bahnhofsgleisgruppe", "bahnhofsteil", "blockstelle", "deckungsstelle", "bahnverwaltungsgrenze", "regionalbereichsgrenze", "haltestelle", "haltepunkt", "selbsttaetige_blockstelle", "ueberleitstelle", "unbekannt" ],
+              "maxLength" : 25,
+              "pattern" : "^[a-z_]+$"
+            },
+            "maxItems" : 100,
+            "minItems" : 0
+          },
+          "ds100" : {
+            "type" : "string",
+            "description" : "DS100 (Ril 100) der Betriebsstelle",
+            "maxLength" : 5,
+            "minLength" : 2,
+            "pattern" : "^[A-Z][A-Z0-9 ]{0,3}[A-Z0-9]$"
+          },
+          "elektrifiziert" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob die Betriebsstelle elektrifiziert ist"
+          },
+          "geo_koordinaten" : {
+            "$ref" : "#/components/schemas/geo_koordinaten",
+            "description" : "Die geographischen Koordinaten der Betriebsstelle"
+          },
+          "langname" : {
+            "type" : "string",
+            "description" : "Der Langname der Betriebsstelle",
+            "maxLength" : 100,
+            "minLength" : 2
+          },
+          "primary_location_code" : {
+            "type" : "string",
+            "description" : "Der Primary Location Code der Betriebsstelle innerhalb Europas (eindeutige Betriebsstellen-Nr.)",
+            "maxLength" : 7,
+            "minLength" : 7,
+            "pattern" : "^[A-Z]{2}[0-9]{5}$"
+          },
+          "x" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "y" : {
+            "type" : "number",
+            "format" : "double"
+          }
+        },
+        "required" : [ "bahnhof", "betriebsstellentypen", "ds100", "elektrifiziert", "langname", "x", "y" ]
+      },
+      "detail" : {
+        "type" : "object",
+        "description" : "Die Betriebsstelle und Streckennummer mit zugehöriger Fehleranalyse",
+        "properties" : {
+          "ds100" : {
+            "type" : "string",
+            "description" : "DS100 (Ril 100) der Betriebsstelle, die der Zug auf der gegebenen Streckennummer nicht durchfahren konnte",
+            "maxLength" : 5,
+            "minLength" : 2,
+            "pattern" : "^[A-Z][A-Z0-9 ]{0,3}[A-Z0-9]$"
+          },
+          "streckennummer" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Streckennummer auf der, der Zug die gegebene Betriebsstelle nicht durchfahren konnte",
+            "maximum" : 9999,
+            "minimum" : 0
+          },
+          "ursachen" : {
+            "$ref" : "#/components/schemas/ursachen",
+            "description" : "Ursachen dafür, dass der Zug die gegebene Betriebsstelle auf der gegebenen Streckennummer nicht durchfahren konnte"
+          }
+        },
+        "required" : [ "ds100", "streckennummer", "ursachen" ]
+      },
+      "energieverbrauch_info" : {
+        "type" : "object",
+        "description" : "Repräsentiert ein Objekt, das alle Energieverbrauchswerte zu einem Routenpunkt enthält",
+        "properties" : {
+          "energieverbrauch_gesamt_kwh" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Gesamtenergieverbrauch Kilowattstunden bis zum nächsten Routenpunkt"
+          },
+          "energieverbrauch_hilfsbetriebe_kwh" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Energieverbrauch der Hilfsbetriebe in Kilowattstunden bis zum nächsten Routenpunkt"
+          },
+          "energieverbrauch_traktion_kwh" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Traktions-Energieverbrauch in Kilowattstunden bis zum nächsten Routenpunkt"
+          },
+          "energieverbrauch_wagen_kwh" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Energieverbrauch der Wagen in Kilowattstunden bis zum nächsten Routenpunkt"
+          }
+        },
+        "required" : [ "energieverbrauch_gesamt_kwh", "energieverbrauch_hilfsbetriebe_kwh", "energieverbrauch_traktion_kwh", "energieverbrauch_wagen_kwh" ]
+      },
+      "fahrzeit_info" : {
+        "type" : "object",
+        "description" : "Die Fahrzeitinfo umfasst die An- und Abfahrtszeit des Zuges an einem Routenpunkt in Minuten seit Abfahrt am Start der Route",
+        "properties" : {
+          "abfahrt_min" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Abfahrtszeit in Minuten seit Abfahrt am Start der Route",
+            "minimum" : 0
+          },
+          "ankunft_min" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Ankunftszeit in Minuten seit Abfahrt am Start der Route",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "abfahrt_min", "ankunft_min" ]
+      },
+      "geo_koordinaten" : {
+        "type" : "object",
+        "description" : "Geographische Koordinaten",
+        "properties" : {
+          "breite" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Geopgraphische Breite",
+            "maximum" : 90,
+            "minimum" : -90
+          },
+          "laenge" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Geographische Länge",
+            "maximum" : 180,
+            "minimum" : -180
+          }
+        },
+        "required" : [ "breite", "laenge" ]
+      },
+      "gewichtung_parameter" : {
+        "type" : "object",
+        "description" : "Prozentuale Gewichtung der Kriterien Streckenlänge, Fahrzeit und Energieverbrauch\nbei der Routensuche. Die Summe der Werte muss 100% ergeben.\nBsp.: Bei 100% Weglänge wird die kürzest mögliche Route gesucht.",
+        "properties" : {
+          "energie_prozent" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Prozentuale Gewichtung der Energie",
+            "maximum" : 100,
+            "minimum" : 0
+          },
+          "fahrzeit_prozent" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Prozentuale Gewichtung der Fahrzeit",
+            "maximum" : 100,
+            "minimum" : 0
+          },
+          "streckenlaenge_prozent" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Prozentuale Gewichtung der Streckenlänge",
+            "maximum" : 100,
+            "minimum" : 0
+          }
+        },
+        "required" : [ "energie_prozent", "fahrzeit_prozent", "streckenlaenge_prozent" ]
+      },
+      "grenzlast_info" : {
+        "type" : "object",
+        "description" : "Die vorhandene Last und die erlaubte Regelgrenzlast bis zum nächsten Routenpunkt",
+        "properties" : {
+          "regelgrenzlast" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Regelgrenzlast des Streckensegments in Tonnen",
+            "minimum" : 0
+          },
+          "vorhandene_last" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Durch die Wagenzugmasse erzeugte Last in Tonnen",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "regelgrenzlast", "vorhandene_last" ]
+      },
+      "infrastruktur" : {
+        "type" : "object",
+        "description" : "Die Infrastruktur umfasst den Ordnungsrahmen und die Stammdaten des Netzes für ein Fahrplanjahr.",
+        "properties" : {
+          "anzeigename" : {
+            "type" : "string",
+            "description" : "Name der Infrastruktur\nBsp.: Jahresfahrplan 2019 (12.4)",
+            "maxLength" : 100,
+            "minLength" : 3
+          },
+          "fahrplanjahr" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Fahrplanjahr der Infrastruktur\nBsp.: 2019",
+            "maximum" : 9999,
+            "minimum" : 0
+          },
+          "gueltig_bis" : {
+            "type" : "string",
+            "format" : "date",
+            "description" : "Enddatum der Gültigkeit der Infrastruktur\nBsp.: 2019-05-13",
+            "maxLength" : 10
+          },
+          "gueltig_von" : {
+            "type" : "string",
+            "format" : "date",
+            "description" : "Startdatum der Gültigkeit der Infrastruktur\nBsp.: 2019-05-13",
+            "maxLength" : 10
+          },
+          "id" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "ID der Infrastruktur",
+            "minimum" : 0
+          },
+          "ordnungsrahmen" : {
+            "$ref" : "#/components/schemas/ordnungsrahmen",
+            "description" : "Der Ordnungsrahmen beschreibt das Gleisnetz der Infrastruktur"
+          },
+          "stammdaten" : {
+            "$ref" : "#/components/schemas/stammdaten",
+            "description" : "Die Stammdaten umfassen die Triebfahrzeuge der Infrastruktur"
+          }
+        },
+        "required" : [ "anzeigename", "fahrplanjahr", "gueltig_bis", "gueltig_von", "id", "ordnungsrahmen", "stammdaten" ]
+      },
+      "infrastruktur_summary" : {
+        "type" : "object",
+        "description" : "Enthält Informationen zu einer Infrastruktur. Beinhaltet anders als die Infrastruktur keine Triebfahrzeuge und keine Kartendaten",
+        "properties" : {
+          "anzeigename" : {
+            "type" : "string",
+            "description" : "Anzeigename der Infrastruktur\nBsp.: Jahresfahrplan 2019",
+            "maxLength" : 100,
+            "minLength" : 3
+          },
+          "fahrplanjahr" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Fahrplanjahr der Infrastruktur",
+            "maximum" : 9999,
+            "minimum" : 0
+          },
+          "gueltig_bis" : {
+            "type" : "string",
+            "format" : "date",
+            "description" : "Enddatum der Infrastruktur im Datenformat ISO 8601.\nBsp.: 2018-12-03",
+            "maxLength" : 10
+          },
+          "gueltig_von" : {
+            "type" : "string",
+            "format" : "date",
+            "description" : "Startdatum der Infrastruktur im Datenformat ISO 8601.\nBsp.: 2018-12-03",
+            "maxLength" : 10
+          },
+          "id" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "ID der Infrastruktur",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "anzeigename", "fahrplanjahr", "gueltig_bis", "gueltig_von", "id" ]
+      },
+      "invalid_request_error" : {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "type" : "array",
+            "description" : "Details zur Fehlermeldung",
+            "items" : {
+              "type" : "string",
+              "maxLength" : 10000,
+              "minLength" : 0
+            },
+            "maxItems" : 10,
+            "minItems" : 0
+          },
+          "message" : {
+            "type" : "string",
+            "description" : "Nachricht der Fehlermeldung",
+            "maxLength" : 1000
+          }
+        },
+        "required" : [ "details", "message" ]
+      },
+      "kv_profil" : {
+        "type" : "object",
+        "description" : "KV-Profil in C/P-Kodifizierung. \"N/N\" repräsentiert ein KV-Profil ohne Einschränkung.",
+        "properties" : {
+          "c" : {
+            "type" : "string",
+            "description" : "Code C als Ganzzahl oder \"N\" bei KV-Profil \"N/N\"",
+            "maxLength" : 3,
+            "pattern" : "^([0-9]+|N)$"
+          },
+          "p" : {
+            "type" : "string",
+            "description" : "Code P als Ganzzahl oder \"N\" bei KV-Profil \"N/N\"",
+            "maxLength" : 3,
+            "pattern" : "^([0-9]+|N)$"
+          }
+        },
+        "required" : [ "c", "p" ]
+      },
+      "mutter_betriebsstelle" : {
+        "type" : "object",
+        "description" : "Betriebsstelle, die mögliche Tochterbetriebsstellen enthält",
+        "properties" : {
+          "ds100" : {
+            "type" : "string",
+            "description" : "DS100 (Ril 100) der Betriebsstelle\nBsp.: 'FMZ', 'RF', 'TS', aber nicht 'TS N'",
+            "maxLength" : 5,
+            "minLength" : 2,
+            "pattern" : "^[A-Z][A-Z0-9 ]{0,3}[A-Z0-9]$"
+          },
+          "geo_koordinaten" : {
+            "$ref" : "#/components/schemas/geo_koordinaten",
+            "description" : "Die geographischen Koordinaten der Betriebsstelle"
+          },
+          "langname" : {
+            "type" : "string",
+            "description" : "Langname der Betriebsstelle\nBsp.: 'Mainz Hbf', 'Freiburg (Breisgau) Hbf', 'Stuttgart Hbf'",
+            "maxLength" : 100,
+            "minLength" : 2
+          },
+          "tochterbetriebsstellen" : {
+            "type" : "array",
+            "description" : "Liste der DS100 (Ril 100) aller Tochterbetriebsstellen",
+            "items" : {
+              "type" : "string",
+              "maxLength" : 5,
+              "minLength" : 2,
+              "pattern" : "^[A-Z][A-Z0-9 ]{0,3}[A-Z0-9]$"
+            },
+            "maxItems" : 50,
+            "minItems" : 0
+          }
+        },
+        "required" : [ "ds100", "langname", "tochterbetriebsstellen" ]
+      },
+      "not_found_error" : {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "type" : "array",
+            "description" : "Details zur Fehlermeldung",
+            "items" : {
+              "type" : "string",
+              "maxLength" : 10000,
+              "minLength" : 0
+            },
+            "maxItems" : 10,
+            "minItems" : 0
+          },
+          "message" : {
+            "type" : "string",
+            "description" : "Nachricht der Fehlermeldung",
+            "maxLength" : 1000
+          }
+        },
+        "required" : [ "details", "message" ]
+      },
+      "ordnungsrahmen" : {
+        "type" : "object",
+        "description" : "Der Ordnungsrahmen beschreibt das Gleisnetz der Infrastruktur",
+        "properties" : {
+          "betriebsstellen" : {
+            "type" : "array",
+            "description" : "Betriebsstellen des Ordungsrahmens",
+            "items" : {
+              "$ref" : "#/components/schemas/betriebsstelle"
+            },
+            "maxItems" : 12000,
+            "minItems" : 0
+          },
+          "mutter_betriebsstellen" : {
+            "type" : "array",
+            "description" : "Mutter-Betriebsstellen des Ordungsrahmens",
+            "items" : {
+              "$ref" : "#/components/schemas/mutter_betriebsstelle"
+            },
+            "maxItems" : 2000,
+            "minItems" : 0
+          },
+          "streckensegmente" : {
+            "type" : "array",
+            "description" : "Streckensegemente des Ordungsrahmens",
+            "items" : {
+              "$ref" : "#/components/schemas/streckensegment"
+            },
+            "maxItems" : 30000,
+            "minItems" : 0
+          }
+        },
+        "required" : [ "betriebsstellen", "mutter_betriebsstellen", "streckensegmente" ]
+      },
+      "route" : {
+        "type" : "object",
+        "description" : "Die Route besteht aus einer Liste von Routenpunkten die beginnend am ersten Wegpunkt Startbetriebsstelle hin zu einer Endbetriebsstelle",
+        "properties" : {
+          "maximalwerte" : {
+            "$ref" : "#/components/schemas/route_maximalwerte",
+            "description" : "Maximalwerte für die Grenzlast, das KV-Profil und andere Parameter"
+          },
+          "punkt_zu_punkt_geschwindigkeit_unzulaessig" : {
+            "type" : "boolean",
+            "description" : "Bei der Trassenpreisberechnung mit dem Marktsegment Punkt-zu-Punkt, gibt dieser Wert an, ob die Route die Geschwindigkeitskriterien des Marktsegments verletzt."
+          },
+          "realistische_abfahrt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "Realistische Abfahrtszeit inklusive Datum und Zeitverschiebung in einem ISO 8601- und RFC 3339-konformen Format.\nBsp.: 2019-05-13T16:38:36+02:00",
+            "maxLength" : 25
+          },
+          "routen_typ" : {
+            "type" : "string",
+            "description" : "Typ der Route",
+            "enum" : [ "kuerzeste", "schnellste", "sparsamste", "gewichtete" ],
+            "maxLength" : 20,
+            "pattern" : "^[a-z_]+$"
+          },
+          "routenpunkte" : {
+            "type" : "array",
+            "description" : "Routenpunkte, die den Verlauf der Route abbilden",
+            "items" : {
+              "$ref" : "#/components/schemas/routenpunkt"
+            },
+            "maxItems" : 2000,
+            "minItems" : 0
+          },
+          "technische_abfahrt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "Technische Abfahrtszeit inklusive Datum und Zeitverschiebung in einem ISO 8601- und RFC 3339-konformen Format.\nBsp.: 2019-05-13T16:38:36+02:00",
+            "maxLength" : 25
+          },
+          "zusammenfassung" : {
+            "$ref" : "#/components/schemas/route_zusammenfassung",
+            "description" : "Zusammenfassung der berechneten Route. Diese enthält die Gesamtfahrzeit, die Weglänge, den Trassenpreis und weitere Informationen zur gesamten Route"
+          }
+        },
+        "required" : [ "maximalwerte", "punkt_zu_punkt_geschwindigkeit_unzulaessig", "routen_typ", "routenpunkte", "technische_abfahrt", "zusammenfassung" ]
+      },
+      "route_maximalwerte" : {
+        "type" : "object",
+        "description" : "Enthält die Maximalwerte für Grenzlast, KV-Profil und Streckenklasse, die auf der Route zulässig sind.",
+        "properties" : {
+          "grenzlast_laengenabhaengig" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Die maximal zulässige längenabhängige Grenzlast der Route",
+            "maximum" : 9999,
+            "minimum" : 0
+          },
+          "grenzlast_laengenunabhaengig" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Die maximal zulässige längenunabhängige Grenzlast der Route",
+            "maximum" : 9999,
+            "minimum" : 0
+          },
+          "kv_profil" : {
+            "$ref" : "#/components/schemas/kv_profil",
+            "description" : "Das größte auf der Route erlaubte KV-Profil"
+          },
+          "streckenklasse" : {
+            "type" : "string",
+            "description" : "Die höchste auf der Route erlaubte Streckenklasse",
+            "enum" : [ "D4", "D3", "D2", "CM4", "CM3", "CM2", "CE", "C4", "C3", "C2", "B2", "B1", "A" ],
+            "maxLength" : 3,
+            "pattern" : "^[A-Z1-9]+$"
+          }
+        },
+        "required" : [ "kv_profil", "streckenklasse" ]
+      },
+      "route_zusammenfassung" : {
+        "type" : "object",
+        "description" : "Zusammenfassung der berechneten Route. Diese enthält die Gesamtfahrzeit, die Weglänge, den Trassenpreis und weitere Informationen zur gesamten Route",
+        "properties" : {
+          "energieverbrauch_kwh" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Energieverbrauch in Kilowattstunden"
+          },
+          "fahrzeit_realistisch_min" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Realistische Fahrzeit in Minuten",
+            "maximum" : 4320,
+            "minimum" : 0
+          },
+          "fahrzeit_technisch_min" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Technische Fahrzeit in Minuten",
+            "maximum" : 4320,
+            "minimum" : 0
+          },
+          "kosten_fahrzeuge_personal_euro" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Kosten für Fahrzeuge und Personal in Euro",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "marktsegment" : {
+            "type" : "string",
+            "description" : "Marktsegment der Route",
+            "enum" : [ "sgv_standard", "sgv_sehr_schwer", "sgv_gefahrgutganzzug", "sgv_nahverkehr", "sgv_lokfahrt", "spfv_metro_tag_basic_nacht", "spfv_charter_nostalgie", "spfv_punkt_zu_punkt", "spfv_lok_leerfahrt", "spnv_lastfahrt", "spnv_lok_leerfahrt" ],
+            "maxLength" : 30,
+            "pattern" : "^[a-z_]+$"
+          },
+          "nachschiebekosten_euro" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Kosten für Nachschieben in Euro",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "preis_energie_euro" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Preis für Energie in Euro",
+            "minimum" : 0
+          },
+          "stationspreis_euro" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Stationspreis in Euro",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "trassenpreis_euro" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Trassenpreis in Euro",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "weglaenge_hm" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Weglänge in Hektometern",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          }
+        },
+        "required" : [ "energieverbrauch_kwh", "fahrzeit_technisch_min", "kosten_fahrzeuge_personal_euro", "nachschiebekosten_euro", "preis_energie_euro", "weglaenge_hm" ]
+      },
+      "routenpunkt" : {
+        "type" : "object",
+        "description" : "Repräsentiert einen Punkt der Route, der vom Zug durchfahren wird",
+        "properties" : {
+          "abweichendes_zweites_triebfahrzeug_key" : {
+            "$ref" : "#/components/schemas/triebfahrzeug_key",
+            "description" : "Gibt an, mit welchem zweiten Triebfahrzeug gefahren wurde"
+          },
+          "begegnungsverbot" : {
+            "type" : "boolean",
+            "description" : "Begegnungsverbot im Betriebsstellenfahrweg"
+          },
+          "bemerkungen" : {
+            "type" : "array",
+            "description" : "Bemerkungen zum Routenpunkt",
+            "items" : {
+              "$ref" : "#/components/schemas/bemerkung"
+            },
+            "maxItems" : 20,
+            "minItems" : 0
+          },
+          "ds100" : {
+            "type" : "string",
+            "description" : "DS100 (Ril 100) der Betriebsstelle",
+            "maxLength" : 5,
+            "minLength" : 2,
+            "pattern" : "^[A-Z][A-Z0-9 ]{0,3}[A-Z0-9]$"
+          },
+          "energieverbrauch_info" : {
+            "$ref" : "#/components/schemas/energieverbrauch_info",
+            "description" : "Die Energieverbrauchswerte in Kilowattstunden bis zum nächten Routenpunkt"
+          },
+          "energieverbrauch_kosten_euro" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Energieverbrauchs-Kosten in Euro bis zum nächsten Routenpunkt"
+          },
+          "geschwindigkeit_realistisch_hmh" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Realistische Geschwindigkeit in Hektometern pro Stunde",
+            "minimum" : 0
+          },
+          "geschwindigkeit_technisch_hmh" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Technische Geschwindigkeit in Hektometern pro Stunde",
+            "minimum" : 0
+          },
+          "gleiswechselbetrieb" : {
+            "type" : "boolean",
+            "description" : "Gleiswechselbetrieb im Betriebsstellenfahrweg"
+          },
+          "grenzlast_info" : {
+            "$ref" : "#/components/schemas/grenzlast_info",
+            "description" : "Die vorhandene Last und die erlaubte Regelgrenzlast bis zum nächsten Routenpunkt"
+          },
+          "haltart" : {
+            "type" : "string",
+            "description" : "Haltart am Routenpunkt",
+            "enum" : [ "durchfahrt", "kundenhalt", "betriebshalt" ],
+            "maxLength" : 20,
+            "pattern" : "^[a-z_]+$"
+          },
+          "halteplatz_sprungart" : {
+            "type" : "string",
+            "description" : "Halteplatzsprungart am Routenpunkt",
+            "enum" : [ "durchbindung", "kopfmachen", "rangierfahrt" ],
+            "maxLength" : 20,
+            "pattern" : "^[a-z]+$"
+          },
+          "halteplatz_zu_kurz" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Halteplatz zu kurz ist"
+          },
+          "hat_kritische_einschraenkung" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob Streckenabschnitte mit umfangreichen Einschraenkungen passiert werden. Bei den Einschränkungen kann es sich z. B. um Baumaßnahmen oder Stellwerkschließungen handeln."
+          },
+          "kosten_fahrzeuge_personal_euro" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Kosten für Fahrzeuge und Personal in Euro bis zum nächsten Routenpunkt",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "laufende_hm" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Weglänge der Route bis zu diesem Routenpunkt in Hektometern ",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "marktsegmente" : {
+            "type" : "array",
+            "description" : "Marktsegmente bis zum nächsten Routenpunkt",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "sgv_standard", "sgv_sehr_schwer", "sgv_gefahrgutganzzug", "sgv_nahverkehr", "sgv_lokfahrt", "spfv_metro_tag", "spfv_basic", "spfv_nacht", "spfv_lok_leerfahrt", "spfv_charter_nostalgie", "spfv_punkt_zu_punkt", "spnv_lastfahrt", "spnv_lok_leerfahrt" ],
+              "maxLength" : 40,
+              "pattern" : "^[a-z_]+$"
+            },
+            "maxItems" : 3,
+            "minItems" : 0
+          },
+          "nachschiebekosten_euro" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Kosten für Nachschieben in Euro bis zum nächsten Routenpunkt",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "naechstes_streckensegment" : {
+            "$ref" : "#/components/schemas/streckensegment_key",
+            "description" : "Schlüssel des nachfolgenden Streckensegments"
+          },
+          "primary_location_code" : {
+            "type" : "string",
+            "description" : "Der Primary Location Code der Betriebsstelle innerhalb Europas (eindeutige Betriebsstellen-Nr.)",
+            "maxLength" : 7,
+            "minLength" : 7,
+            "pattern" : "^[A-Z]{2}[0-9]{5}$"
+          },
+          "realistische_fahrzeit_info" : {
+            "$ref" : "#/components/schemas/fahrzeit_info",
+            "description" : "Die realistischen An- und Abfahrtszeit des Zuges an einem Routenpunkt in Minuten seit Abfahrt am Start der Route"
+          },
+          "schiebelok_kupplungsart" : {
+            "type" : "string",
+            "description" : "Schiebelokkupplungsart am Routenpunkt",
+            "enum" : [ "ansetzen", "absetzen", "nachgeschoben_ungekuppelt", "nachgeschoben_gekuppelt", "nichts" ],
+            "maxLength" : 30,
+            "pattern" : "^[a-z_]+$"
+          },
+          "stationspreis_euro" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Stationspreis der Betriebsstelle in Euro",
+            "minimum" : 0
+          },
+          "strecke_info" : {
+            "$ref" : "#/components/schemas/strecke_info",
+            "description" : "Informationen zum ausgehenden Streckensegment"
+          },
+          "technische_fahrzeit_info" : {
+            "$ref" : "#/components/schemas/fahrzeit_info",
+            "description" : "Die technischen An- und Abfahrtszeit des Zuges an einem Routenpunkt in Minuten seit Abfahrt am Start der Route"
+          },
+          "traktionsartwechsel_bei_hybridfahrzeug" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob bei Hybridfahrzeugen ein Traktionsartwechsel stattfindet"
+          },
+          "trassenpreis_euro" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Trassenpreis in Euro bis zum nächsten Routenpunkt",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "triebfahrzeug_key" : {
+            "$ref" : "#/components/schemas/triebfahrzeug_key",
+            "description" : "Gibt an, mit welchem Triebfahrzeug gefahren wurde"
+          },
+          "ueberschreitung_regelgrenzlast" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Gibt an, um wie viele Tonnen die Regelgrenzlast überschritten wird"
+          },
+          "verkehrshalt_trotz_fehlendem_bahnsteig" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob ein Verkehrshalt trotz fehlendem Bahnsteig stattfinden soll"
+          },
+          "wegpunkt_index" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Falls der Routenpunkt einem bestellten Wegpunkt zugeordnet ist, entspricht der Wegpunktindex der Position des Wegpunks in der Liste der bestellten Wegpunkte, beginnend bei 0.",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          }
+        },
+        "required" : [ "begegnungsverbot", "bemerkungen", "ds100", "energieverbrauch_info", "energieverbrauch_kosten_euro", "gleiswechselbetrieb", "haltart", "halteplatz_sprungart", "halteplatz_zu_kurz", "hat_kritische_einschraenkung", "kosten_fahrzeuge_personal_euro", "laufende_hm", "nachschiebekosten_euro", "schiebelok_kupplungsart", "technische_fahrzeit_info", "traktionsartwechsel_bei_hybridfahrzeug", "triebfahrzeug_key", "verkehrshalt_trotz_fehlendem_bahnsteig" ]
+      },
+      "routensuche_failure" : {
+        "type" : "object",
+        "description" : "Zeigt Informationen für den Fehlschlag der Routensuche an",
+        "properties" : {
+          "details" : {
+            "type" : "array",
+            "description" : "Ortsbezogene Details zu den Ursachen des Fehlschlags der Routesuche",
+            "items" : {
+              "$ref" : "#/components/schemas/detail"
+            },
+            "maxItems" : 100,
+            "minItems" : 0
+          },
+          "message" : {
+            "type" : "string",
+            "description" : "Fehlermeldung",
+            "maxLength" : 128,
+            "minLength" : 0
+          },
+          "wegpunkt_details" : {
+            "type" : "array",
+            "description" : "Wegpunktbezogene Details zu den Ursachen des Fehlschlags der Routesuche",
+            "items" : {
+              "$ref" : "#/components/schemas/wegpunkt_detail"
+            },
+            "maxItems" : 100,
+            "minItems" : 0
+          },
+          "wegpunkt_index" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Index des Wegpunkts, von dem aus keine weiterführende Route gefunden werden konnte",
+            "maximum" : 101,
+            "minimum" : 0
+          }
+        },
+        "required" : [ "details", "message", "wegpunkt_details" ]
+      },
+      "routensuche_request" : {
+        "type" : "object",
+        "description" : "Enthält alle Parameter, die für die Berechnung einer Route notwendig sind",
+        "properties" : {
+          "infrastruktur_id" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Infrastruktur-ID der Infrastruktur auf der die Berechungen durchgeführt wurden",
+            "minimum" : 0
+          },
+          "nutzer_sperrungen" : {
+            "type" : "array",
+            "description" : "Nutzerdefinierte Sperrungen sind Streckenabschnitte, auf denen der Zug nicht verkehren darf",
+            "items" : {
+              "$ref" : "#/components/schemas/streckensegment_key"
+            },
+            "maxItems" : 10000,
+            "minItems" : 0
+          },
+          "sucheinstellungen" : {
+            "$ref" : "#/components/schemas/sucheinstellungen",
+            "description" : "Sucheinstellungen für die Routensuche"
+          },
+          "wegpunkte" : {
+            "type" : "array",
+            "description" : "Wegpunkte, zwischen denen eine Route verlaufen soll",
+            "items" : {
+              "$ref" : "#/components/schemas/wegpunkt"
+            },
+            "maxItems" : 102,
+            "minItems" : 2
+          }
+        },
+        "required" : [ "infrastruktur_id", "sucheinstellungen", "wegpunkte" ]
+      },
+      "routensuche_response" : {
+        "type" : "object",
+        "description" : "Enthält das Ergebnis der Routensuche. Beinhaltet bis zu vier unterschiedliche Routen oder mögliche Fehlernachrichten, wenn keine Route gefunden wurde",
+        "properties" : {
+          "failure" : {
+            "$ref" : "#/components/schemas/routensuche_failure",
+            "description" : "Zeigt Informationen über den Fehlschlag der Routensuche an"
+          },
+          "result" : {
+            "$ref" : "#/components/schemas/routensuche_result",
+            "description" : "Ergebnis der Routensuche"
+          }
+        }
+      },
+      "routensuche_result" : {
+        "type" : "object",
+        "description" : "Ergebnis der Routensuche",
+        "properties" : {
+          "einschraenkungen_in_fahrzeitraum" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob es Einschränkungen wie beispielsweise Baumaßnahmen im Fahrzeitraum gibt"
+          },
+          "gewichtete_route" : {
+            "$ref" : "#/components/schemas/route",
+            "description" : "Gewichtete Route"
+          },
+          "id" : {
+            "type" : "string",
+            "description" : "Eindeutige ID",
+            "maxLength" : 100,
+            "minLength" : 1,
+            "pattern" : "^[a-z0-9]+$"
+          },
+          "kuerzeste_route" : {
+            "$ref" : "#/components/schemas/route",
+            "description" : "Kürzeste Route"
+          },
+          "schnellste_route" : {
+            "$ref" : "#/components/schemas/route",
+            "description" : "Schnellste Route"
+          },
+          "sparsamste_route" : {
+            "$ref" : "#/components/schemas/route",
+            "description" : "Sparsamste Route"
+          }
+        },
+        "required" : [ "gewichtete_route", "id" ]
+      },
+      "stammdaten" : {
+        "type" : "object",
+        "description" : "Die Stammdaten umfassen die Triebfahrzeuge der Infrastruktur",
+        "properties" : {
+          "triebfahrzeuge" : {
+            "type" : "array",
+            "description" : "Alle Triebfahrzeuge der Stammdaten",
+            "items" : {
+              "$ref" : "#/components/schemas/triebfahrzeug"
+            },
+            "maxItems" : 500,
+            "minItems" : 1
+          }
+        },
+        "required" : [ "triebfahrzeuge" ]
+      },
+      "strecke_info" : {
+        "type" : "object",
+        "description" : "Informationen zum ausgehenden Streckensegment",
+        "properties" : {
+          "ausserhalb_db_netz" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob das Streckensegment bis zum nächsten Routenpunkt außerhalb des DB-Netzes liegt"
+          },
+          "ungeprueft_grenzlast" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob die Grenzlast des Streckensegments bis zum nächsten Routenpunkt ungeprüft ist"
+          },
+          "ungeprueft_kv" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob das KV-Profil des Streckensegments bis zum nächsten Routenpunkt ungeprüft ist"
+          },
+          "ungeprueft_streckenklasse" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob die Streckenklasse des Streckensegments bis zum nächsten Routenpunkt ungeprüft ist"
+          }
+        },
+        "required" : [ "ausserhalb_db_netz", "ungeprueft_grenzlast", "ungeprueft_kv", "ungeprueft_streckenklasse" ]
+      },
+      "streckensegment" : {
+        "type" : "object",
+        "description" : "Ein Streckensegment ist ein gerichteter Teilabschnitt einer VZG-Strecke, der durch eine Von- und eine Bis-Betriebsstelle begrenzt ist.",
+        "properties" : {
+          "bis" : {
+            "type" : "string",
+            "description" : "DS100 (Ril 100) der Zielbetriebsstelle des Streckensegments",
+            "maxLength" : 5,
+            "minLength" : 2,
+            "pattern" : "^[A-Z][A-Z0-9 ]{0,3}[A-Z0-9]$"
+          },
+          "bis_km" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Kilometrierung am Ende des Streckensegments"
+          },
+          "streckennummer" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Streckennummer des Streckensegments",
+            "maximum" : 9999,
+            "minimum" : 0
+          },
+          "von" : {
+            "type" : "string",
+            "description" : "DS100 (Ril 100) der Startbetriebsstelle des Streckensegments",
+            "maxLength" : 5,
+            "minLength" : 2,
+            "pattern" : "^[A-Z][A-Z0-9 ]{0,3}[A-Z0-9]$"
+          },
+          "von_km" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Kilometrierung am Anfang des Streckensegments"
+          }
+        },
+        "required" : [ "bis", "bis_km", "streckennummer", "von", "von_km" ]
+      },
+      "streckensegment_key" : {
+        "type" : "object",
+        "description" : "Eindeutiger Identifikator eines Streckensegmentes",
+        "properties" : {
+          "bis" : {
+            "type" : "string",
+            "description" : "DS100 (Ril 100) der Zielbetriebsstelle des Streckensegments",
+            "maxLength" : 5,
+            "minLength" : 2,
+            "pattern" : "^[A-Z][A-Z0-9 ]{0,3}[A-Z0-9]$"
+          },
+          "streckennummer" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Streckennummer des Streckensegments",
+            "maximum" : 9999,
+            "minimum" : 0
+          },
+          "von" : {
+            "type" : "string",
+            "description" : "DS100 (Ril 100) der Startbetriebsstelle des Streckensegments",
+            "maxLength" : 5,
+            "minLength" : 2,
+            "pattern" : "^[A-Z][A-Z0-9 ]{0,3}[A-Z0-9]$"
+          }
+        },
+        "required" : [ "bis", "streckennummer", "von" ]
+      },
+      "sucheinstellungen" : {
+        "type" : "object",
+        "description" : "Die Sucheinstellungen enthalten alle Parameter, die für die Routensuche verwendet werden",
+        "properties" : {
+          "an_abzeit" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "Datum, Uhrzeit & Zeitverschiebung der An- oder Abfahrt. Das Datenformat entspricht ISO 8601 und RFC 3339 und ist folgendermaßen aufgebaut:\n* das Datum im Format `YYYY-MM-DD`\n* der Buchstabe `T`\n* die Uhrzeit im Format `HH:MM:SS` (eventuell angegebene Sekundenbruchteile, werden verworfen)\n* die Zeitverschiebung im Format `±HH`, `±HH:MM` oder der Buchstabe `Z` für UTC\n\nBsp.: 2024-05-13T16:38:36+02:00",
+            "maxLength" : 25
+          },
+          "einschraenkungen_beachten" : {
+            "type" : "boolean",
+            "description" : "Falls aktiviert, werden geplante Einschränkungen (Baumaßnahmen und Streckenruhen) der nächsten 70 Tage ab einer Dauer von 2 Stunden beachtet. Züge befahren keine Strecken mit Totalsperrungen. Alle anderen Einschränkungen werden im Ergebnis als Bemerkungen ausgegeben."
+          },
+          "einzelgrenzlastberechnung_zulaessig" : {
+            "type" : "boolean",
+            "description" : "Falls aktiviert, wird bei Bedarf Einzelgrenzlastberechnung genutzt. Der Trassenfinder erhöht künstlich die Grenzlasten, um mehr Streckenabschnitte für das Routing nutzen zu können. Für die Streckenabschnitte, auf denen im Routingergebnis die Regelgrenzlast überschritten wurde, ist eine EGB über https://www.dbinfrago.com/greta zu bestellen!"
+          },
+          "gewichtung_parameter" : {
+            "$ref" : "#/components/schemas/gewichtung_parameter",
+            "description" : "Prozentuale Gewichtung der Kriterien Streckenlänge, Fahrzeit und Energieverbrauch bei der Routensuche. Die Summe der Werte muss 100% ergeben.\nBsp.: Bei 100% Weglänge wird die kürzest mögliche Route gesucht."
+          },
+          "initiale_sperrungen_beruecksichtigen" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob initiale Streckensperrungen berücksichtigt werden sollen. Das heißt, dass entsprechende, bereits in der Infrastruktur gesperrte Streckenabschnitte nicht befahren werden können."
+          },
+          "laengenabhaengige_grenzlasten_verwenden" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob längenbhängige Grenzlasten verwendet werden sollen. Die im Trassenfinder enthaltenen Grenzlastendaten wurden auf 9 Stufen der Wagenzuglänge (300, 350, 400, 450, 500, 550, 600, 650 ,700) umgestellt. Damit ist eine Wagenzuglänge von 275 bis 724 Meter durchgehend abgedeckt. Unterhalb von 275 Metern und oberhalb von 724 Metern Wagenzuglänge wird keine Grenzlastprüfung durchgeführt. Ist diese Option deaktiviert, werden bei jeder Wagenzuglänge die Grenzlastdaten für einen Wagenzug mit 700 Metern verwendet."
+          },
+          "manueller_fahrzeitzuschlag_prozent" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Alle Fahrzeiten der Route werden um dem manuellen prozentualen Fahrzeitzuschlag gestreckt.",
+            "maximum" : 50,
+            "minimum" : 0
+          },
+          "mit_realistischen_fahrzeiten_optimieren" : {
+            "type" : "boolean",
+            "description" : "Fall aktiviert, verwendet die Fahrzeit-Optimierung der Routensuche realistische Fahrzeiten abhängig von Ort und Tageszeit auf Grundlage real gefahrener Güterzüge. Anderenfalls werden technische Fahrzeiten verwendet."
+          },
+          "optimierungsvarianten_berechnen" : {
+            "type" : "boolean",
+            "description" : "Durch Aktivieren dieser Option wird nicht nur eine Route mit den Werten aus \"gewichtung_parameter\" als Optimierungskriterium gefunden, sondern gleichzeitig diejenige mit dem geringsten Trassenpreis und diejenige mit der kürzesten Trassenlänge. Es stehen demzufolge nach der Berechnung bis zu drei Optimierungsvarianten zur Auswahl."
+          },
+          "richtungswechsel_zulaessig" : {
+            "type" : "boolean",
+            "description" : "Mit dem Aktivieren dieser Einstellung lassen Sie zu, dass der Zug beliebige Richtungswechsel durch Umsetzen des Triebfahrzeugs („Kopf machen“) durchführen kann. Ein Richtungswechsel kann nur in Bahnhöfen erfolgen, in denen Fahrstraßen dies zulassen (Gleise mit Einund Ausfahrmöglichkeiten). Am Ort des Richtungswechsels wird ein Betriebshalt mit einer Haltezeit von 30 Minuten in der Verkehrsart SGV bzw. 10 Minuten in allen anderen Verkehrsarten eingerichtet. In den Hinweisen der Laufwegübersicht wird am Ort des Kopfmachens „Richtungswechsel“ eingetragen. Sofern Sie am Ort des Kopfmachens bereits einen Verkehrshalt (ViaPunkt) eingestellt haben, wird dessen Haltedauer übernommen (auch wenn sie kleiner als 30 Minuten ist) und der Halt in einen Kundenhalt (Verkehrshalt) umgestellt."
+          },
+          "trassenentgelt_parameter" : {
+            "$ref" : "#/components/schemas/trassenentgelt_parameter",
+            "description" : "Trassenentgeltparameter für die Berechnung des Trassenentgelts"
+          },
+          "verkehrsart" : {
+            "type" : "string",
+            "description" : "Es stehen folgende Verkehrsarten zur Verfügung:\n* Schienengüterverkehr (SGV), Lokzüge (LZ)\n* Schienpersonennahverkehr mit Lokzügen (SPNV-Lok)\n* Schienpersonennahverkehr mit Triebwagen (SPNV-TW)\n* Schienpersonenfernverkehr mit Lokzügen (SPFV-Lok)\n* Schienpersonenfernverkehr mit Triebwagen (SPFV-TW)\n* S-Bahnen",
+            "enum" : [ "sgv", "lz", "spfv_lok", "spfv_tw", "spnv_lok", "spnv_tw", "sbahn" ],
+            "maxLength" : 10,
+            "pattern" : "^[a-z_]+$"
+          },
+          "verkehrshalte_nur_an_bahnsteigen" : {
+            "type" : "boolean",
+            "description" : "Falls aktiviert, hält der Zug, wenn möglich, an Bahnsteigen."
+          },
+          "vermeidung_parameter" : {
+            "$ref" : "#/components/schemas/vermeidung_parameter",
+            "description" : "Enthält Parameter die festlegen, ob Streckenabschnitte mit bestimmten Eigenschaften bei der Routensuche mit einem Aufschlag als Faktor versehen („bestraft“) werden sollen. Dies bedeutet, dass eher alternative Routen ohne diese Streckenabschnitte gefunden werden, auch wenn dies höhere Kosten, längere Wege oder größere Fahrzeiten verursacht.  Grundsätzlich ist, bei aktivierter Funktion, das Fahren über diese Betriebsstellen trotzdem möglich, insbesondere dann, wenn sich dort Zwangspunkte (Beginn-, Via- oder Endpunkt) befinden oder dadurch ein übermäßig großer Umweg entstehen würde."
+          },
+          "wendezeit_min" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Wendezeit des Zuges in Minuten. Sie gibt an, wie lange ein Zug hält, falls er abseits der bestellten Halte kopfmachen muss.",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "zeitvorgabe_typ" : {
+            "type" : "string",
+            "description" : "Es stehen folgende Optionen zur Verfügung:\n* Abzeit (feste Abfahrtszeit)\n* Anzeit (feste Ankunftszeit)",
+            "enum" : [ "abzeit", "anzeit" ],
+            "maxLength" : 10,
+            "pattern" : "^[a-z_]+$"
+          },
+          "zusatzkosten_parameter" : {
+            "$ref" : "#/components/schemas/zusatzkosten_parameter",
+            "description" : "Zusatzkostenparameter für die Prognose der Energie-, Fahrzeug- und Personalkosten der Route"
+          }
+        },
+        "required" : [ "an_abzeit", "verkehrsart", "zeitvorgabe_typ" ]
+      },
+      "timeout_error" : {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "type" : "array",
+            "description" : "Details zur Fehlermeldung",
+            "items" : {
+              "type" : "string",
+              "maxLength" : 10000,
+              "minLength" : 0
+            },
+            "maxItems" : 10,
+            "minItems" : 0
+          },
+          "message" : {
+            "type" : "string",
+            "description" : "Nachricht der Fehlermeldung",
+            "maxLength" : 1000
+          }
+        },
+        "required" : [ "details", "message" ]
+      },
+      "too_many_requests" : {
+        "type" : "object",
+        "properties" : {
+          "details" : {
+            "type" : "array",
+            "description" : "Details zur Fehlermeldung",
+            "items" : {
+              "type" : "string",
+              "maxLength" : 10000,
+              "minLength" : 0
+            },
+            "maxItems" : 10,
+            "minItems" : 0
+          },
+          "message" : {
+            "type" : "string",
+            "description" : "Nachricht der Fehlermeldung",
+            "maxLength" : 1000
+          }
+        },
+        "required" : [ "details", "message" ]
+      },
+      "trassenentgelt_parameter" : {
+        "type" : "object",
+        "description" : "Trassenentgeltparameter für die Berechnung des Trassenentgelts",
+        "properties" : {
+          "flexibilitaet" : {
+            "type" : "string",
+            "description" : "Flexibilität der räumlichen oder zeitlichen Fahrplangestatlung. Die Flexibilität beeinflusst das Trassenentgelt. Die räumliche Flexibilität besagt, dass bei der bezüglich der räumlichen Fahrplangestaltung flexibel ist. Die zeitliche Flexibilität besagt, dass der ein Endkunde bezüglich der zeitlichen Fahrplangestaltung flexibel ist. Eine höhere Flexibilität führt zu niedrigeren Kosten",
+            "enum" : [ "r_flex", "z_flex", "kein_flex" ],
+            "maxLength" : 20,
+            "pattern" : "^[a-z_]+$"
+          },
+          "gefahrgutganzzug" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug ausschließlich gefährliche Güter transportiert. Diese Angabe ist nur im Schienengüterverkehr gültig und sorgt für ein erhöhtes Trassenentgelt."
+          },
+          "marktsegment" : {
+            "type" : "string",
+            "description" : "Gibt das Marktsegement an. Das Marktsegement beeinflusst das Trassenentgelt.\nBsp.: Das Marktsegment Lok-/Leerfahrt führt zu geringeren Kosten als das Marktsegment Metro Tag/Basic/Nacht",
+            "enum" : [ "sgv_standard", "sgv_sehr_schwer", "sgv_gefahrgutganzzug", "sgv_nahverkehr", "sgv_lokfahrt", "spfv_metro_tag_basic_nacht", "spfv_charter_nostalgie", "spfv_punkt_zu_punkt", "spfv_lok_leerfahrt", "spnv_lastfahrt", "spnv_lok_leerfahrt" ],
+            "maxLength" : 30,
+            "pattern" : "^[a-z_]+$"
+          },
+          "prioritaet" : {
+            "type" : "string",
+            "description" : "Priorität der betrieblichen Durchführung. Züge mit höherer Priorität kosten mehr Trassenentgelt. Züge mit der Priorität 'Schnell' haben eine hohe Priorität und damit Vorrang vor anderen Zügen des Schienengüter- und Schienenpersonenverkehrs mit normaler Priorität. Züge mit der normaler und hoher Priorität. Züge des Schienenpersonenfernverkehrs mit dem Zusatz 'Express' haben außerdem Vorrang von Güterzügen mit Zusatz Express.",
+            "enum" : [ "express", "schnell", "keine_prioritaet" ],
+            "maxLength" : 20,
+            "pattern" : "^[a-z_]+$"
+          }
+        }
+      },
+      "triebfahrzeug" : {
+        "type" : "object",
+        "description" : "Ein elektrisch oder verbrennungsmotorisch betriebenes Fahrzeug",
+        "properties" : {
+          "aktive_neigetechnik" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob das Triebfahrzeug die aktive Neigetechnik verwendet. Wenn die aktive Neigetechnik verwendet wird, können Kurven schneller befahren werden. Das beinflusst die Durchschnittsgeschwindigkeit des Triebfahrzeugs"
+          },
+          "baureihenname" : {
+            "type" : "string",
+            "description" : "Baureihennamen des Triebfahrzeugs\nBsp.: 'DB 003' oder 'ÖBB 1044 / ÖBB 1144'",
+            "maxLength" : 30,
+            "minLength" : 1
+          },
+          "bezeichnung" : {
+            "type" : "string",
+            "description" : "Bezeichnung des Triebfahrzeugs\nBsp.: 'Mehrsystemlok, Pu=5,6MW'",
+            "maxLength" : 100,
+            "minLength" : 1
+          },
+          "elektrifiziert" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob das Triebfahrzeug elektrifiziert ist. Eine Aktivierung führt dazu, dass nur elektrifizierte Streckenabschnitte befahren werden können"
+          },
+          "hauptnummer" : {
+            "type" : "string",
+            "description" : "Hauptnummer des Triebfahrzeugs. Dient zusammen mit der Unternummer, der Kennung und dem Kennungswert dazu, das Triebfahrzeug eindeutig zu identifizieren",
+            "maxLength" : 6,
+            "minLength" : 1
+          },
+          "kennung" : {
+            "type" : "string",
+            "description" : "Kennung des Triebfahrzeugs. Dient zusammen mit der Hauptnummer, der Unternummer und dem Kennungswert dazu, das Triebfahrzeug eindeutig zu identifizieren",
+            "enum" : [ "N", "U", "L" ],
+            "maxLength" : 3,
+            "pattern" : "^[A-Z]+$"
+          },
+          "kennung_wert" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Kennungswert des Triebfahrzeugs. Dient zusammen mit der Hauptnummer, der Unternummer und der Kennung dazu, das Triebfahrzeug eindeutig zu identifizieren",
+            "maximum" : 9999,
+            "minimum" : 0
+          },
+          "partner_tfz_fuer_traktionsartwechsel" : {
+            "$ref" : "#/components/schemas/triebfahrzeug_key",
+            "description" : "Gibt an, dass mit diesem Triebfahrzeug ein Traktionsartwechsel durchgeführt werden kann. Das zugehörige Triebfahrzeug weist denselben Wert auf"
+          },
+          "triebwagen" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob das Triebfahrzeug als Triebwagen eingesetzt wird"
+          },
+          "unternummer" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Unternummer des Triebfahrzeugs. Dient zusammen mit der Hauptnummer, der Kennung und dem Kennungswert dazu, das Triebfahrzeug eindeutig zu identifizieren",
+            "maximum" : 99,
+            "minimum" : 0
+          }
+        },
+        "required" : [ "aktive_neigetechnik", "baureihenname", "bezeichnung", "elektrifiziert", "hauptnummer", "kennung", "kennung_wert", "triebwagen", "unternummer" ]
+      },
+      "triebfahrzeug_key" : {
+        "type" : "object",
+        "additionalProperties" : false,
+        "description" : "Eindeutiger Identifikator eines Triebfahrzeugs bestehend aus den Parameter Hauptnummer, Unternummer, Kennung und Kennungwert.\nBsp.: {hauptnummer: \"6185\", unternummer: 2, kennung: \"L\", kennung_wert: 80}",
+        "properties" : {
+          "hauptnummer" : {
+            "type" : "string",
+            "description" : "Hauptnummer des Triebfahrzeugs",
+            "maxLength" : 6,
+            "minLength" : 1
+          },
+          "kennung" : {
+            "type" : "string",
+            "description" : "Kennung des Triebfahrzeugs",
+            "enum" : [ "N", "U", "L" ],
+            "maxLength" : 3,
+            "pattern" : "^[A-Z]+$"
+          },
+          "kennung_wert" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Kennungswert des Triebfahrzeugs",
+            "maximum" : 9999,
+            "minimum" : 0
+          },
+          "unternummer" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Unternummer des Triebfahrzeugs",
+            "maximum" : 99,
+            "minimum" : 0
+          }
+        },
+        "required" : [ "hauptnummer", "kennung", "kennung_wert", "unternummer" ]
+      },
+      "unexpected_error" : {
+        "type" : "object",
+        "description" : "Wird zurückgegeben, wenn während einer Anfrage ein Fehler auftritt",
+        "properties" : {
+          "details" : {
+            "type" : "array",
+            "description" : "Details zur Fehlermeldung",
+            "items" : {
+              "type" : "string",
+              "maxLength" : 10000,
+              "minLength" : 0
+            },
+            "maxItems" : 10,
+            "minItems" : 0
+          },
+          "message" : {
+            "type" : "string",
+            "description" : "Nachricht der Fehlermeldung",
+            "maxLength" : 1000
+          }
+        },
+        "required" : [ "details", "message" ]
+      },
+      "ursachen" : {
+        "type" : "object",
+        "description" : "Die Informationen zu Fehlern bei einer fehlgeschlagenen Routensuche.",
+        "properties" : {
+          "anderweitig_unzulaessig" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug die Betriebsstelle auf der Streckennummer aus einem anderen Grund nicht durchfahren konnte. Zum Beispiel, weil keine passenden Fahrwege vorhanden sind."
+          },
+          "dla_u_profil_verboten" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug die Betriebsstelle auf der Streckennummer aufgrund von DLA-U-Profilen nicht durchfahren konnte."
+          },
+          "gesperrt_durch_baumassnahme" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug die Betriebsstelle auf der Streckennummer aufgrund einer Streckensperrung durch Baumaßnahmen nicht durchfahren konnte."
+          },
+          "gesperrt_durch_nutzer" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug die Betriebsstelle auf der Streckennummer aufgrund einer Streckensperrung durch den Nutzer nicht durchfahren konnte."
+          },
+          "gesperrt_fuer_gefahrgutganzzug" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug die Betriebsstelle auf der Streckennummer aufgrund einer Streckensperrung für Gefahrgutganzzüge nicht durchfahren konnte."
+          },
+          "gesperrt_initial" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug die Betriebsstelle auf der Streckennummer aufgrund einer Streckensperrung für die Verkehrsart nicht durchfahren konnte."
+          },
+          "max_grenzlast" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Die maximale in der Betriebsstelle auf der Streckennummer zulässige Grenzlast. Der Wert wird ist nur vorhanden, falls er vom Zug überschritten wurde.",
+            "maximum" : 32767,
+            "minimum" : -32768
+          },
+          "max_kv_profil" : {
+            "$ref" : "#/components/schemas/kv_profil",
+            "description" : "Das größte in der Betriebsstelle auf der Streckennummer zulässige KV-Profil. Der Wert wird ist nur vorhanden, falls er vom Zug überschritten wurde."
+          },
+          "max_streckenklasse" : {
+            "type" : "string",
+            "description" : "Die höchste in der Betriebsstelle auf der Streckennummer zulässige Streckenklasse. Der Wert wird ist nur vorhanden, falls er vom Zug überschritten wurde.",
+            "enum" : [ "D4", "D3", "D2", "CM4", "CM3", "CM2", "CE", "C4", "C3", "C2", "B2", "B1", "A" ],
+            "maxLength" : 3,
+            "pattern" : "^[A-Z1-9]+$"
+          },
+          "nicht_elektrifiziert" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug die Betriebsstelle auf der Streckennummer aufgrund fehlender Elektrifizierung nicht durchfahren konnte."
+          },
+          "zugbeeinflussung_unzulaessig" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug die Betriebsstelle auf der Streckennummer aufgrund unzulässiger Zugbeeinflussungssysteme nicht durchfahren konnte."
+          }
+        }
+      },
+      "vermeidung_parameter" : {
+        "type" : "object",
+        "properties" : {
+          "eingleisige_strecken_meiden" : {
+            "type" : "boolean",
+            "description" : "Ist diese Funktion aktiviert, wird das Befahren von eingleisigen Streckenabschnitten bei der Routensuche mit einem Aufschlag als Faktor versehen („bestraft“)."
+          },
+          "knotenbahnhoefe_meiden" : {
+            "type" : "boolean",
+            "description" : "Ist diese Funktion aktiviert, wird das Befahren von Knotenbahnhöfen (insbesondere Hauptbahnhöfe ohne Güterdurchgangsverkehr) des Schienenpersonenverkehrs bei der Routensuche mit einem Aufschlag als Faktor versehen („bestraft“)."
+          },
+          "nebenbahnen_meiden" : {
+            "type" : "boolean",
+            "description" : "Ist diese Funktion aktiviert, wird das Befahren von Streckenabschnitten, die Nebenbahnen (vgl. EBO) sind, bei der Routensuche mit einem Aufschlag als Faktor versehen („bestraft“)."
+          },
+          "notbremsueberbrueckung_meiden" : {
+            "type" : "boolean",
+            "description" : "Ist diese Funktion aktiviert, wird das Befahren von Streckenabschnitten mit Notbremsüberbrückung bei der Routensuche mit einem Aufschlag als Faktor versehen („bestraft“)."
+          },
+          "sbahnen_meiden" : {
+            "type" : "boolean",
+            "description" : "Ist diese Funktion aktiviert, werden Streckenabschnitte, auf denen im Regelbetrieb vorrangig S-Bahnen verkehren (insbesondere S-Bahn-Stammstrecken in Ballungszentren), bei der Routensuche mit einem Aufschlag als Faktor versehen („bestraft“)."
+          },
+          "schnellfahrstrecken_meiden" : {
+            "type" : "boolean",
+            "description" : "Ist diese Funktion aktiviert, werden Streckenabschnitte, auf denen planmäßig Züge mit mehr als 230 km/h verkehren (insbesondere Neubaustrecken), bei der Routensuche mit einem Aufschlag als Faktor versehen („bestraft“)."
+          },
+          "strecken_mit_vorrang_sgv_meiden" : {
+            "type" : "boolean",
+            "description" : "Ist diese Funktion aktiviert, wird das Befahren von Streckenabschnitten mit Vorrang für SGV bei der Routensuche mit einem Aufschlag als Faktor versehen („bestraft“)."
+          },
+          "strecken_mit_vorrang_spv_meiden" : {
+            "type" : "boolean",
+            "description" : "Ist diese Funktion aktiviert, wird das Befahren von Streckenabschnitten mit Vorrang für SPV bei der Routensuche mit einem Aufschlag als Faktor versehen („bestraft“)."
+          },
+          "ueberlastete_meiden" : {
+            "type" : "boolean",
+            "description" : "Ist diese Funktion aktiviert, werden Streckenabschnitte, die laut Schienennetz-Benutzungsbedingungen (SNB) als überlasteter Schienenweg ausgewiesen sind, bei der Routensuche mit einem Aufschlag als Faktor versehen („bestraft“)."
+          },
+          "wirbelstrombremse_meiden" : {
+            "type" : "boolean",
+            "description" : "Ist diese Funktion aktiviert, wird das Befahren von Streckenabschnitten mit Wirbelstromertüchtigung bei der Routensuche mit einem Aufschlag als Faktor versehen („bestraft“)."
+          }
+        }
+      },
+      "version" : {
+        "type" : "object",
+        "description" : "Versionsinformationen zum Trassenfinder",
+        "properties" : {
+          "trassenfinder" : {
+            "type" : "string",
+            "description" : "Versionsnummer des Trassenfinders",
+            "maxLength" : 20
+          }
+        },
+        "required" : [ "trassenfinder" ]
+      },
+      "wegpunkt" : {
+        "type" : "object",
+        "properties" : {
+          "betriebsstelle" : {
+            "$ref" : "#/components/schemas/wegpunkt_betriebsstelle",
+            "description" : "Betriebsstelle des Wegpunkts"
+          },
+          "haltezeit_sek" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Haltezeit in Sekunden. Bei einer Haltezeit von 0 Sekunden wird in der Regel kein Halt eingelegt. Mögliche Ausnahmen sind u. A. Richtungswechsel oder das Ankuppeln einer Schiebelok in der Betriebsstelle des Wegpunkts. Die Haltezeiten des ersten und letzten Wegpunkts werden nicht berücksichtigt. Je nach Verkehrsart gelten unterschiedliche Mindesthaltezeiten.",
+            "maximum" : 99999,
+            "minimum" : 0
+          },
+          "zugcharakteristik" : {
+            "$ref" : "#/components/schemas/zugcharakteristik",
+            "description" : "Zugcharakteristik, die ab dem Wegpunkt gilt. Wechsel der Zugcharkateristik sind nur an Halten zulässig."
+          }
+        },
+        "required" : [ "betriebsstelle" ]
+      },
+      "wegpunkt_betriebsstelle" : {
+        "type" : "object",
+        "description" : "Die Betriebsstelle eines Wegpunktes\nBsp.: Im Hauptbahnhof der Stadt Mainz können mehrere Wegpunke ausgewählt werden und jeder dieser Wegpunkte beinhaltet genau eine Betriebsstelle",
+        "properties" : {
+          "ds100" : {
+            "type" : "string",
+            "description" : "DS100 (Ril 100) der Betriebsstelle des Wegpunktes\nBsp.: 'FMZ', 'RF', 'TS'",
+            "maxLength" : 5,
+            "minLength" : 2,
+            "pattern" : "^[A-Z][A-Z0-9 ]{0,3}[A-Z0-9]$"
+          },
+          "mutter" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob es sich bei der Betriebsstelle um eine Mutterbetriebsstelle handelt.Mutterbetriebsstellen gruppieren mehrere Tochterbetriebsstellen, z.B. die Bahnhofsteile eines größeren Bahnhofs.Die Routensuche wählt unter den Tochterbetriebsstellen automatisch die optimalste aus.\nBsp.: Die Mutterbetriebsstelle 'NN' umfasst die Tochterbetriebsstellen 'NN' und 'NNSE'"
+          }
+        },
+        "required" : [ "ds100" ]
+      },
+      "wegpunkt_detail" : {
+        "type" : "object",
+        "description" : "Die Betriebsstelle und Streckennummer mit zugehöriger Fehleranalyse",
+        "properties" : {
+          "ds100" : {
+            "type" : "string",
+            "description" : "DS100 (Ril 100) der Betriebsstelle, die der Zug auf der gegebenen Streckennummer nicht durchfahren konnte",
+            "maxLength" : 5,
+            "minLength" : 2,
+            "pattern" : "^[A-Z][A-Z0-9 ]{0,3}[A-Z0-9]$"
+          },
+          "ursachen" : {
+            "$ref" : "#/components/schemas/wegpunkt_ursachen",
+            "description" : "Ursachen dafür, dass der Zug die gegebene Betriebsstelle auf der gegebenen Streckennummer nicht durchfahren konnte"
+          }
+        },
+        "required" : [ "ds100", "ursachen" ]
+      },
+      "wegpunkt_ursachen" : {
+        "type" : "object",
+        "description" : "Die Informationen zu Fehlern an Wegpunkten bei einer fehlgeschlagenen Routensuche.",
+        "properties" : {
+          "anderweitig_unzulaessig" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug die Betriebsstelle auf der Streckennummer aus einem anderen Grund nicht durchfahren konnte. Zum Beispiel, weil keine passenden Fahrwege vorhanden sind."
+          },
+          "dla_u_profil_verboten" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug die Betriebsstelle auf der Streckennummer aufgrund von DLA-U-Profilen nicht durchfahren konnte."
+          }
+        }
+      },
+      "zugbeeinflussung" : {
+        "type" : "object",
+        "description" : "Die vom Zug unterstützten Zugbeeinflussungssysteme.",
+        "properties" : {
+          "etcs_system_version" : {
+            "type" : "string",
+            "description" : "Unterstützte Systemversion der ETCS-Zugausrüstung.",
+            "enum" : [ "ohne", "v1_X", "v2_0", "v2_1", "v2_2" ],
+            "maxLength" : 50,
+            "pattern" : "^[a-z_]+$"
+          },
+          "lzb" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug linienförmige Zugbeeinflussung (LZB) unterstützt."
+          },
+          "pzb" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Zug punktförmige Zugbeeinflussung (PZB) unterstützt."
+          }
+        },
+        "required" : [ "etcs_system_version", "lzb", "pzb" ]
+      },
+      "zugcharakteristik" : {
+        "type" : "object",
+        "description" : "Beschreibt die Eigenschaften eines Zuges",
+        "properties" : {
+          "abweichendes_zweites_triebfahrzeug" : {
+            "$ref" : "#/components/schemas/triebfahrzeug_key",
+            "description" : "Eindeutiger Identifikator eines zweiten Triebfahrzeugs. Nur Anzugeben, wenn die Vorspannart ein abweichendes Triebfahrzeug vorsieht."
+          },
+          "aktive_neigetechnik" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob aktive Neigetechnik verwendet werden soll, sofern das Triebfahrzeug damit ausgerüstet ist. Mit aktiver Neigetechnik können Kurven schneller befahren werden."
+          },
+          "andere_kupplungsfestigkeit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Betriebliche Festigkeit der Zugkupplung in Kilonewton. Nur anzugeben, wenn die Kupplungsbauart 'andere' ausgewählt wurde.",
+            "maximum" : 5000,
+            "minimum" : 0
+          },
+          "bremshundertstel" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Vorhandende Bremshunderstel des Zuges.  Dieser Wert beeinflusst insbesondere die Fahrzeitberechnung, da bei zu geringer Bremskraft die zulässige (nicht signalisierte) Geschwindigkeit eines Zuges abschnittsweise beschränkt wird. ",
+            "maximum" : 300,
+            "minimum" : 0
+          },
+          "bremsstellung" : {
+            "type" : "string",
+            "description" : "Bremsstellung der Wagenzüge. Die Auswahl beeinflusst insbesondere die Fahrzeitberechnung, da abhängig von der Trägheit der Bremse eine flachere Brems- und Lösekurve unterstellt wird. Es können folgende Bremsstellungen ausgewählt werden.\n* Güterzugbremse (G)\n* Personenzugbremse (P)\n* Rapidbremse (R)\n* Rapidbremse und Magnetschienenbremse (R+Mg)\n* Rapidbremse und Wirbelstrombremse (R+WB)",
+            "enum" : [ "G", "P", "R", "R+Mg", "R+WB" ],
+            "maxLength" : 5,
+            "pattern" : "^[A-Z+]+$"
+          },
+          "dla_u_profile" : {
+            "type" : "array",
+            "description" : "Liste der DLA-U-Profile des Zuges",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "P1900", "P1901", "P1902", "P1903", "P1904", "P1800", "P1801", "P1802", "P1803", "P1804", "P1700", "P1701", "P1702", "P1703", "P1704", "P1602", "P1603", "P1605", "P1606", "P1607", "P1608", "P1609", "P1501", "P1505", "P1506", "P1507", "P1400", "P1405", "P1306", "P1307", "P1308", "P1309", "P1206", "P1207", "P1208", "P1209" ]
+            },
+            "maxItems" : 4,
+            "minItems" : 0
+          },
+          "fuehrendes_fahrzeug" : {
+            "type" : "string",
+            "description" : "Die Art des führenden Fahrzeugs des Zuges. Bei Steuerwagen wird die gegebene Wagenzuglänge als Zuglänge interpretiert.",
+            "enum" : [ "lokomotive", "steuerwagen", "triebwagen" ],
+            "maxLength" : 20,
+            "pattern" : "^[a-z_]+$"
+          },
+          "kupplungsbauart" : {
+            "type" : "string",
+            "description" : "Die Kupplungsbauart des Triebfahrzeugs",
+            "enum" : [ "andere", "kn450", "kn500", "kn850" ],
+            "maxLength" : 10,
+            "pattern" : "^[a-z0-9_]+$"
+          },
+          "kv_profil" : {
+            "$ref" : "#/components/schemas/kv_profil",
+            "description" : "KV-Profil (P/C) des Zuges"
+          },
+          "nachschiebe_triebfahrzeug" : {
+            "$ref" : "#/components/schemas/triebfahrzeug_key",
+            "description" : "Eindeutiger Identifikator eines Triebfahrzeugs zum Nachschieben. Nur anzugeben, wenn als Nachschiebeart nicht 'ohne' eingestellt wurde."
+          },
+          "nachschiebeart" : {
+            "type" : "string",
+            "description" : "Gibt die Nachschiebeart an.",
+            "enum" : [ "ohne", "ungekuppelt", "ungekuppelt_mit_unbegrenzter_druckkraft", "gekuppelt", "gekuppelt_mit_unbegrenzter_druckkraft" ],
+            "maxLength" : 50,
+            "pattern" : "^[a-z_]+$"
+          },
+          "streckenklasse" : {
+            "type" : "string",
+            "description" : "Die Streckenklasse des Zuges legt die maximale erlaubte Meter- und Radsatzlast fest. Je nach Streckenklasse des Zuges können bestimmte Streckenabschnitte nicht befahren werden. Die Streckenklasse 'A' besitzt die geringste Radsatz- und Meterlast, lexikographisch höhere Streckenklassen erlauben höhere Radsatz- und Meterlasten.\nBsp.: Ein Zug mit Streckenklasse C2 darf auf Streckenabschnitten der Streckenklassen A bis C2 verkehren, aber nicht auf Streckenabschnitten der Streckenklasse C3 bis D4.",
+            "enum" : [ "D4", "D3", "D2", "CM4", "CM3", "CM2", "CE", "C4", "C3", "C2", "B2", "B1", "A" ],
+            "maxLength" : 3,
+            "pattern" : "^[A-Z1-9]+$"
+          },
+          "traktionsartwechsel" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob ein automatischer Traktionsartwechsel bei Hybridfahrzeugen erfolgen soll'"
+          },
+          "triebfahrzeug" : {
+            "$ref" : "#/components/schemas/triebfahrzeug_key",
+            "description" : "Eindeutiger Identifikator eines Triebfahrzeugs"
+          },
+          "v_max" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Höchstgeschwindigkeit des Zuges in km/h (\"Vmax\" im Fahrplankopf). Auch wenn das Triebfahrzeug und die Infrastruktur eine höhere Geschwindigkeit zulassen würden, ist die Geschwindigkeit des Zuges auf diesen Wert begrenzt. Dieser Wert beeinflusst insbesondere die Fahrzeitberechnung.",
+            "maximum" : 1000,
+            "minimum" : 0
+          },
+          "vorspannart" : {
+            "type" : "string",
+            "description" : "Mit der Auswahl können Sie das ausgewählte Triebfahrzeug um ein zweites gekuppeltes Triebfahrzeug (als Vorspannlok bzw. in Doppeltraktion) der gleichen Baureihe erweitern. Beide Triebfahrzeuge werden in Abhängigkeit des Kupplungstyps (Begrenzung der Zugkraft aufgrund der Zughakengrenzlast) bei der Grenzlastbewertung und Fahrzeitberechnung angerechnet. Sie haben folgende Auswahl für den Kupplungstypen.\n* Standardschraubenkupplung (maximal 450 kN Zugkraft)\n* verstärkte Schraubenkupplung (maximal 500 kN Zugkraft)\n* automatische Kupplung (maximal 850 kN Zugkraft)",
+            "enum" : [ "ohne", "vorspann_mit_gleicher_tfz_baureihe", "vorspann_mit_abweichender_tfz_baureihe", "doppeltraktion_mit_gleicher_tfz_baureihe", "doppeltraktion_mit_abweichender_tfz_baureihe" ],
+            "maxLength" : 50,
+            "pattern" : "^[a-z_]+$"
+          },
+          "wagenzuglaenge_m" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Wagenzulänge des Zuges in Metern. Diese hat Einfluss auf Fahrzeitberechnung und Halteplatzauswahl.",
+            "maximum" : 2000,
+            "minimum" : 0
+          },
+          "wagenzugmasse_t" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Wagenzugmasse des Zuges in Tonnen",
+            "maximum" : 100000,
+            "minimum" : 0
+          },
+          "zugbeeinflussung_parameter" : {
+            "$ref" : "#/components/schemas/zugbeeinflussung",
+            "description" : "Die vom Zug unterstützten Zugbeeinflussungssysteme. Folgende Zugbeeinflussungssysteme werden unterstützt.\n* Punktförmige Zugbeeinflussung (PZB)\n* Linieförmige Zugbeeinflussung (LZB)\n* European Train Control System (ETCS)\nDie Zugbeeinflussung wirkt sich auf die Fahrzeitrechung aus. Sofern an Streckenabschnitten ein Zwang nach einer bestimmten Zugbeeinflussung (z.B. ETCS) existiert, wird dieser bei der Routensuche geprüft. "
+          }
+        },
+        "required" : [ "bremsstellung", "dla_u_profile", "fuehrendes_fahrzeug", "kupplungsbauart", "kv_profil", "nachschiebeart", "streckenklasse", "triebfahrzeug", "vorspannart", "zugbeeinflussung_parameter" ]
+      },
+      "zusatzkosten_parameter" : {
+        "type" : "object",
+        "description" : "Zusatzkostenparameter für die Prognose der Energie-, Fahrzeug- und Personalkosten der Route.",
+        "properties" : {
+          "energiebezugspreis_euro_pro_kwh" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Energiebezugspreis in Euro pro Kilowattstunde",
+            "maximum" : 100,
+            "minimum" : 0
+          },
+          "energieverbrauch_hilfsbetriebe_und_wagen_beachten" : {
+            "type" : "boolean",
+            "description" : "Gibt an, ob der Energieverbrauch der Hilfsbetriebe und Wagen beachtet werden soll"
+          },
+          "kosten_besetzte_tfz_inkl_personal_euro_pro_h" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Stundenkosten für besetzte Triebfahrzeuge (inkl. Personal) in Euro",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "kosten_unbesetzte_tfz_euro_pro_h" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Stundenkosten für nicht besetzte Triebfahrzeuge in Euro",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "kosten_wagenzug_euro_pro_h" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Stundenkosten für Wagenzug in Euro",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "kostenpauschale_ungekuppelt_nachschieben_euro" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Kostenpauschale für ungekuppeltes Nachschieben in Euro",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          },
+          "rueckspeisung_euro_pro_kwh" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Entgelt für Energierückspeisung in Euro pro Kilowattstunde",
+            "maximum" : 100,
+            "minimum" : 0
+          },
+          "zusaetzlicher_energieverbrauch_pro_wagen_kw" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Der zusätzliche Energiebedarf pro Wagen in Kilowattstunden",
+            "maximum" : 2147483647,
+            "minimum" : 0
+          }
+        }
+      }
+    }
+  }
+}
