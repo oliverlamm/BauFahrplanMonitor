@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("fplo_dokument_zug", Schema = "ujbaudb")]
 [Index("KundeRef", Name = "idx_fplo_dokument_zug_kunde_ref")]

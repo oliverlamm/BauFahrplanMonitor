@@ -1,11 +1,10 @@
 using BauFahrplanMonitor.Core.Importer.Dto.Shared;
-using BauFahrplanMonitor.Core.Interfaces;
-using BauFahrplanMonitor.Models;
+using BauFahrplanMonitor.Core.Models;
 
 namespace BauFahrplanMonitor.Core.Importer.Dto.ZvF;
 
 public class ZvFVorgangDto
-    : SharedVorgangDto, IExtendedVorgangDto {
+    : SharedVorgangDto {
     public string       Extension { get; set; } = string.Empty;
     public string       Korridor  { get; set; } = string.Empty;
     public string       KigBau    { get; set; } = string.Empty;

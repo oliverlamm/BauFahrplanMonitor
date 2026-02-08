@@ -1,0 +1,23 @@
+.diagram-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+}
+
+.diagram-placeholder {
+    padding: 24px;
+    color: #888;
+}
+
+.diagram-tooltip {
+    position: fixed;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    pointer-events: none;
+    z-index: 1000;
+    white-space: nowrap;
+}

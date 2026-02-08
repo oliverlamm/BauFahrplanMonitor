@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("bbpneo_massnahme_regelung_bve", Schema = "ujbaudb")]
 [Index("BbpneoMasRegRef", "BveId", Name = "bbpneo_massnahme_regelung_bve_uq", IsUnique = true)]

@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("ujbau_vorgang_bbmn", Schema = "ujbaudb")]
 [Index("UjVorgangRef", "Bbmn", Name = "ujbau_vorgang_bbmn_uq_vorgang_bbmn", IsUnique = true)]

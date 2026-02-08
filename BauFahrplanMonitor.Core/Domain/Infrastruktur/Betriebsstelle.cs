@@ -1,7 +1,6 @@
 namespace BauFahrplanMonitor.Core.Domain.Infrastruktur;
 
-public sealed class Betriebsstelle
-{
+public sealed class Betriebsstelle {
     public string  Ds100 { get; init; } = null!;
     public string  Name  { get; init; } = null!;
     public string? Plc   { get; init; }

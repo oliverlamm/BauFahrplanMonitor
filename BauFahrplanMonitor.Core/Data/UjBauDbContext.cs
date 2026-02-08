@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using BauFahrplanMonitor.Models;
+using BauFahrplanMonitor.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Data;
+namespace BauFahrplanMonitor.Core.Data;
 
-public partial class UjBauDbContext : DbContext {
+public partial class UjBauDbContext : DbContext
+{
     public UjBauDbContext(DbContextOptions<UjBauDbContext> options)
-        : base(options) {
+        : base(options)
+    {
     }
 
     public virtual DbSet<BasisBetriebsstelle> BasisBetriebsstelle { get; set; }
@@ -15,6 +17,8 @@ public partial class UjBauDbContext : DbContext {
     public virtual DbSet<BasisBetriebsstelle2strecke> BasisBetriebsstelle2strecke { get; set; }
 
     public virtual DbSet<BasisBetriebsstelleTyp> BasisBetriebsstelleTyp { get; set; }
+
+    public virtual DbSet<BasisBetriebsstellenbereich> BasisBetriebsstellenbereich { get; set; }
 
     public virtual DbSet<BasisKunde> BasisKunde { get; set; }
 
@@ -26,7 +30,11 @@ public partial class UjBauDbContext : DbContext {
 
     public virtual DbSet<BasisStrecke> BasisStrecke { get; set; }
 
+    public virtual DbSet<BasisStreckeAbschnitt> BasisStreckeAbschnitt { get; set; }
+
     public virtual DbSet<BasisStreckeInfo> BasisStreckeInfo { get; set; }
+
+    public virtual DbSet<BasisTriebfahrzeuge> BasisTriebfahrzeuge { get; set; }
 
     public virtual DbSet<BbpneoMassnahme> BbpneoMassnahme { get; set; }
 
@@ -82,13 +90,18 @@ public partial class UjBauDbContext : DbContext {
 
     public virtual DbSet<ZvfDokumentZugEntfallen> ZvfDokumentZugEntfallen { get; set; }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder) {
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
         modelBuilder.HasPostgresExtension("postgis");
 
-        modelBuilder.Entity<BasisBetriebsstelle>(entity => {
+        modelBuilder.Entity<BasisBetriebsstelle>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("basis_betriebsstelle_pkey");
 
             entity.Property(e => e.IstBasisDatensatz).HasDefaultValue(false);
+            entity.Property(e => e.NetzbezirkRef).HasDefaultValue(0L);
+            entity.Property(e => e.RegionRef).HasDefaultValue(0L);
+            entity.Property(e => e.TypRef).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.NetzbezirkRefNavigation).WithMany(p => p.BasisBetriebsstelle)
@@ -104,7 +117,8 @@ public partial class UjBauDbContext : DbContext {
                 .HasConstraintName("basis_betriebsstelle_typ_ref_fkey");
         });
 
-        modelBuilder.Entity<BasisBetriebsstelle2strecke>(entity => {
+        modelBuilder.Entity<BasisBetriebsstelle2strecke>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("bst2str_pkey");
 
             entity.Property(e => e.IstBasisDatensatz).HasDefaultValue(false);
@@ -119,7 +133,8 @@ public partial class UjBauDbContext : DbContext {
                 .HasConstraintName("basis_betriebsstelle2strecke_strecke_ref_fkey");
         });
 
-        modelBuilder.Entity<BasisBetriebsstelleTyp>(entity => {
+        modelBuilder.Entity<BasisBetriebsstelleTyp>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("bst_typ_pkey");
 
             entity.Property(e => e.Id).HasDefaultValueSql("nextval('ujbaudb.newtable_id_seq'::regclass)");
@@ -127,48 +142,84 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
         });
 
-        modelBuilder.Entity<BasisKunde>(entity => {
+        modelBuilder.Entity<BasisBetriebsstellenbereich>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("basis_betriebsstellenebreich_pk");
+
+            entity.Property(e => e.Id).HasDefaultValueSql("nextval('ujbaudb.basis_betriebsstellenebreich_id_seq'::regclass)");
+
+            entity.HasOne(d => d.BstChildRefNavigation).WithMany(p => p.BasisBetriebsstellenbereichBstChildRefNavigation)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("basis_betriebsstellenebreich_basis_betriebsstelle_fk_1");
+
+            entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.BasisBetriebsstellenbereichBstRefNavigation).HasConstraintName("basis_betriebsstellenebreich_basis_betriebsstelle_fk");
+        });
+
+        modelBuilder.Entity<BasisKunde>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("kunde_pkey");
 
             entity.Property(e => e.IstBasisDatensatz).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
         });
 
-        modelBuilder.Entity<BasisNetz>(entity => {
+        modelBuilder.Entity<BasisNetz>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("basis_netz_pkey");
 
             entity.Property(e => e.IstBasisDatensatz).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
         });
 
-        modelBuilder.Entity<BasisNetzbezirk>(entity => {
+        modelBuilder.Entity<BasisNetzbezirk>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("basis_netzbezirk_pkey");
 
             entity.Property(e => e.IstBasisDatensatz).HasDefaultValue(false);
+            entity.Property(e => e.NetzRef).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.NetzRefNavigation).WithMany(p => p.BasisNetzbezirk).HasConstraintName("basis_netzbezirk_netz_ref_fkey");
         });
 
-        modelBuilder.Entity<BasisRegion>(entity => {
+        modelBuilder.Entity<BasisRegion>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("basis_region_pkey");
 
             entity.Property(e => e.IstBasisDatensatz).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
         });
 
-        modelBuilder.Entity<BasisStrecke>(entity => {
+        modelBuilder.Entity<BasisStrecke>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("basis_strecke_pkey");
 
             entity.Property(e => e.IstBasisDatensatz).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
         });
 
-        modelBuilder.Entity<BasisStreckeInfo>(entity => {
+        modelBuilder.Entity<BasisStreckeAbschnitt>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("basis_strecke_abschnitt_pk");
+
+            
+            entity.HasOne(d => d.StreckeRefNavigation).WithMany(p => p.BasisStreckeAbschnitt).HasConstraintName("basis_strecke_abschnitt_basis_strecke_fk");
+
+            entity.HasOne(d => d.VonBstRefNavigation).WithMany(p => p.BasisStreckeAbschnittVonBstRefNavigation)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("basis_strecke_abschnitt_basis_betriebsstelle_fk");
+        });
+
+        modelBuilder.Entity<BasisStreckeInfo>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("basis_strecke_info_pkey");
 
             entity.Property(e => e.Id).HasDefaultValueSql("nextval('ujbaudb.basis_strecken_info_id_seq'::regclass)");
             entity.Property(e => e.IstBasisDatensatz).HasDefaultValue(false);
+            entity.Property(e => e.NetzRef).HasDefaultValue(0L);
+            entity.Property(e => e.RegionRef).HasDefaultValue(0L);
+            entity.Property(e => e.Richtung).HasDefaultValue(0L);
+            entity.Property(e => e.StreckenRef).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.NetzRefNavigation).WithMany(p => p.BasisStreckeInfo)
@@ -182,7 +233,17 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.StreckenRefNavigation).WithMany(p => p.BasisStreckeInfo).HasConstraintName("basis_strecke_info_strecken_ref_fkey");
         });
 
-        modelBuilder.Entity<BbpneoMassnahme>(entity => {
+        modelBuilder.Entity<BasisTriebfahrzeuge>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("basis_triebfahrzeuge_pk");
+
+            entity.Property(e => e.AktiveNeigetechnik).HasDefaultValue(false);
+            entity.Property(e => e.Elektrifiziert).HasDefaultValue(false);
+            entity.Property(e => e.Triebwagen).HasDefaultValue(false);
+        });
+
+        modelBuilder.Entity<BbpneoMassnahme>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("bbpneo_massnahme_pkey");
 
             entity.Property(e => e.Aktiv).HasDefaultValue(false);
@@ -201,7 +262,8 @@ public partial class UjBauDbContext : DbContext {
                 .HasConstraintName("bbpneo_massnahme_region_ref_fkey");
         });
 
-        modelBuilder.Entity<BbpneoMassnahmeRegelung>(entity => {
+        modelBuilder.Entity<BbpneoMassnahmeRegelung>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("bbpneo_massnahme_regelung_pkey");
 
             entity.Property(e => e.Aktiv).HasDefaultValue(true);
@@ -220,12 +282,15 @@ public partial class UjBauDbContext : DbContext {
                 .HasConstraintName("bbpneo_massnahme_regelung_bst2str_von_ref_fkey");
         });
 
-        modelBuilder.Entity<BbpneoMassnahmeRegelungBve>(entity => {
+        modelBuilder.Entity<BbpneoMassnahmeRegelungBve>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("bbpneo_massnahme_regelung_bve_pkey");
 
             entity.Property(e => e.Id).HasDefaultValueSql("nextval('ujbaudb.bbpneo_masnahme_regelung_bve_id_seq'::regclass)");
             entity.Property(e => e.Aktiv).HasDefaultValue(true);
+            entity.Property(e => e.ApsBetroffenheit).HasDefaultValue(false);
             entity.Property(e => e.ApsFreiVonFahrzeugen).HasDefaultValue(false);
+            entity.Property(e => e.IavBetroffenheit).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.BbpneoMasRegRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBve).HasConstraintName("bbpneo_massnahme_regelung_bve_bbpneo_massnahme_regelung_fk");
@@ -239,7 +304,8 @@ public partial class UjBauDbContext : DbContext {
                 .HasConstraintName("bbpneo_massnahme_regelung_bve_bst2str_von_ref_fkey");
         });
 
-        modelBuilder.Entity<BbpneoMassnahmeRegelungBveAps>(entity => {
+        modelBuilder.Entity<BbpneoMassnahmeRegelungBveAps>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("bbpneo_massnahme_regelung_bve_aps_pkey");
 
             entity.Property(e => e.Oberleitung).HasDefaultValue(false);
@@ -251,7 +317,8 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.BbpneoMassnahmeRegelungBveAps).HasConstraintName("fk_bve_aps_bst_ref_basis_betriebsstelle");
         });
 
-        modelBuilder.Entity<BbpneoMassnahmeRegelungBveIav>(entity => {
+        modelBuilder.Entity<BbpneoMassnahmeRegelungBveIav>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("bbpneo_massnahme_regelung_bve_iav_pkey");
 
             entity.Property(e => e.Oberleitung).HasDefaultValue(false);
@@ -265,12 +332,22 @@ public partial class UjBauDbContext : DbContext {
                 .HasConstraintName("fk_bve_iav_bst2str_ref_basis_betriebsstelle2strecke");
         });
 
-        modelBuilder.Entity<FploDokument>(entity => {
+        modelBuilder.Entity<FploDokument>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("fplo_dokument_pkey");
 
+            entity.Property(e => e.IstEntwurf).HasDefaultValue(false);
             entity.Property(e => e.IstNachtrag).HasDefaultValue(false);
             entity.Property(e => e.IstTeillieferung).HasDefaultValue(false);
+            entity.Property(e => e.MasterRegionRef).HasDefaultValue(0L);
+            entity.Property(e => e.RegionRef).HasDefaultValue(0L);
+            entity.Property(e => e.SenderRef).HasDefaultValue(0L);
+            entity.Property(e => e.UjbauVorgangRef).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
+            entity.Property(e => e.Version).HasDefaultValue(0L);
+            entity.Property(e => e.VersionMajor).HasDefaultValue(0L);
+            entity.Property(e => e.VersionMinor).HasDefaultValue(0L);
+            entity.Property(e => e.VersionSub).HasDefaultValue(0L);
 
             entity.HasOne(d => d.MasterRegionRefNavigation).WithMany(p => p.FploDokumentMasterRegionRefNavigation)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -287,7 +364,8 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.UjbauVorgangRefNavigation).WithMany(p => p.FploDokument).HasConstraintName("fplo_dokument_ujbau_vorgang_ref_fkey");
         });
 
-        modelBuilder.Entity<FploDokumentStreckenabschnitte>(entity => {
+        modelBuilder.Entity<FploDokumentStreckenabschnitte>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("pk_fplo_strabs");
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
@@ -295,12 +373,17 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.FploDokumentRefNavigation).WithMany(p => p.FploDokumentStreckenabschnitte).HasConstraintName("fk_fplo_dok_strabs_dok");
         });
 
-        modelBuilder.Entity<FploDokumentZug>(entity => {
+        modelBuilder.Entity<FploDokumentZug>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("fplo_dokument_zug_pkey");
 
             entity.Property(e => e.Bedarf).HasDefaultValue(false);
             entity.Property(e => e.Ebula).HasDefaultValue(false);
+            entity.Property(e => e.FploDokumentRef).HasDefaultValue(0L);
+            entity.Property(e => e.KundeRef).HasDefaultValue(0L);
             entity.Property(e => e.Lauterzug).HasDefaultValue(false);
+            entity.Property(e => e.RegelwegAbBstRef).HasDefaultValue(0L);
+            entity.Property(e => e.RegelwegZielBstRef).HasDefaultValue(0L);
             entity.Property(e => e.Sicherheitsrelevant).HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
@@ -319,9 +402,11 @@ public partial class UjBauDbContext : DbContext {
                 .HasConstraintName("fplo_dokument_zug_regelweg_ziel_bst_ref_fkey");
         });
 
-        modelBuilder.Entity<FploDokumentZugFahrplan>(entity => {
+        modelBuilder.Entity<FploDokumentZugFahrplan>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("fplo_dokument_zug_fahrplan_pkey");
 
+            entity.Property(e => e.FploDokumentZugRef).HasDefaultValue(0L);
             entity.Property(e => e.Lfdnr).HasDefaultValue(1L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
@@ -330,9 +415,11 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.FploDokumentZugRefNavigation).WithMany(p => p.FploDokumentZugFahrplan).HasConstraintName("fplo_dokument_zug_fahrplan_fplo_dokument_zug_ref_fkey");
         });
 
-        modelBuilder.Entity<FploDokumentZugRegelung>(entity => {
+        modelBuilder.Entity<FploDokumentZugRegelung>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("pk_fplo_zugreg");
 
+            entity.Property(e => e.AnkerBstRef).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.AnkerBstRefNavigation).WithMany(p => p.FploDokumentZugRegelung)
@@ -342,15 +429,18 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.FploDokumentZugRefNavigation).WithMany(p => p.FploDokumentZugRegelung).HasConstraintName("fk_fplo_zreg_zug");
         });
 
-        modelBuilder.Entity<NfplZug>(entity => {
+        modelBuilder.Entity<NfplZug>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("nfpl_zug_pk");
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
         });
 
-        modelBuilder.Entity<NfplZugVariante>(entity => {
+        modelBuilder.Entity<NfplZugVariante>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("nfpl_zug_variante_pk");
 
+            entity.Property(e => e.RegionRef).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.NfplZugRefNavigation).WithMany(p => p.NfplZugVariante).HasConstraintName("nfpl_zug_variante_nfpl_zug_fk");
@@ -360,9 +450,11 @@ public partial class UjBauDbContext : DbContext {
                 .HasConstraintName("nfpl_zug_variante_basis_region_fk");
         });
 
-        modelBuilder.Entity<NfplZugVarianteVerlauf>(entity => {
+        modelBuilder.Entity<NfplZugVarianteVerlauf>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("nfpl_zug_variante_verlauf_pk");
 
+            entity.Property(e => e.NfplZugVarRef).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.NfplZugVarianteVerlauf)
@@ -372,17 +464,24 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.NfplZugVarRefNavigation).WithMany(p => p.NfplZugVarianteVerlauf).HasConstraintName("nfpl_zug_var_verlauf_nfpl_zug_variante_fk");
         });
 
-        modelBuilder.Entity<SchemaVersion>(entity => {
+        modelBuilder.Entity<SchemaVersion>(entity =>
+        {
             entity.HasKey(e => e.Schema).HasName("schema_version_pkey");
 
             entity.Property(e => e.Schema).ValueGeneratedNever();
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
         });
 
-        modelBuilder.Entity<UebDokument>(entity => {
+        modelBuilder.Entity<UebDokument>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("pk_ueb_dok");
 
+            entity.Property(e => e.SenderRef).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
+            entity.Property(e => e.Version).HasDefaultValue(0L);
+            entity.Property(e => e.VersionMajor).HasDefaultValue(0L);
+            entity.Property(e => e.VersionMinor).HasDefaultValue(0L);
+            entity.Property(e => e.VersionSub).HasDefaultValue(0L);
 
             entity.HasOne(d => d.RegionRefNavigation).WithMany(p => p.UebDokument).HasConstraintName("fk_ueb_dok_region_ref");
 
@@ -393,7 +492,8 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.UjbauVorgangRefNavigation).WithMany(p => p.UebDokument).HasConstraintName("fk_ueb_dok_vorgang_ref");
         });
 
-        modelBuilder.Entity<UebDokumentStreckenabschnitte>(entity => {
+        modelBuilder.Entity<UebDokumentStreckenabschnitte>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("pk_ueb_strabs");
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
@@ -401,13 +501,18 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.UebDokumentRefNavigation).WithMany(p => p.UebDokumentStreckenabschnitte).HasConstraintName("fk_ueb_dok_strabs_dok");
         });
 
-        modelBuilder.Entity<UebDokumentZug>(entity => {
+        modelBuilder.Entity<UebDokumentZug>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("ueb_dokument_zug_pkey");
 
             entity.Property(e => e.Bedarf).HasDefaultValue(false);
             entity.Property(e => e.Ebula).HasDefaultValue(false);
+            entity.Property(e => e.KundeRef).HasDefaultValue(0L);
             entity.Property(e => e.Lauterzug).HasDefaultValue(false);
+            entity.Property(e => e.RegelwegAbBstRef).HasDefaultValue(0L);
+            entity.Property(e => e.RegelwegZielBstRef).HasDefaultValue(0L);
             entity.Property(e => e.Sicherheitsrelevant).HasDefaultValue(false);
+            entity.Property(e => e.UebDokumentRef).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.KundeRefNavigation).WithMany(p => p.UebDokumentZug)
@@ -425,11 +530,13 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.UebDokumentRefNavigation).WithMany(p => p.UebDokumentZug).HasConstraintName("fk_ueb_zug_dok");
         });
 
-        modelBuilder.Entity<UebDokumentZugKnotenzeiten>(entity => {
+        modelBuilder.Entity<UebDokumentZugKnotenzeiten>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("ueb_dokument_zug_knotenzeiten_pkey");
 
             entity.Property(e => e.Lfdnr).HasDefaultValue(1L);
             entity.Property(e => e.Relativlage).HasDefaultValue(0L);
+            entity.Property(e => e.UebDokumentZugRef).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.BstRefNavigation).WithMany(p => p.UebDokumentZugKnotenzeiten).HasConstraintName("ueb_dokument_zug_fahrplan_bst_ref_fkey");
@@ -437,9 +544,11 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.UebDokumentZugRefNavigation).WithMany(p => p.UebDokumentZugKnotenzeiten).HasConstraintName("fk_ueb_kzeit_zug");
         });
 
-        modelBuilder.Entity<UebDokumentZugRegelung>(entity => {
+        modelBuilder.Entity<UebDokumentZugRegelung>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("pk_ueb_zugreg");
 
+            entity.Property(e => e.AnkerBstRef).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.AnkerBstRefNavigation).WithMany(p => p.UebDokumentZugRegelung)
@@ -449,14 +558,16 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.UebDokumentZugRefNavigation).WithMany(p => p.UebDokumentZugRegelung).HasConstraintName("fk_ueb_zreg_zug");
         });
 
-        modelBuilder.Entity<UjbauSender>(entity => {
+        modelBuilder.Entity<UjbauSender>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("ujbau_sender_pkey");
 
             entity.Property(e => e.Id).HasDefaultValueSql("nextval('ujbaudb.zvf_sender_id_seq'::regclass)");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
         });
 
-        modelBuilder.Entity<UjbauVorgang>(entity => {
+        modelBuilder.Entity<UjbauVorgang>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("ujbau_vorgang_pkey");
 
             entity.Property(e => e.Id).HasDefaultValueSql("nextval('ujbaudb.zvf_vorgang_id_seq'::regclass)");
@@ -466,7 +577,8 @@ public partial class UjBauDbContext : DbContext {
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
         });
 
-        modelBuilder.Entity<UjbauVorgangBbmn>(entity => {
+        modelBuilder.Entity<UjbauVorgangBbmn>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("ujbau_vorgang_bbmn_pkey");
 
             entity.Property(e => e.Id).HasDefaultValueSql("nextval('ujbaudb.zvf_vorgang_bbmn_id_seq'::regclass)");
@@ -475,13 +587,19 @@ public partial class UjBauDbContext : DbContext {
             entity.HasOne(d => d.UjVorgangRefNavigation).WithMany(p => p.UjbauVorgangBbmn).HasConstraintName("ujbau_vorgang_bbmn_uj_vorgang_ref_fkey");
         });
 
-        modelBuilder.Entity<ZvfDokument>(entity => {
+        modelBuilder.Entity<ZvfDokument>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("zvf_dokument_pkey");
 
             entity.HasIndex(e => e.Dateiname, "idx_zvf_dokument_dateiname_imported").HasFilter("(import_timestamp IS NOT NULL)");
 
             entity.Property(e => e.Endstueck).HasDefaultValue(false);
+            entity.Property(e => e.RegionRef).HasDefaultValue(0L);
+            entity.Property(e => e.SenderRef).HasDefaultValue(0L);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
+            entity.Property(e => e.VersionMajor).HasDefaultValue(0L);
+            entity.Property(e => e.VersionMinor).HasDefaultValue(0L);
+            entity.Property(e => e.VersionSub).HasDefaultValue(0L);
 
             entity.HasOne(d => d.RegionRefNavigation).WithMany(p => p.ZvfDokument)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -496,19 +614,25 @@ public partial class UjBauDbContext : DbContext {
                 .HasConstraintName("zvf_dokument_ujbau_vorgang_ref_fkey");
         });
 
-        modelBuilder.Entity<ZvfDokumentStreckenabschnitte>(entity => {
+        modelBuilder.Entity<ZvfDokumentStreckenabschnitte>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("zvf_doc_strabs_pkey");
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
             entity.Property(e => e.ZeitraumUnterbrochen).HasDefaultValue(false);
+            entity.Property(e => e.ZvfDokumentRef).HasDefaultValue(0L);
 
             entity.HasOne(d => d.ZvfDokumentRefNavigation).WithMany(p => p.ZvfDokumentStreckenabschnitte).HasConstraintName("zvf_dokument_streckenabschnitte_zvf_dokument_ref_fkey");
         });
 
-        modelBuilder.Entity<ZvfDokumentZug>(entity => {
+        modelBuilder.Entity<ZvfDokumentZug>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("zvf_dokument_zug_pkey");
 
             entity.Property(e => e.Bedarf).HasDefaultValue(false);
+            entity.Property(e => e.KundeRef).HasDefaultValue(0L);
+            entity.Property(e => e.RegelwegAbgangBstRef).HasDefaultValue(0L);
+            entity.Property(e => e.RegelwegZielBstRef).HasDefaultValue(0L);
             entity.Property(e => e.Sonderzug).HasDefaultValue(false);
             entity.Property(e => e.UpdateAt).HasDefaultValueSql("now()");
 
@@ -516,34 +640,31 @@ public partial class UjBauDbContext : DbContext {
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("zvf_dokument_zug_kunde_ref_fkey");
 
-            entity.HasOne(d => d.RegelwegAbgangBstRefNavigation).WithMany(p => p.ZvfDokumentZugRegelwegAbgangBstRefNavigation)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("zvf_dokument_zug_regelweg_abgang_bst_ref_fkey");
+            entity.HasOne(d => d.RegelwegAbgangBstRefNavigation).WithMany(p => p.ZvfDokumentZugRegelwegAbgangBstRefNavigation).HasConstraintName("zvf_dokument_zug_regelweg_abgang_bst_ref_fkey");
 
-            entity.HasOne(d => d.RegelwegZielBstRefNavigation).WithMany(p => p.ZvfDokumentZugRegelwegZielBstRefNavigation)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("zvf_dokument_zug_regelweg_ziel_bst_ref_fkey");
+            entity.HasOne(d => d.RegelwegZielBstRefNavigation).WithMany(p => p.ZvfDokumentZugRegelwegZielBstRefNavigation).HasConstraintName("zvf_dokument_zug_regelweg_ziel_bst_ref_fkey");
 
             entity.HasOne(d => d.ZvfDokumentRefNavigation).WithMany(p => p.ZvfDokumentZug).HasConstraintName("zvf_dokument_zug_zvf_dokument_ref_fkey");
         });
 
-        modelBuilder.Entity<ZvfDokumentZugAbweichung>(entity => {
+        modelBuilder.Entity<ZvfDokumentZugAbweichung>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("zvf_dokument_zug_abweichung_pkey");
 
             entity.HasIndex(e => e.Abweichung, "idx_zvfzugab_abweichung_json")
                 .HasMethod("gin")
-                .HasOperators(new[] {
-                    "jsonb_path_ops"
-                });
+                .HasOperators(new[] { "jsonb_path_ops" });
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
+            entity.Property(e => e.ZvfDokumentZugRef).HasDefaultValue(0L);
 
             entity.HasOne(d => d.AbBstRefNavigation).WithMany(p => p.ZvfDokumentZugAbweichung).HasConstraintName("fk_zvf_zugabw_bst_ref");
 
             entity.HasOne(d => d.ZvfDokumentZugRefNavigation).WithMany(p => p.ZvfDokumentZugAbweichung).HasConstraintName("zvf_dokument_zug_abweichung_zvf_dokument_zug_ref_fkey");
         });
 
-        modelBuilder.Entity<ZvfDokumentZugEntfallen>(entity => {
+        modelBuilder.Entity<ZvfDokumentZugEntfallen>(entity =>
+        {
             entity.HasKey(e => e.Id).HasName("zvf_dokument_zug_entfallen_pkey");
 
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
@@ -553,6 +674,6 @@ public partial class UjBauDbContext : DbContext {
 
         OnModelCreatingPartial(modelBuilder);
     }
-    partial void OnConfiguringPartial(DbContextOptionsBuilder optionsBuilder);
-    partial void OnModelCreatingPartial(ModelBuilder          modelBuilder);
+
+    partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }

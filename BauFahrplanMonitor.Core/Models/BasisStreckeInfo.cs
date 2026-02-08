@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite.Geometries;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("basis_strecke_info", Schema = "ujbaudb")]
 [Index("StreckenRef", "KmAnfangI", "KmEndeI", "Richtung", Name = "basis_strecke_info_uq_str_von_bis_dir", IsUnique = true)]

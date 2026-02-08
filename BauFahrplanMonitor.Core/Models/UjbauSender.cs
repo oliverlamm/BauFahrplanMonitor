@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("ujbau_sender", Schema = "ujbaudb")]
 [Index("Name", "Vorname", "Email", Name = "ujbau_sender_uq_name_vorname_email", IsUnique = true)]

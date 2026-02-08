@@ -15,25 +15,32 @@ import { useTrassenfinderInfrastrukturen } from "../../hooks/useTrassenfinder";
 import type { BetriebsstelleDetail } from "../../models/betriebsstelle";
 
 /* ============================================================
- * Status-Badge Helper
+ * Job / Badge Helper
  * ============================================================ */
-function badgeFromInfraState(
-    state: InfraUpdateState
+function badgeFromJobState(
+    state?: number
 ): { label: string; variant: "neutral" | "running" | "ok" | "error" } {
     switch (state) {
-        case "running":
+        case 1:
             return { label: "Importiere", variant: "running" };
-        case "done":
+        case 2:
             return { label: "Fertig", variant: "ok" };
-        case "error":
+        case 3:
             return { label: "Fehler", variant: "error" };
         default:
             return { label: "Bereit", variant: "neutral" };
     }
 }
 
+type TrassenfinderJobDto = {
+    jobId: string;
+    state: number;
+    progress: number;
+    message: string;
+};
+
 /* ============================================================
- * Leaflet Icon Fix (Vite)
+ * Leaflet Fix
  * ============================================================ */
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -42,49 +49,29 @@ L.Icon.Default.mergeOptions({
     iconUrl:
         "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
     shadowUrl:
-        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png"
 });
 
-/* ============================================================
- * Recenter Helper
- * ============================================================ */
 function RecenterMap({ lat, lon }: { lat: number; lon: number }) {
     const map = useMap();
-
     useEffect(() => {
         map.setView([lat, lon], map.getZoom(), { animate: true });
     }, [lat, lon, map]);
-
     return null;
 }
 
 /* ============================================================
- * Datum Helper
+ * Date Helper
  * ============================================================ */
-function formatDateDE(value: string | null | undefined): string {
+function formatDateDE(value?: string) {
     if (!value) return "";
-
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return "";
-
-    return d.toLocaleDateString("de-DE", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
-    });
+    return new Date(value).toLocaleDateString("de-DE");
 }
-
-
-/* ============================================================
- * Types
- * ============================================================ */
-type InfraUpdateState = "idle" | "running" | "done" | "error";
 
 /* ============================================================
  * Page
  * ============================================================ */
 export default function BetriebsstellenPage() {
-
     /* ================= Trassenfinder ================= */
     const {
         items: infraList,
@@ -95,17 +82,47 @@ export default function BetriebsstellenPage() {
     const [selectedInfraId, setSelectedInfraId] =
         useState<number | null>(null);
 
-    /* ================= Infra-Update-State ================= */
-    const [infraUpdateState, setInfraUpdateState] =
-        useState<InfraUpdateState>("idle");
+    /* ================= Job State ================= */
+    const [jobId, setJobId] = useState<string | null>(null);
+    const [job, setJob] = useState<TrassenfinderJobDto | null>(null);
 
-    const [infraProgress, setInfraProgress] = useState(0);
-    const [infraMessage, setInfraMessage] = useState<string | null>(null);
-
-    const infraBadge = useMemo(
-        () => badgeFromInfraState(infraUpdateState),
-        [infraUpdateState]
+    const badge = useMemo(
+        () => badgeFromJobState(job?.state),
+        [job?.state]
     );
+
+    /* ================= Job Polling ================= */
+    useEffect(() => {
+        if (!jobId) return;
+
+        const timer = setInterval(async () => {
+            const res = await fetch(`/api/trassenfinder/jobs/${jobId}`);
+            if (!res.ok) return;
+
+            const data = await res.json();
+            setJob(data);
+
+            if (data.state === 2 || data.state === 3) {
+                clearInterval(timer);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [jobId]);
+
+    async function startInfraUpdate() {
+        if (!selectedInfraId) return;
+
+        setJob(null);
+
+        const res = await fetch(
+            `/api/trassenfinder/infrastruktur/${selectedInfraId}/refresh`,
+            { method: "POST" }
+        );
+
+        const data = await res.json();
+        setJobId(data.jobId);
+    }
 
     /* ================= Betriebsstellen ================= */
     const {
@@ -128,92 +145,29 @@ export default function BetriebsstellenPage() {
         return JSON.stringify(detail) !== JSON.stringify(local);
     }, [detail, local]);
 
-    const [saveState, setSaveState] =
-        useState<"idle" | "saving" | "saved">("idle");
-
-    /* ================= Effects ================= */
     useEffect(() => {
-        if (detail) {
-            setLocal(structuredClone(detail));
-            setSelectedGeoIndex(detail.geo.length > 0 ? 0 : null);
-            setSaveState("idle");
-        } else {
+        if (!detail) {
             setLocal(null);
             setSelectedGeoIndex(null);
+            return;
         }
+
+        setLocal(structuredClone(detail));
+        setSelectedGeoIndex(detail.geo.length > 0 ? 0 : null);
     }, [detail]);
 
-    useEffect(() => {
-        if (!selectedInfraId) return;
-        setInfraUpdateState("idle");
-        setInfraProgress(0);
-        setInfraMessage(null);
-    }, [selectedInfraId]);
-
-    /* ================= Actions ================= */
-    async function startInfraUpdate() {
-        if (!selectedInfraId) return;
-
-        setInfraUpdateState("running");
-        setInfraProgress(0);
-        setInfraMessage("Starte Aktualisierung…");
-
-        try {
-            const res = await fetch(
-                `/api/trassenfinder/infrastruktur/${selectedInfraId}/refresh`,
-                { method: "POST" }
-            );
-
-            if (!res.ok) {
-                throw new Error("Start fehlgeschlagen");
-            }
-
-            const data = await res.json();
-            pollInfraJob(data.jobId);
-        } catch (e) {
-            setInfraUpdateState("error");
-            setInfraMessage("Aktualisierung konnte nicht gestartet werden");
-        }
-    }
-
-    function pollInfraJob(jobId: string) {
-        const timer = setInterval(async () => {
-            try {
-                const res = await fetch(`/api/trassenfinder/jobs/${jobId}`);
-                if (!res.ok) throw new Error("Polling fehlgeschlagen");
-
-                const data = await res.json();
-
-                setInfraProgress(data.progress ?? 0);
-                setInfraMessage(data.message ?? null);
-
-                if (data.state === "Done") {
-                    clearInterval(timer);
-                    setInfraUpdateState("done");
-                }
-
-                if (data.state === "Failed") {
-                    clearInterval(timer);
-                    setInfraUpdateState("error");
-                    setInfraMessage(data.message ?? "Fehler beim Aktualisieren");
-                }
-            } catch (e) {
-                clearInterval(timer);
-                setInfraUpdateState("error");
-                setInfraMessage("Kommunikationsfehler mit Backend");
-            }
-        }, 1000); // 1s Polling
-    }
-    
-    /* ================= RENDER ================= */
+    /* ============================================================
+     * RENDER
+     * ============================================================ */
     return (
         <div className="importer-page">
             <section className="importer-card bs-page">
 
+                {/* ================= Header ================= */}
                 <header className="bs-header">
                     <h2>Betriebsstellenverwaltung</h2>
                     <div className="importer-subtitle">
-                        Verwaltung und Bearbeitung von Betriebsstellen
+                        Trassenfinder-Integration
                     </div>
                 </header>
 
@@ -234,12 +188,15 @@ export default function BetriebsstellenPage() {
                                         ? "Lade Betriebsstellen…"
                                         : "RL100 auswählen"}
                                 </option>
-                                {!loading && list.map(b => (
-                                    <option key={b.id} value={b.id}>
-                                        {b.name} [{b.rl100}]
-                                    </option>
-                                ))}
+
+                                {!loading &&
+                                    list.map(b => (
+                                        <option key={b.id} value={b.id}>
+                                            {b.name} [{b.rl100}]
+                                        </option>
+                                    ))}
                             </select>
+
                             {loading && <span className="rl100-spinner" />}
                         </div>
                     </div>
@@ -256,43 +213,54 @@ export default function BetriebsstellenPage() {
                 {local && (
                     <section className="bs-grid">
 
-                        {/* Stammdaten */}
+                        {/* ================= Stammdaten ================= */}
                         <div className="bs-card">
                             <table className="bs-form">
                                 <tbody>
-                                <tr><td>RL100</td><td><input value={local.rl100} disabled /></td></tr>
-                                <tr><td>Name</td><td>
-                                    <input
-                                        className={local.name !== detail?.name ? "dirty" : ""}
-                                        value={local.name}
-                                        onChange={e =>
-                                            setLocal({ ...local, name: e.target.value })
-                                        }
-                                    />
-                                </td></tr>
+                                <tr>
+                                    <td>RL100</td>
+                                    <td>
+                                        <input value={local.rl100} disabled />
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td>Name</td>
+                                    <td>
+                                        <input
+                                            className={
+                                                local.name !== detail?.name
+                                                    ? "dirty"
+                                                    : ""
+                                            }
+                                            value={local.name}
+                                            onChange={e =>
+                                                setLocal({
+                                                    ...local,
+                                                    name: e.target.value
+                                                })
+                                            }
+                                        />
+                                    </td>
+                                </tr>
                                 </tbody>
                             </table>
 
                             <button
                                 className="btn btn-primary full"
-                                disabled={!dirty || saveState === "saving"}
-                                onClick={async () => {
-                                    if (!local) return;
-                                    setSaveState("saving");
-                                    await saveDetail(local);
-                                    setSaveState("saved");
-                                    setTimeout(() => setSaveState("idle"), 2000);
-                                }}
+                                disabled={!dirty}
+                                onClick={() => local && saveDetail(local)}
                             >
                                 Speichern
                             </button>
                         </div>
 
-                        {/* Karte */}
+                        {/* ================= Karte + Geo ================= */}
                         <div className="bs-card">
                             <div className="bs-map">
                                 {selectedGeoIndex !== null && (() => {
                                     const g = local.geo[selectedGeoIndex];
+
                                     return (
                                         <MapContainer
                                             center={[g.lat, g.lon]}
@@ -304,12 +272,53 @@ export default function BetriebsstellenPage() {
                                             />
                                             <RecenterMap lat={g.lat} lon={g.lon} />
                                             <Marker position={[g.lat, g.lon]}>
-                                                <Popup>VzG {g.vzGNr}</Popup>
+                                                <Popup>
+                                                    VzG {g.vzGNr}
+                                                </Popup>
                                             </Marker>
                                         </MapContainer>
                                     );
                                 })()}
                             </div>
+
+                            <table className="bs-geo">
+                                <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>VzG</th>
+                                    <th>Longitude</th>
+                                    <th>Latitude</th>
+                                    <th>km_l</th>
+                                    <th>km_i</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {local.geo.map((g, i) => (
+                                    <tr key={i}>
+                                        <td>
+                                            <input
+                                                type="radio"
+                                                name="geo"
+                                                checked={selectedGeoIndex === i}
+                                                onChange={() =>
+                                                    setSelectedGeoIndex(i)
+                                                }
+                                            />
+                                        </td>
+                                        <td>{g.vzGNr}</td>
+                                        <td>{g.lon.toFixed(6)}</td>
+                                        <td>{g.lat.toFixed(6)}</td>
+                                        <td>{g.kmL ?? "-"}</td>
+                                        <td>{g.kmI ?? "-"}</td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+
+                            <button className="btn btn-primary full">
+                                <i className="fa-solid fa-location-dot" />
+                                Geodaten speichern
+                            </button>
                         </div>
                     </section>
                 )}
@@ -324,7 +333,9 @@ export default function BetriebsstellenPage() {
                                 disabled={infraLoading}
                                 value={selectedInfraId ?? ""}
                                 onChange={e =>
-                                    setSelectedInfraId(Number(e.target.value) || null)
+                                    setSelectedInfraId(
+                                        Number(e.target.value) || null
+                                    )
                                 }
                             >
                                 <option value="">
@@ -332,16 +343,21 @@ export default function BetriebsstellenPage() {
                                         ? "Lade Infrastrukturen…"
                                         : "Infrastruktur auswählen"}
                                 </option>
+
                                 {infraList.map(i => (
                                     <option key={i.id} value={i.id}>
                                         {i.id} – {i.bezeichnung} (
-                                        {formatDateDE(i.gueltigVon)} – {formatDateDE(i.gueltigBis)}
-                                        )
+                                        {formatDateDE(i.gueltigVon)} –{" "}
+                                        {formatDateDE(i.gueltigBis)})
                                     </option>
                                 ))}
                             </select>
+
                             {infraError && (
-                                <div className="importer-error" style={{ marginTop: 8 }}>
+                                <div
+                                    className="importer-error"
+                                    style={{ marginTop: 8 }}
+                                >
                                     <i className="fa-solid fa-triangle-exclamation" />
                                     &nbsp;{infraError}
                                 </div>
@@ -349,7 +365,9 @@ export default function BetriebsstellenPage() {
 
                             <button
                                 className="btn btn-primary"
-                                disabled={!selectedInfraId || infraUpdateState === "running"}
+                                disabled={
+                                    !selectedInfraId || job?.state === 1
+                                }
                                 onClick={startInfraUpdate}
                             >
                                 Importieren
@@ -361,24 +379,30 @@ export default function BetriebsstellenPage() {
                         </div>
 
                         <div className="bs-bottom-right">
-                            <span className={`status-badge ${infraBadge.variant}`}>
-                                {infraBadge.label}
+                            <span
+                                className={`status-badge ${badge.variant}`}
+                            >
+                                {badge.label}
                             </span>
                         </div>
                     </div>
 
                     <div className="bs-progress">
                         <div className="bs-progress-label">
-                            {infraMessage ?? "Bereit"}
+                            {job?.message ?? "Bereit"}
                         </div>
+
                         <div className="bs-progress-bar">
                             <div
                                 className="bs-progress-fill"
-                                style={{ width: `${infraProgress}%` }}
+                                style={{
+                                    width: `${job?.progress ?? 0}%`
+                                }}
                             />
                         </div>
+
                         <div className="bs-progress-percent">
-                            {infraProgress}%
+                            {job?.progress ?? 0}%
                         </div>
                     </div>
                 </section>

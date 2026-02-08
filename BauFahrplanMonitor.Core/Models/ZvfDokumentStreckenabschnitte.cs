@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("zvf_dokument_streckenabschnitte", Schema = "ujbaudb")]
 [Index("ZvfDokumentRef", "StartBstRl100", "EndBstRl100", "Massnahme", "Betriebsweise", "Grund", "Baubeginn", "Bauende", Name = "zvf_doc_strabs_unique", IsUnique = true)]

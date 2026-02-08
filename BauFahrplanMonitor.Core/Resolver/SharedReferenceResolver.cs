@@ -1,10 +1,10 @@
 ﻿using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
+using BauFahrplanMonitor.Core.Data;
 using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Importer.Dto.Shared;
 using BauFahrplanMonitor.Core.Interfaces;
-using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Models;
+using BauFahrplanMonitor.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 using Npgsql;

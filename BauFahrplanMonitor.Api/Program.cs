@@ -1,15 +1,18 @@
+using System.Data;
 using System.Text.Json.Serialization;
 using BauFahrplanMonitor.Api.Jobs;
 using BauFahrplanMonitor.Core;
+using BauFahrplanMonitor.Core.Data;
+using BauFahrplanMonitor.Core.Data.Repositories;
 using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Jobs;
 using BauFahrplanMonitor.Core.Services;
-using BauFahrplanMonitor.Data;
 using BauFahrplanMonitor.Trassenfinder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 using NLog.Extensions.Logging;
+using Npgsql;
 
 var builder  = WebApplication.CreateBuilder(args);
 var services = builder.Services;
@@ -37,8 +40,23 @@ services.ConfigureHttpJsonOptions(options => {
 builder.Services.AddTrassenfinder(builder.Configuration);
 builder.Services.AddSingleton<TrassenfinderJobStore>();
 
+// ------------- Zug -------------------
+services.AddScoped<ZugTimelineRepository>();
+services.AddScoped<ZugTimelineService>();
+
 
 // ----------- DB -----------------------
+services.AddScoped<IDbConnection>(sp => {
+    var configService = sp.GetRequiredService<ConfigService>();
+    var cs            = configService.BuildConnectionString();
+
+    if (string.IsNullOrWhiteSpace(cs))
+        throw new InvalidOperationException(
+            "ConnectionString konnte nicht aus ConfigService gebaut werden");
+
+    return new NpgsqlConnection(cs);
+});
+
 services.AddDbContextFactory<UjBauDbContext>((sp, options) => {
     var cfg = sp.GetRequiredService<ConfigService>()
         .Effective

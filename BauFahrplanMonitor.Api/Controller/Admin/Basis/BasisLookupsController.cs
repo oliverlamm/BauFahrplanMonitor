@@ -1,6 +1,6 @@
 using BauFahrplanMonitor.Api.Dto;
-using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Models;
+using BauFahrplanMonitor.Core.Data;
+using BauFahrplanMonitor.Core.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 

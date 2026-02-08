@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("basis_betriebsstelle", Schema = "ujbaudb")]
 [Index("NetzbezirkRef", Name = "idx_basis_betriebsstelle_netzbezirk_ref")]
@@ -42,10 +42,25 @@ public partial class BasisBetriebsstelle
     public DateTime? UpdatedAt { get; set; }
 
     [Column("ist_basis_datensatz")]
-    public bool? IstBasisDatensatz { get; set; }
+    public bool IstBasisDatensatz { get; set; }
+
+    [Column("plc", TypeName = "character varying")]
+    public string? Plc { get; set; }
 
     [InverseProperty("BstRefNavigation")]
     public virtual ICollection<BasisBetriebsstelle2strecke> BasisBetriebsstelle2strecke { get; set; } = new List<BasisBetriebsstelle2strecke>();
+
+    [InverseProperty("BstChildRefNavigation")]
+    public virtual ICollection<BasisBetriebsstellenbereich> BasisBetriebsstellenbereichBstChildRefNavigation { get; set; } = new List<BasisBetriebsstellenbereich>();
+
+    [InverseProperty("BstRefNavigation")]
+    public virtual ICollection<BasisBetriebsstellenbereich> BasisBetriebsstellenbereichBstRefNavigation { get; set; } = new List<BasisBetriebsstellenbereich>();
+
+    [InverseProperty("BisStreckeRefNavigation")]
+    public virtual ICollection<BasisStreckeAbschnitt> BasisStreckeAbschnittBisStreckeRefNavigation { get; set; } = new List<BasisStreckeAbschnitt>();
+
+    [InverseProperty("VonBstRefNavigation")]
+    public virtual ICollection<BasisStreckeAbschnitt> BasisStreckeAbschnittVonBstRefNavigation { get; set; } = new List<BasisStreckeAbschnitt>();
 
     [InverseProperty("BstRefNavigation")]
     public virtual ICollection<BbpneoMassnahmeRegelungBveAps> BbpneoMassnahmeRegelungBveAps { get; set; } = new List<BbpneoMassnahmeRegelungBveAps>();

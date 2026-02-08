@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("ueb_dokument_zug_regelung", Schema = "ujbaudb")]
 [Index("AnkerBstRef", Name = "idx_ueb_dokument_zug_regelung_anker_bst_ref")]

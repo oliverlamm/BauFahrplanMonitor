@@ -1,6 +1,6 @@
 using BauFahrplanMonitor.Api.Dto;
-using BauFahrplanMonitor.Data;
-using BauFahrplanMonitor.Models;
+using BauFahrplanMonitor.Core.Data;
+using BauFahrplanMonitor.Core.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -50,7 +50,7 @@ public sealed class BetriebsstellenController : ControllerBase {
                 Id       = x.b.Id,
                 Rl100    = x.b.Rl100             ?? "",
                 Name     = x.b.Name              ?? "",
-                IstBasis = x.b.IstBasisDatensatz ?? false
+                IstBasis = x.b.IstBasisDatensatz
             })
             .ToListAsync(token);
 
@@ -130,7 +130,7 @@ public sealed class BetriebsstellenController : ControllerBase {
             NetzbezirkId = b.NetzbezirkId,
             Netzbezirk   = b.Netzbezirk ?? "",
 
-            IstBasis = b.IstBasis ?? false,
+            IstBasis = b.IstBasis,
 
             Geo = geoDtos
         });

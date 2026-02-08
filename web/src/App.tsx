@@ -6,6 +6,7 @@ import NetzfahrplanPage from "./pages/Netzfahrplan/NetzfahrplanPage";
 import BbpNeoPage from "./pages/BbpNeo/BbpNeoPage";
 import ZvFExportPage from "./pages/ZvFExport/ZvFExportPage";
 import BetriebsstellenPage from "./pages/Betriebsstellen/BetriebsstellenPage";
+import ZugsichtPage from "./pages/Auswertungen/ZugsichtPage";
 
 import dbInfraGoLogo from "./assets/DBInfrago.png";
 
@@ -15,6 +16,7 @@ type Page =
     | "netzfahrplan"
     | "bbpneo"
     | "zvfexport"
+    | "zugsicht"
     | "betriebsstellen"
     | "config";
 
@@ -37,6 +39,7 @@ export default function App() {
             case "netzfahrplan": return <NetzfahrplanPage />;
             case "bbpneo": return <BbpNeoPage />;
             case "zvfexport": return <ZvFExportPage />;
+            case "zugsicht": return <ZugsichtPage />;
             case "betriebsstellen": return <BetriebsstellenPage />;
             case "config": return <StatusPage />;
             default: return null;
@@ -109,6 +112,23 @@ export default function App() {
                         </nav>
                     </div>
 
+                    {/* Verwaltung */}
+                    <div className="sidebar-section">
+                        <div className="sidebar-title">Auswertungen</div>
+
+                        <nav className="nav">
+                            <div
+                                className={`nav-item ${
+                                    activePage === "zugsicht" ? "active" : ""
+                                }`}
+                                onClick={() => setActivePage("zugsicht")}
+                            >
+                                <i className="fa-solid fa-chart-line" />
+                                Zugsicht
+                            </div>
+                        </nav>
+                    </div>
+                    
                     {/* Verwaltung */}
                     <div className="sidebar-section">
                         <div className="sidebar-title">Verwaltung</div>

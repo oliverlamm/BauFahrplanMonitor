@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("fplo_dokument_streckenabschnitte", Schema = "ujbaudb")]
 [Index("FploDokumentRef", "StartBstRl100", "EndBstRl100", "Massnahme", "Betriebsweise", "Grund", "Baubeginn", "Bauende", Name = "fplo_doc_strabs_unique", IsUnique = true)]

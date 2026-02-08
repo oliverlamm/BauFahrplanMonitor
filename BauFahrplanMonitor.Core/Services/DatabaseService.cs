@@ -1,4 +1,4 @@
-﻿using BauFahrplanMonitor.Data;
+﻿using BauFahrplanMonitor.Core.Data;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 

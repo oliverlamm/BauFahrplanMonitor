@@ -7,15 +7,13 @@ namespace BauFahrplanMonitor.Api.Controller;
 
 [ApiController]
 [Route("api/trassenfinder")]
-public sealed class TrassenfinderJobController : ControllerBase
-{
-    private readonly TrassenfinderJobStore _jobs;
+public sealed class TrassenfinderJobController : ControllerBase {
+    private readonly TrassenfinderJobStore    _jobs;
     private readonly ITrassenfinderRefreshJob _refreshJob;
 
     public TrassenfinderJobController(
-        TrassenfinderJobStore jobs,
-        ITrassenfinderRefreshJob refreshJob)
-    {
+        TrassenfinderJobStore    jobs,
+        ITrassenfinderRefreshJob refreshJob) {
         this._jobs       = jobs;
         this._refreshJob = refreshJob;
     }
@@ -24,8 +22,7 @@ public sealed class TrassenfinderJobController : ControllerBase
     // Startet einen Infrastruktur-Refresh-Job
     // ------------------------------------------------------------
     [HttpPost("infrastruktur/{id:long}/refresh")]
-    public IActionResult RefreshInfrastruktur(long id)
-    {
+    public IActionResult RefreshInfrastruktur(long id) {
         var job               = this._jobs.Create();
         var cancellationToken = HttpContext.RequestAborted;
 
@@ -33,15 +30,16 @@ public sealed class TrassenfinderJobController : ControllerBase
             RunRefreshJobAsync(job.JobId, id, cancellationToken)
         );
 
-        return Accepted(new { jobId = job.JobId });
+        return Accepted(new {
+            jobId = job.JobId
+        });
     }
 
     // ------------------------------------------------------------
     // Liefert Job-Status (Polling)
     // ------------------------------------------------------------
     [HttpGet("jobs/{jobId}")]
-    public IActionResult GetJob(string jobId)
-    {
+    public IActionResult GetJob(string jobId) {
         if (!this._jobs.TryGet(jobId, out var job))
             return NotFound();
 
@@ -52,12 +50,10 @@ public sealed class TrassenfinderJobController : ControllerBase
     // Hintergrund-Logik
     // ------------------------------------------------------------
     private async Task RunRefreshJobAsync(
-        string jobId,
-        long infrastrukturId,
-        CancellationToken token)
-    {
-        try
-        {
+        string            jobId,
+        long              infrastrukturId,
+        CancellationToken token) {
+        try {
             var progress = new Progress<TrassenfinderInfraStatus>(p =>
                 this._jobs.Update(
                     jobId,
@@ -75,12 +71,10 @@ public sealed class TrassenfinderJobController : ControllerBase
 
             this._jobs.Update(jobId, TrassenfinderJobState.Done, 100, "Fertig");
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             this._jobs.Update(jobId, TrassenfinderJobState.Failed, 0, "Abgebrochen");
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             this._jobs.Update(jobId, TrassenfinderJobState.Failed, 0, ex.Message);
         }
     }

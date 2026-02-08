@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("nfpl_zug_variante", Schema = "ujbaudb")]
 [Index("NfplZugRef", "TrainId", "RegionRef", Name = "nfpl_zug_var_uq", IsUnique = true)]

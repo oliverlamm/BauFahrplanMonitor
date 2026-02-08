@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("basis_strecke", Schema = "ujbaudb")]
 [Index("VzgNr", Name = "basis_strecke_uq_vzg_nr", IsUnique = true)]
@@ -28,6 +28,9 @@ public partial class BasisStrecke
 
     [InverseProperty("StreckeRefNavigation")]
     public virtual ICollection<BasisBetriebsstelle2strecke> BasisBetriebsstelle2strecke { get; set; } = new List<BasisBetriebsstelle2strecke>();
+
+    [InverseProperty("StreckeRefNavigation")]
+    public virtual ICollection<BasisStreckeAbschnitt> BasisStreckeAbschnitt { get; set; } = new List<BasisStreckeAbschnitt>();
 
     [InverseProperty("StreckenRefNavigation")]
     public virtual ICollection<BasisStreckeInfo> BasisStreckeInfo { get; set; } = new List<BasisStreckeInfo>();

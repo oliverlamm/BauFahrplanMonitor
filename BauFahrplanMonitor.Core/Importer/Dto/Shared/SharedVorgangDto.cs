@@ -1,6 +1,6 @@
 ﻿using BauFahrplanMonitor.Core.Importer.Helper;
 using BauFahrplanMonitor.Core.Interfaces;
-using BauFahrplanMonitor.Models;
+using BauFahrplanMonitor.Core.Models;
 
 namespace BauFahrplanMonitor.Core.Importer.Dto.Shared;
 
@@ -18,7 +18,7 @@ namespace BauFahrplanMonitor.Core.Importer.Dto.Shared;
 /// Es enthält ausschließlich die **fachlich relevanten Schlüssel**
 /// zur Vorgangsermittlung und -anlage.
 /// </remarks>
-public class SharedVorgangDto  : IExtendedVorgangDto{
+public class SharedVorgangDto{
 
     /// <summary>
     /// Master-FPLO-Nummer des Vorgangs.
@@ -59,14 +59,13 @@ public class SharedVorgangDto  : IExtendedVorgangDto{
     /// </remarks>
     public int? FahrplanJahr { get; set; }
     
-    public void ApplyTo(UjbauVorgang v) {
-        v.Kategorie = Kategorie;
+    public void ApplyTo(UjbauVorgang entity) {
+        entity.Kategorie = Kategorie;
     }
-
-    public void ApplyIfEmptyTo(UjbauVorgang v) {
-        if (string.IsNullOrWhiteSpace(v.Kategorie)
+    public void ApplyIfEmptyTo(UjbauVorgang vorgang) {
+        if (string.IsNullOrWhiteSpace(vorgang.Kategorie)
             && !string.IsNullOrWhiteSpace(Kategorie)) {
-            v.Kategorie = Kategorie;
+            vorgang.Kategorie = Kategorie;
         }
     }
 }

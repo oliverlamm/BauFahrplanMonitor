@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("basis_betriebsstelle_typ", Schema = "ujbaudb")]
 [Index("Id", "Kbez", Name = "bst_typ_uq_id_kbez", IsUnique = true)]

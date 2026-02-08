@@ -1,4 +1,5 @@
-using BauFahrplanMonitor.Models;
+using BauFahrplanMonitor.Core.Models;
+
 
 namespace BauFahrplanMonitor.Core.Interfaces;
 

@@ -1,6 +1,6 @@
+using BauFahrplanMonitor.Core.Data;
 using BauFahrplanMonitor.Core.Importer.Dto.Nfpl;
 using BauFahrplanMonitor.Core.Importer.Helper;
-using BauFahrplanMonitor.Data;
 
 namespace BauFahrplanMonitor.Core.Interfaces;
 

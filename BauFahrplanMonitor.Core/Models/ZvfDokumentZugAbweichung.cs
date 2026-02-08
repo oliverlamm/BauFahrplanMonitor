@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("zvf_dokument_zug_abweichung", Schema = "ujbaudb")]
 [Index("ZvfDokumentZugRef", "Art", "AbBstRef", Name = "zvf_dokument_zug_abweichung_uq_zug_art", IsUnique = true)]

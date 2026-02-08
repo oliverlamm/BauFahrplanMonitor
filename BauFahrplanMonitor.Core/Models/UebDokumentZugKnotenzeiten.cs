@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("ueb_dokument_zug_knotenzeiten", Schema = "ujbaudb")]
 [Index("UebDokumentZugRef", "Lfdnr", Name = "ueb_dokument_zug_knotenzeiten_uq_zug_lfdnr", IsUnique = true)]

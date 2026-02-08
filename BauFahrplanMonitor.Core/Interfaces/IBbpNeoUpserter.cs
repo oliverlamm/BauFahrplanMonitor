@@ -1,5 +1,5 @@
+using BauFahrplanMonitor.Core.Data;
 using BauFahrplanMonitor.Core.Importer.Dto.BbpNeo;
-using BauFahrplanMonitor.Data;
 
 namespace BauFahrplanMonitor.Core.Interfaces;
 

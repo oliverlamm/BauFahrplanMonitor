@@ -7,6 +7,8 @@ public sealed class Infrastruktur {
     public DateOnly GueltigVon   { get; init; }
     public DateOnly GueltigBis   { get; init; }
 
-    public IReadOnlyList<Betriebsstelle> Betriebsstellen { get; init; } = [];
-    public IReadOnlyList<Triebfahrzeug>  Triebfahrzeuge  { get; init; } = [];
+    public IReadOnlyList<Betriebsstelle>       Betriebsstellen       { get; init; } = [];
+    public IReadOnlyList<Triebfahrzeug>        Triebfahrzeuge        { get; init; } = [];
+    public IReadOnlyList<MutterBetriebsstelle> MutterBetriebsstellen { get; init; } = [];
+    public IReadOnlyList<StreckenAbschnitt>   StreckenAbschnitte    { get; init; } = [];
 }

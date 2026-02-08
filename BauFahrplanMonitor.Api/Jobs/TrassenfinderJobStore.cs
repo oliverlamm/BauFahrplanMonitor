@@ -9,7 +9,7 @@ public sealed class TrassenfinderJobStore {
     public TrassenfinderJobStatusDto Create() {
         var job = new TrassenfinderJobStatusDto {
             JobId    = Guid.NewGuid().ToString(),
-            State    = TrassenfinderJobState.Queued,
+            State    = TrassenfinderJobState.Pending,
             Progress = 0,
             Message  = "Warteschlange"
         };

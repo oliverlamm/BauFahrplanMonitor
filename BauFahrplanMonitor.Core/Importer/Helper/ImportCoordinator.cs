@@ -1,5 +1,5 @@
+using BauFahrplanMonitor.Core.Data;
 using BauFahrplanMonitor.Core.Resolver;
-using BauFahrplanMonitor.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace BauFahrplanMonitor.Core.Importer.Helper;

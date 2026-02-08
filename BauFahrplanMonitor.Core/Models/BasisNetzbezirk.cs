@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("basis_netzbezirk", Schema = "ujbaudb")]
 [Index("Id", "Name", "NetzRef", Name = "basis_netzbezirk_uq_id_name_netz", IsUnique = true)]

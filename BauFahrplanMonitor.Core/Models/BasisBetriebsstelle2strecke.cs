@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite.Geometries;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("basis_betriebsstelle2strecke", Schema = "ujbaudb")]
 [Index("BstRef", "StreckeRef", Name = "bst2str_uq_bst_str", IsUnique = true)]

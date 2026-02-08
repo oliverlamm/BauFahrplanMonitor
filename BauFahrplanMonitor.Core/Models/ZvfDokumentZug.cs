@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("zvf_dokument_zug", Schema = "ujbaudb")]
 [Index("KundeRef", Name = "idx_zvf_dokument_zug_kunde_ref")]
@@ -41,10 +41,10 @@ public partial class ZvfDokumentZug
     public string? RegelwegLinie { get; set; }
 
     [Column("regelweg_abgang_bst_ref")]
-    public long RegelwegAbgangBstRef { get; set; }
+    public long? RegelwegAbgangBstRef { get; set; }
 
     [Column("regelweg_ziel_bst_ref")]
-    public long RegelwegZielBstRef { get; set; }
+    public long? RegelwegZielBstRef { get; set; }
 
     [Column("klv", TypeName = "character varying")]
     public string? Klv { get; set; }
@@ -76,11 +76,11 @@ public partial class ZvfDokumentZug
 
     [ForeignKey("RegelwegAbgangBstRef")]
     [InverseProperty("ZvfDokumentZugRegelwegAbgangBstRefNavigation")]
-    public virtual BasisBetriebsstelle RegelwegAbgangBstRefNavigation { get; set; } = null!;
+    public virtual BasisBetriebsstelle? RegelwegAbgangBstRefNavigation { get; set; }
 
     [ForeignKey("RegelwegZielBstRef")]
     [InverseProperty("ZvfDokumentZugRegelwegZielBstRefNavigation")]
-    public virtual BasisBetriebsstelle RegelwegZielBstRefNavigation { get; set; } = null!;
+    public virtual BasisBetriebsstelle? RegelwegZielBstRefNavigation { get; set; }
 
     [ForeignKey("ZvfDokumentRef")]
     [InverseProperty("ZvfDokumentZug")]

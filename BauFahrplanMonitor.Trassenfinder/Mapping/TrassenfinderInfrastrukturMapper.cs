@@ -26,6 +26,12 @@ internal static class TrassenfinderInfrastrukturMapper {
             Betriebsstellen = dto.Ordnungsrahmen.Betriebsstellen
                 .Select(Map)
                 .ToList(),
+            MutterBetriebsstellen = dto.Ordnungsrahmen.Mutter_betriebsstellen
+                .Select(Map)
+                .ToList(),
+            StreckenAbschnitte = dto.Ordnungsrahmen.Streckensegmente
+                .Select(Map)
+                .ToList(),
             Triebfahrzeuge = dto.Stammdaten.Triebfahrzeuge
                 .Select(Map)
                 .ToList()
@@ -54,5 +60,24 @@ internal static class TrassenfinderInfrastrukturMapper {
             KennungWert        = dto.Kennung_wert
         };
     }
-
+    
+    private static Domain.MutterBetriebsstelle Map(Dto.Mutter_betriebsstelle dto) {
+        return new Domain.MutterBetriebsstelle {
+            Ds100 = dto.Ds100,
+            Langname = dto.Langname,
+            Breite = dto.Geo_koordinaten.Breite,
+            Laenge = dto.Geo_koordinaten.Laenge,
+            Tochterbetriebsstellen = dto.Tochterbetriebsstellen.ToList()
+        };
+    }
+    
+    private static Domain.StreckenAbschnitt Map(Dto.Streckensegment dto) {
+        return new Domain.StreckenAbschnitt {
+            VonRil100 = dto.Von,
+            BisRil100 = dto.Bis,
+            StreckenNr = dto.Streckennummer,
+            VonKm = dto.Von_km,
+            BisKm = dto.Bis_km
+        };
+    }
 }

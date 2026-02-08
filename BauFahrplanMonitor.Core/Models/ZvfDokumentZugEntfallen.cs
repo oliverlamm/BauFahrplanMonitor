@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BauFahrplanMonitor.Models;
+namespace BauFahrplanMonitor.Core.Models;
 
 [Table("zvf_dokument_zug_entfallen", Schema = "ujbaudb")]
 [Index("ZvfDokumentRef", "Art", "Verkehrstag", "Zugnr", Name = "zvf_zug_entf_uq_dok_art_tag_zug", IsUnique = true)]
