@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace BauFahrplanMonitor.Core.Models;
 
 [Table("basis_strecke_abschnitt", Schema = "ujbaudb")]
-[Index("StreckeRef", "VonBstRef", "BisStreckeRef", Name = "basis_strecke_abschnitt_unique", IsUnique = true)]
+[Index("StreckeRef", "VonBstRef", "BisBstRef", Name = "basis_strecke_abschnitt_unique", IsUnique = true)]
 public partial class BasisStreckeAbschnitt
 {
     [Key]
@@ -30,7 +30,7 @@ public partial class BasisStreckeAbschnitt
     public decimal? BisKmI { get; set; }
 
     [ForeignKey("BisBstRef")]
-    [InverseProperty("BasisStreckeAbschnittBisStreckeRefNavigation")]
+    [InverseProperty("BasisStreckeAbschnittBisBstRefNavigation")]
     public virtual BasisBetriebsstelle BisBstRefNavigation { get; set; } = null!;
 
     [ForeignKey("StreckeRef")]

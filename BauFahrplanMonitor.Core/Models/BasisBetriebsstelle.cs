@@ -56,8 +56,8 @@ public partial class BasisBetriebsstelle
     [InverseProperty("BstRefNavigation")]
     public virtual ICollection<BasisBetriebsstellenbereich> BasisBetriebsstellenbereichBstRefNavigation { get; set; } = new List<BasisBetriebsstellenbereich>();
 
-    [InverseProperty("BisStreckeRefNavigation")]
-    public virtual ICollection<BasisStreckeAbschnitt> BasisStreckeAbschnittBisStreckeRefNavigation { get; set; } = new List<BasisStreckeAbschnitt>();
+    [InverseProperty("BisBstRefNavigation")]
+    public virtual ICollection<BasisStreckeAbschnitt> BasisStreckeAbschnittBisBstRefNavigation { get; set; } = new List<BasisStreckeAbschnitt>();
 
     [InverseProperty("VonBstRefNavigation")]
     public virtual ICollection<BasisStreckeAbschnitt> BasisStreckeAbschnittVonBstRefNavigation { get; set; } = new List<BasisStreckeAbschnitt>();

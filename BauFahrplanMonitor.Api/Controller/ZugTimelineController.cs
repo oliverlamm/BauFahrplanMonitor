@@ -30,5 +30,15 @@ public sealed class ZugTimelineController : ControllerBase {
         var result = _service.Build(zugNr, date, rows);
         return Ok(result);
     }
+    
+    [HttpGet("{jahr:int}/{zugNr:int}/massnahmen")]
+    public async Task<IReadOnlyList<ZwlMassnahmeOverlayDto>> GetMassnahmen(
+        int                  jahr,
+        int                  zugNr,
+        [FromQuery] DateOnly date)
+    {
+        return await _service.GetOverlaysAsync(jahr, zugNr, date);
+    }
+
 }
 

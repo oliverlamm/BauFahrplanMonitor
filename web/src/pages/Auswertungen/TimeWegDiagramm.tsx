@@ -1,5 +1,6 @@
-import {useState} from "react";
-import type {ZugTimelineResult} from "../../models/ZugTimelineDto";
+import { useMemo, useState } from "react";
+import type { ZugTimelineResult } from "../../models/ZugTimelineDto";
+import type { ZwlMassnahmeOverlayDto } from "../../models/ZwlMassnahmeOverlayDto";
 import "./TimeWegDiagramm.css";
 
 /* ============================================================
@@ -13,13 +14,14 @@ const PADDING_BOTTOM = 30;
 
 const PIXELS_PER_MINUTE = 2.5;
 const X_STEP = 40;
-const X_AXIS_TOP_Y = 12;
 
 /* ============================================================
-   Tooltip
+   Tooltip Types
    ============================================================ */
 
-type TooltipData = {
+type TooltipData =
+    | {
+    kind: "station";
     x: number;
     y: number;
     rl100: string;
@@ -27,22 +29,51 @@ type TooltipData = {
     arrival?: string | null;
     departure?: string | null;
     dwellMin: number;
+}
+    | {
+    kind: "massnahme";
+    x: number;
+    y: number;
+    von: string;
+    bis: string;
+    beginn: string;
+    ende: string;
+    regelungen: string;
+    vzg: string;
+    durchgehend: boolean;
+    color: string;
+    zeitraum?: string;
 };
 
-/* ============================================================
-   Komponente
-   ============================================================ */
-
 export default function TimeWegDiagramm({
-                                            data
+                                            data,
+                                            overlays = []
                                         }: {
     data: ZugTimelineResult;
+    overlays?: ZwlMassnahmeOverlayDto[];
 }) {
-    const points = data.timeline;
+    const points = useMemo(() => {
+        const seen = new Set<string>();
+        return data.timeline.filter(p => {
+            if (seen.has(p.rl100)) return false;
+            seen.add(p.rl100);
+            return true;
+        });
+    }, [data.timeline]);
     const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
     if (!points.length)
         return <div className="diagram-placeholder">Keine Daten</div>;
+
+    /* ------------------------------------------------------------
+       RL100 → Index Mapping
+       ------------------------------------------------------------ */
+
+    const rl100IndexMap = useMemo(() => {
+        const map = new Map<string, number>();
+        points.forEach((p, i) => map.set(p.rl100, i));
+        return map;
+    }, [points]);
 
     /* ------------------------------------------------------------
        Zeitbereich
@@ -64,16 +95,12 @@ export default function TimeWegDiagramm({
         return PADDING_LEFT + i * X_STEP;
     }
 
-    const svgHeight =
-        yFromMinute(maxMinute) + PADDING_BOTTOM;
-
+    const svgHeight = yFromMinute(maxMinute) + PADDING_BOTTOM;
     const svgWidth =
-        PADDING_LEFT +
-        points.length * X_STEP +
-        PADDING_RIGHT;
+        PADDING_LEFT + points.length * X_STEP + PADDING_RIGHT;
 
     /* ------------------------------------------------------------
-       Zeit-Gitter (volle & halbe Stunden)
+       Zeit-Gitter
        ------------------------------------------------------------ */
 
     const gridMinutes: number[] = [];
@@ -95,58 +122,45 @@ export default function TimeWegDiagramm({
     }
 
     /* ------------------------------------------------------------
-   Fahrlinie (richtig: Fahrtsegmente = Dep(i) -> Arr(i+1))
-   plus Aufenthalte = Arr -> Dep am gleichen X
-   ------------------------------------------------------------ */
-
-    const polylinePoints: string[] = [];
-
-    const x0 = xFromIndex(0);
-
-    // Startpunkt: Arrival (und ggf. Aufenthalt bis Departure)
-    polylinePoints.push(`${x0},${yFromMinute(points[0].arrivalMinute)}`);
-    if (points[0].arrivalMinute !== points[0].departureMinute) {
-        polylinePoints.push(`${x0},${yFromMinute(points[0].departureMinute)}`);
-    }
-
-    // Danach für jede nächste Station:
-    // 1) diagonal zur Ankunft (Arrival)
-    // 2) falls Halt: vertikal zur Abfahrt (Departure)
-    for (let i = 1; i < points.length; i++) {
-        const p = points[i];
-        const x = xFromIndex(i);
-
-        // Fahrtsegment: von vorheriger Departure (letzter Polyline-Punkt)
-        // zur Ankunft der nächsten Station
-        polylinePoints.push(`${x},${yFromMinute(p.arrivalMinute)}`);
-
-        // Aufenthalt am Bahnhof
-        if (p.arrivalMinute !== p.departureMinute) {
-            polylinePoints.push(`${x},${yFromMinute(p.departureMinute)}`);
-        }
-    }
-    
-    /* ------------------------------------------------------------
-       Tooltip
+       Farb-Logik
        ------------------------------------------------------------ */
 
-    function showTooltip(
-        evt: React.MouseEvent,
-        p: typeof points[number]
-    ) {
-        setTooltip({
-            x: evt.clientX,
-            y: evt.clientY,
-            rl100: p.rl100,
-            name: p.name,
-            arrival: p.arrival,
-            departure: p.departure,
-            dwellMin: Math.max(0, p.departureMinute - p.arrivalMinute),
-        });
+    function colorForRegelung(regelung: string): string {
+        const r = regelung.toLowerCase();
+
+        if (r.includes("tsp") || r.includes("strsp"))
+            return "rgba(220,0,0,0.45)";
+
+        if (r.includes("esp") || r.includes("gwb"))
+            return "rgba(255,200,0,0.45)";
+
+        return "rgba(150,150,150,0.35)";
     }
 
     function hideTooltip() {
         setTooltip(null);
+    }
+
+    /* ------------------------------------------------------------
+       Fahrlinie
+       ------------------------------------------------------------ */
+
+    const polylinePoints: string[] = [];
+    const x0 = xFromIndex(0);
+
+    polylinePoints.push(`${x0},${yFromMinute(points[0].arrivalMinute)}`);
+
+    if (points[0].arrivalMinute !== points[0].departureMinute)
+        polylinePoints.push(`${x0},${yFromMinute(points[0].departureMinute)}`);
+
+    for (let i = 1; i < points.length; i++) {
+        const p = points[i];
+        const x = xFromIndex(i);
+
+        polylinePoints.push(`${x},${yFromMinute(p.arrivalMinute)}`);
+
+        if (p.arrivalMinute !== p.departureMinute)
+            polylinePoints.push(`${x},${yFromMinute(p.departureMinute)}`);
     }
 
     /* ============================================================
@@ -155,15 +169,9 @@ export default function TimeWegDiagramm({
 
     return (
         <div className="diagram-scroll">
-            <svg
-                width={svgWidth}
-                height={svgHeight}
-                viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            >
+            <svg width={svgWidth} height={svgHeight}>
 
-                {/* =========================
-                   Zeit-Gitter
-                   ========================= */}
+                {/* Zeit-Gitter */}
                 {gridMinutes.map(m => (
                     <g key={m}>
                         <line
@@ -185,78 +193,7 @@ export default function TimeWegDiagramm({
                     </g>
                 ))}
 
-                {/* =========================
-                   Vertikale Gitterlinien
-                   ========================= */}
-                {points.map((_, i) => {
-                    const x = xFromIndex(i);
-                    return (
-                        <line
-                            key={`grid-x-${i}`}
-                            x1={x}
-                            x2={x}
-                            y1={PADDING_TOP}
-                            y2={svgHeight - PADDING_BOTTOM}
-                            stroke="#f2f2f2"
-                        />
-                    );
-                })}
-
-                {/* =========================
-                   Fahrlinie
-                   ========================= */}
-                <polyline
-                    points={polylinePoints.join(" ")}
-                    fill="none"
-                    stroke="#1e88e5"
-                    strokeWidth={2}
-                />
-
-                {/* =========================
-                   Aufenthalte
-                   ========================= */}
-                {points.map((p, i) => {
-                    if (p.arrivalMinute === p.departureMinute)
-                        return null;
-
-                    const x = xFromIndex(i);
-
-                    return (
-                        <line
-                            key={`stop-${i}`}
-                            x1={x}
-                            x2={x}
-                            y1={yFromMinute(p.arrivalMinute)}
-                            y2={yFromMinute(p.departureMinute)}
-                            stroke="#1e88e5"
-                            strokeWidth={2}
-                        />
-                    );
-                })}
-
-                {/* =========================
-                   Durchfahrten
-                   ========================= */}
-                {points.map((p, i) => {
-                    if (p.arrivalMinute !== p.departureMinute)
-                        return null;
-
-                    const x = xFromIndex(i);
-
-                    return (
-                        <circle
-                            key={`pt-${i}`}
-                            cx={x}
-                            cy={yFromMinute(p.arrivalMinute)}
-                            r={3}
-                            fill="#1e88e5"
-                        />
-                    );
-                })}
-
-                {/* =========================
-                   Hover-Zonen
-                   ========================= */}
+                {/* Hover-Zonen (unten) */}
                 {points.map((p, i) => {
                     const x = xFromIndex(i) - X_STEP / 2;
 
@@ -268,15 +205,90 @@ export default function TimeWegDiagramm({
                             width={X_STEP}
                             height={svgHeight - PADDING_TOP - PADDING_BOTTOM}
                             fill="transparent"
-                            onMouseEnter={e => showTooltip(e, p)}
+                            onMouseEnter={(e) =>
+                                setTooltip({
+                                    kind: "station",
+                                    x: e.clientX,
+                                    y: e.clientY,
+                                    rl100: p.rl100,
+                                    name: p.name,
+                                    arrival: p.arrival,
+                                    departure: p.departure,
+                                    dwellMin: Math.max(
+                                        0,
+                                        p.departureMinute - p.arrivalMinute
+                                    )
+                                })
+                            }
                             onMouseLeave={hideTooltip}
                         />
                     );
                 })}
 
-                {/* =========================
-                   DS100 Labels
-                   ========================= */}
+                {/* Baumaßnahmen (über Hover-Zonen!) */}
+                {overlays.map((o, idx) => {
+                    const startIndex = rl100IndexMap.get(o.vonRl100);
+                    const endIndex = rl100IndexMap.get(o.bisRl100);
+                    if (startIndex === undefined || endIndex === undefined)
+                        return null;
+
+                    const x1 = xFromIndex(Math.min(startIndex, endIndex));
+                    const x2 = xFromIndex(Math.max(startIndex, endIndex));
+
+                    const selectedDate = new Date(data.date);
+                    selectedDate.setHours(0, 0, 0, 0);
+
+                    const begin = new Date(o.massnahmeBeginn);
+                    const end = new Date(o.massnahmeEnde);
+                    begin.setHours(0, 0, 0, 0);
+                    end.setHours(0, 0, 0, 0);
+
+                    if (selectedDate < begin || selectedDate > end)
+                        return null;
+
+                    const y1 = yFromMinute(minMinute);
+                    const y2 = yFromMinute(maxMinute);
+                    const color = colorForRegelung(o.regelungen);
+
+                    return (
+                        <rect
+                            key={`overlay-${idx}`}
+                            x={x1 - X_STEP / 2}
+                            y={y1}
+                            width={(x2 - x1) + X_STEP}
+                            height={y2 - y1}
+                            fill={color}
+                            style={{ cursor: "pointer" }}
+                            onMouseEnter={(e) =>
+                                setTooltip({
+                                    kind: "massnahme",
+                                    x: e.clientX,
+                                    y: e.clientY,
+                                    von: o.vonRl100,
+                                    bis: o.bisRl100,
+                                    beginn: o.massnahmeBeginn,
+                                    ende: o.massnahmeEnde,
+                                    regelungen: o.regelungen,
+                                    vzg: o.vzgListe,
+                                    durchgehend: o.durchgehend,
+                                    zeitraum: o.zeitraum,
+                                    color
+                                })
+                            }
+                            onMouseLeave={hideTooltip}
+                        />
+                    );
+                })}
+
+                {/* Fahrlinie */}
+                <polyline
+                    points={polylinePoints.join(" ")}
+                    fill="none"
+                    stroke="#1e88e5"
+                    strokeWidth={2}
+                />
+
+                {/* RL100 Labels */}
                 {points.map((p, i) => (
                     <text
                         key={`lbl-${i}`}
@@ -289,28 +301,9 @@ export default function TimeWegDiagramm({
                         {p.rl100}
                     </text>
                 ))}
-
-                {/* =========================
-                   DS100 Labels (oben)
-                   ========================= */}
-                {points.map((p, i) => (
-                    <text
-                        key={`lbl-top-${i}`}
-                        x={xFromIndex(i)}
-                        y={X_AXIS_TOP_Y}
-                        textAnchor="middle"
-                        fontSize="11"
-                        fill="#444"
-                    >
-                        {p.rl100}
-                    </text>
-                ))}
-
             </svg>
 
-            {/* =========================
-               Tooltip
-               ========================= */}
+            {/* Tooltip */}
             {tooltip && (
                 <div
                     className="diagram-tooltip"
@@ -319,28 +312,54 @@ export default function TimeWegDiagramm({
                         top: tooltip.y + 12
                     }}
                 >
-                    <strong>{tooltip.rl100}</strong>
-                    <div>{tooltip.name}</div>
-
-                    {tooltip.arrival && (
-                        <div>Ank: {tooltip.arrival}</div>
+                    {tooltip.kind === "station" && (
+                        <>
+                            <strong>{tooltip.rl100}</strong>
+                            <div>{tooltip.name}</div>
+                            {tooltip.arrival && <div>Ank: {tooltip.arrival}</div>}
+                            {tooltip.departure && <div>Abf: {tooltip.departure}</div>}
+                            <div>Aufenthalt: {tooltip.dwellMin} min</div>
+                        </>
                     )}
-                    {tooltip.departure && (
-                        <div>Abf: {tooltip.departure}</div>
-                    )}
 
-                    {tooltip.arrival &&
-                        tooltip.departure && (
-                            <div>
-                                Aufenthalt:{" "}
-                                {Math.max(
-                                    0,
-                                    points.find(p => p.rl100 === tooltip.rl100)!.departureMinute -
-                                    points.find(p => p.rl100 === tooltip.rl100)!.arrivalMinute
-                                )}{" "}
-                                min
+                    {tooltip.kind === "massnahme" && (
+                        <>
+                            <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                                Baumaßnahme
                             </div>
-                        )}
+
+                            <div style={{ fontWeight: 600 }}>
+                                {tooltip.von} → {tooltip.bis}
+                            </div>
+
+                            {/* Zeitraum-Text aus DB */}
+                            {tooltip.zeitraum && (
+                                <div style={{
+                                    fontSize: 12,
+                                    marginTop: 4,
+                                    marginBottom: 4,
+                                }}>
+                                    <strong>Zeitraum:</strong> {tooltip.zeitraum}
+                                </div>
+                            )}
+
+                            {/* Regelung */}
+                            <div>
+                                <strong>Regelung:</strong> {tooltip.regelungen}
+                            </div>
+
+                            {tooltip.vzg && (
+                                <div>
+                                    <strong>VZG:</strong> {tooltip.vzg}
+                                </div>
+                            )}
+
+                            <div>
+                                <strong>Durchgehend:</strong>{" "}
+                                {tooltip.durchgehend ? "Ja" : "Nein"}
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
         </div>

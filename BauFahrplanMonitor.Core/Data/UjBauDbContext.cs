@@ -202,7 +202,10 @@ public partial class UjBauDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("basis_strecke_abschnitt_pk");
 
-            
+            entity.HasOne(d => d.BisBstRefNavigation).WithMany(p => p.BasisStreckeAbschnittBisBstRefNavigation)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("basis_strecke_abschnitt_basis_betriebsstelle_fk_1");
+
             entity.HasOne(d => d.StreckeRefNavigation).WithMany(p => p.BasisStreckeAbschnitt).HasConstraintName("basis_strecke_abschnitt_basis_strecke_fk");
 
             entity.HasOne(d => d.VonBstRefNavigation).WithMany(p => p.BasisStreckeAbschnittVonBstRefNavigation)

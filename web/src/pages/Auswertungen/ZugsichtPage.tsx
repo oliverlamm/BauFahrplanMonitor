@@ -5,6 +5,10 @@ import TimeWegDiagramm from "./TimeWegDiagramm";
 
 import { loadZugTimeline } from "../../api/zugTimelineApi";
 import type { ZugTimelineResult } from "../../models/ZugTimelineDto";
+
+import { loadZugMassnahmen } from "../../api/zugMassnahmenApi";
+import type { ZwlMassnahmeOverlayDto } from "../../models/ZwlMassnahmeOverlayDto";
+
 export default function ZugsichtPage() {
     const [zugNr, setZugNr] = useState("525");
     const [date, setDate]   = useState("2026-02-07");
@@ -13,14 +17,27 @@ export default function ZugsichtPage() {
     const [error, setError]     = useState<string | null>(null);
     const [data, setData]       = useState<ZugTimelineResult | null>(null);
 
+    const [overlays, setOverlays] =
+        useState<ZwlMassnahmeOverlayDto[]>([]);
+
+
     async function onShow() {
         setLoading(true);
         setError(null);
         setData(null);
+        setOverlays([]);
 
         try {
-            const result = await loadZugTimeline(zugNr, date);
-            setData(result);
+            const jahr = new Date(date).getFullYear();
+
+            const [timelineResult, massnahmenResult] =
+                await Promise.all([
+                    loadZugTimeline(zugNr, date),
+                    loadZugMassnahmen(jahr, zugNr, date)
+                ]);
+
+            setData(timelineResult);
+            setOverlays(massnahmenResult);
         }
         catch (e: any) {
             setError(e?.message ?? "Zugsicht konnte nicht geladen werden");
@@ -100,7 +117,10 @@ export default function ZugsichtPage() {
                 )}
 
                 {data && (
-                    <TimeWegDiagramm data={data} />
+                    <TimeWegDiagramm
+                        data={data}
+                        overlays={overlays}
+                    />
                 )}
 
                 <div className="diagram-hint">
