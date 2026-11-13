@@ -48,6 +48,7 @@ public sealed class ZvFUpserter(
         // PHASE B: Datei-Inhalte (TX)
         // -------------------------------------------------
         IDbContextTransaction? tx = null;
+        var autoDetectChangesBeforeImport = db.ChangeTracker.AutoDetectChangesEnabled;
 
         try {
             tx = await db.Database.BeginTransactionAsync(token);
@@ -63,12 +64,21 @@ public sealed class ZvFUpserter(
             // -------------------------------------------------
             db.ChangeTracker.AutoDetectChangesEnabled = false;
 
-            // Existing trains are loaded once per document instead of querying
-            // the database again for every train in the XML.
-            var vorhandeneZuege = await db.ZvfDokumentZug
-                .AsTracking()
-                .Where(z => z.ZvfDokumentRef == dokumentRef)
-                .ToDictionaryAsync(z => (z.Zugnr, z.Verkehrstag), token);
+            // Load only keys present in the incoming document, once per file.
+            // PostgreSQL translates array Contains into an indexed ANY lookup.
+            var zugnummern = dto.Document.Zuege
+                .Select(z => z.Zugnummer).Distinct().ToArray();
+            var verkehrstage = dto.Document.Zuege
+                .Select(z => z.Verkehrstag).Distinct().ToArray();
+
+            var vorhandeneZuege = zugnummern.Length == 0
+                ? new Dictionary<(long Zugnr, DateOnly Verkehrstag), ZvfDokumentZug>()
+                : await db.ZvfDokumentZug
+                    .AsTracking()
+                    .Where(z => z.ZvfDokumentRef == dokumentRef
+                                && zugnummern.Contains(z.Zugnr)
+                                && verkehrstage.Contains(z.Verkehrstag))
+                    .ToDictionaryAsync(z => (z.Zugnr, z.Verkehrstag), token);
 
             var totalZuege = dto.Document.Zuege.Count;
             var index      = 0;
@@ -167,6 +177,7 @@ public sealed class ZvFUpserter(
             throw;
         }
         finally {
+            db.ChangeTracker.AutoDetectChangesEnabled = autoDetectChangesBeforeImport;
             if (tx != null)
                 await tx.DisposeAsync();
         }
