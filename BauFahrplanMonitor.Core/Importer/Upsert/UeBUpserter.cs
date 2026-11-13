@@ -66,11 +66,14 @@ public sealed class UeBUpserter(
                 token.ThrowIfCancellationRequested();
                 index++;
 
-                progress?.Report(new UpsertProgressInfo {
-                    Phase   = UpsertPhase.Zuege,
-                    Current = index,
-                    Total   = total
-                });
+                // Throttle UI updates for large documents; always report the final train.
+                if (index % 10 == 0 || index == total) {
+                    progress?.Report(new UpsertProgressInfo {
+                        Phase   = UpsertPhase.Zuege,
+                        Current = index,
+                        Total   = total
+                    });
+                }
 
                 var zugRef = await ResolveOrInsertZugAsync(db, zug, dokumentRef, dto, stats, token);
 
