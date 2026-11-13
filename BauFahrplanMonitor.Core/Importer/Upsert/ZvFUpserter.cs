@@ -23,7 +23,6 @@ public sealed class ZvFUpserter(
             config,
             LogManager.GetCurrentClassLogger()),
         IZvFUpserter {
-    private ZvFImportStats _stats = null!;
 
     // =====================================================================
     // ENTRYPOINT mit Progress
@@ -34,7 +33,7 @@ public sealed class ZvFUpserter(
         IProgress<UpsertProgressInfo>? progress,
         CancellationToken              token) {
 
-        _stats = new ZvFImportStats();
+        var stats = new ZvFImportStats();
 
         // -------------------------------------------------
         // PHASE A: Referenzen (kurz, sichtbar)
@@ -82,10 +81,10 @@ public sealed class ZvFUpserter(
                     });
                 }
 
-                var zugRef = await ResolveOrInsertZugAsync(db, zug, dokumentRef, token);
+                var zugRef = await ResolveOrInsertZugAsync(db, zug, dokumentRef, stats, token);
 
                 // ✅ Hier bleibt der Parameter korrekt: zug (Dto)
-                await UpsertAbweichungenAsync(db, zug, zugRef, token);
+                await UpsertAbweichungenAsync(db, zug, zugRef, stats, token);
             }
 
             // -----------------------------
@@ -115,7 +114,7 @@ public sealed class ZvFUpserter(
                     });
                 }
 
-                await UpsertEntfallenAsync(db, e, dokumentRef, token);
+                await UpsertEntfallenAsync(db, e, dokumentRef, stats, token);
             }
 
             db.ChangeTracker.AutoDetectChangesEnabled = true;
@@ -126,7 +125,7 @@ public sealed class ZvFUpserter(
 
             return new UpsertResult {
                 DokumentRef = dokumentRef,
-                ZvFStats    = _stats
+                ZvFStats    = stats
             };
         }
         catch (OperationCanceledException) {
@@ -270,6 +269,7 @@ public sealed class ZvFUpserter(
         UjBauDbContext    db,
         ZvFZugDto         zug,
         long              zugRef,
+        ZvFImportStats    stats,
         CancellationToken token) {
         // --------------------------------------------------
         // 0) Alte Abweichungen dieses Zuges löschen
@@ -321,11 +321,11 @@ public sealed class ZvFUpserter(
         // --------------------------------------------------
         foreach (var abw in aggregated) {
             if (string.IsNullOrWhiteSpace(abw.AnchorRl100)) {
-                _stats.AbweichungSkippedNoAnchor++;
+                stats.AbweichungSkippedNoAnchor++;
                 continue;
             }
 
-            await InsertAbweichungAsync(db, abw, zugRef, token);
+            await InsertAbweichungAsync(db, abw, zugRef, stats, token);
         }
 
         Logger.Debug(
@@ -333,14 +333,15 @@ public sealed class ZvFUpserter(
             zug.Zugnummer,
             zug.Verkehrstag,
             zug.Abweichungen.Count,
-            aggregated.Count - _stats.AbweichungSkippedNoAnchor,
-            _stats.AbweichungSkippedNoAnchor);
+            aggregated.Count - stats.AbweichungSkippedNoAnchor,
+            stats.AbweichungSkippedNoAnchor);
     }
 
     private async Task InsertAbweichungAsync(
         UjBauDbContext    db,
         ZvFZugAbweichung  abw,
         long              zugRef,
+        ZvFImportStats    stats,
         CancellationToken token) {
         // --------------------------------------------------
         // Betriebsstelle auflösen / anlegen
@@ -354,7 +355,7 @@ public sealed class ZvFUpserter(
             Logger.Error("Abweichung verworfen – Betriebsstelle ungültig: RL100='{0}'",
                 abw.AnchorRl100);
 
-            _stats.AbweichungSkippedInvalidBst++;
+            stats.AbweichungSkippedInvalidBst++;
             bstRef = 0;
         }
 
@@ -369,7 +370,7 @@ public sealed class ZvFUpserter(
                 AbBstRef          = bstRef > 0 ? bstRef : 0
             });
 
-        _stats.AbweichungInserted++;
+        stats.AbweichungInserted++;
     }
     
     // =====================================================================
@@ -379,6 +380,7 @@ public sealed class ZvFUpserter(
         UjBauDbContext     db,
         ZvFZugEntfallenDto e,
         long               dokumentRef,
+        ZvFImportStats     stats,
         CancellationToken  token) {
 
         var zugnr = (int)e.Zugnr;
@@ -413,7 +415,7 @@ public sealed class ZvFUpserter(
             Art            = e.RegelungsartAlt
         });
 
-        _stats.EntfallenInserted++;
+        stats.EntfallenInserted++;
     }
 
     // =====================================================================
@@ -495,6 +497,7 @@ public sealed class ZvFUpserter(
         UjBauDbContext    db,
         ZvFZugDto         zug,
         long              dokumentRef,
+        ZvFImportStats    stats,
         CancellationToken token) {
 
         // Exists?
@@ -555,7 +558,7 @@ public sealed class ZvFUpserter(
                 Sonderzug     = zug.Sonder,
             };
 
-            _stats.ZuegeInserted++;
+            stats.ZuegeInserted++;
 
             db.ZvfDokumentZug.Add(entity);
             await db.SaveChangesAsync(token); // (wie bei dir; kann man später noch optimieren)
@@ -579,7 +582,7 @@ public sealed class ZvFUpserter(
         SetIfDifferent(existing.RegelwegAbgangBstRef, abgangBstRef, v => existing.RegelwegAbgangBstRef = v);
         SetIfDifferent(existing.RegelwegZielBstRef, zielBstRef, v => existing.RegelwegZielBstRef       = v);
 
-        _stats.ZuegeUpdated++;
+        stats.ZuegeUpdated++;
         return existing.Id;
     }
 
