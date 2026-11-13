@@ -1,4 +1,4 @@
-using System.Xml.Linq;
+using System.Xml;
 using BauFahrplanMonitor.Core.Data;
 using BauFahrplanMonitor.Core.Helpers;
 using BauFahrplanMonitor.Core.Importer.Dto;
@@ -103,17 +103,29 @@ public sealed class ZvFExportScanService(
     private DateTime? ReadTimestampFromHeader(string filePath) {
         try {
             using var stream = File.OpenRead(filePath);
-            var       doc    = XDocument.Load(stream);
+            using var reader = XmlReader.Create(stream, new XmlReaderSettings {
+                IgnoreComments   = true,
+                IgnoreWhitespace = true,
+                DtdProcessing    = DtdProcessing.Prohibit,
+                XmlResolver      = null
+            });
 
-            var ts = doc.Descendants()
-                .FirstOrDefault(e => e.Name.LocalName == "Timestamp");
+            // Only the first timestamp is needed. Avoid materializing the
+            // complete document during the import scan.
+            while (reader.Read()) {
+                if (reader.NodeType != XmlNodeType.Element ||
+                    reader.LocalName != "Timestamp")
+                    continue;
 
-            if (ts != null &&
-                DateTime.TryParse(ts.Value, out var parsed))
-                return parsed;
+                var value = reader.ReadElementContentAsString();
+                if (DateTime.TryParse(value, out var parsed))
+                    return parsed;
+
+                break;
+            }
         }
-        catch {
-            // ignore
+        catch (Exception ex) {
+            logger.LogDebug(ex, "Timestamp nicht aus XML-Header lesbar: {File}", filePath);
         }
 
         return File.GetCreationTimeUtc(filePath);
@@ -204,26 +216,26 @@ public sealed class ZvFExportScanService(
                     "Validate gestartet | PreScanMode={Mode}",
                     c.Mode);
 
+                // Check the database cache before opening or parsing XML.
+                // The pre-scan already identified the import mode.
+                if (!ShouldImport(c.FilePath)) {
+                    logger.LogDebug("Übersprungen (bereits importiert)");
+                    CountImported(stat, c.Mode);
+                    continue;
+                }
+
                 var item = TryCreateImportItem(c.FilePath);
                 if (item == null) {
                     logger.LogDebug("Übersprungen (kein ImportItem erzeugt)");
                     continue;
                 }
 
-                var mode = item.FileType;
-
                 logger.LogDebug(
                     "Header gelesen | DetectedMode={Mode}",
-                    mode);
-
-                if (!ShouldImport(c.FilePath)) {
-                    logger.LogDebug("Übersprungen (bereits importiert)");
-                    CountImported(stat, mode);
-                    continue;
-                }
+                    item.FileType);
 
                 logger.LogDebug("Neu für Import");
-                CountNew(stat, mode);
+                CountNew(stat, item.FileType);
                 queue.Add(item);
             }
         }
