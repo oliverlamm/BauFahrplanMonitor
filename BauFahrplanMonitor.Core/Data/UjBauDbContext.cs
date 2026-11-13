@@ -90,6 +90,17 @@ public partial class UjBauDbContext : DbContext
 
     public virtual DbSet<ZvfDokumentZugEntfallen> ZvfDokumentZugEntfallen { get; set; }
 
+    // The optional implementation lives in UjBauDbContext.Custom.cs.
+    // Keep the declaration on the generated/model side so a separate
+    // partial implementation can compile without changing the DbContext API.
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+        OnConfiguringPartial(optionsBuilder);
+    }
+
+    partial void OnConfiguringPartial(DbContextOptionsBuilder optionsBuilder);
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("postgis");
