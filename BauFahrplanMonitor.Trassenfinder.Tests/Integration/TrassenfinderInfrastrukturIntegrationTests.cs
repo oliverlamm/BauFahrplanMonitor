@@ -4,12 +4,26 @@ using Xunit.Abstractions;
 
 namespace BauFahrplanMonitor.Trassenfinder.Tests.Integration;
 
+/// <summary>
+/// These tests depend on a live, authenticated Trassenfinder API.
+/// Missing configuration should skip them, not fail unrelated local test runs.
+/// </summary>
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class TrassenfinderIntegrationFactAttribute : FactAttribute {
+    public TrassenfinderIntegrationFactAttribute() {
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TRASSENFINDER_BASEURL")) ||
+            string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TRASSENFINDER_TOKEN"))) {
+            Skip = "Live-Integrationstest: TRASSENFINDER_BASEURL und TRASSENFINDER_TOKEN erforderlich.";
+        }
+    }
+}
+
 public sealed class TrassenfinderInfrastrukturIntegrationTests {
     private readonly ITestOutputHelper _testOutputHelper;
     public TrassenfinderInfrastrukturIntegrationTests(ITestOutputHelper testOutputHelper) {
         this._testOutputHelper = testOutputHelper;
     }
-    [Fact]
+    [TrassenfinderIntegrationFact]
     public async Task Infrastruktur_api_returns_real_data() {
         // Arrange
         var baseUrl = Environment.GetEnvironmentVariable("TRASSENFINDER_BASEURL");
@@ -40,7 +54,7 @@ public sealed class TrassenfinderInfrastrukturIntegrationTests {
         }
     }
 
-    [Fact]
+    [TrassenfinderIntegrationFact]
     public async Task Infrastruktur_list_and_detail_return_real_data() {
         // --------------------------------------------------
         // Arrange
