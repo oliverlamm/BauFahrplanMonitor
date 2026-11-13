@@ -9,7 +9,7 @@ public class FploDocumentDto : SharedDocumentDto {
     public bool                         IstTeillieferung { get; set; }
     public bool                         IstNachtrag      { get; set; }
     public bool                         IstEntwurf       { get; set; }
-    public List<SharedStreckeDto>       Strecken         { get; set; } = [];
+    public new List<SharedStreckeDto>   Strecken         { get; set; } = [];
     public List<FploZugDto>             Zuege            { get; set; } = [];
     public List<FploZugDto>             ZuegeRaw         { get; set; } = [];
     public List<FploSevDto>             Sev              { get; set; } = [];

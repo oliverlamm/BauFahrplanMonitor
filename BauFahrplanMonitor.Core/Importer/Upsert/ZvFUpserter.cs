@@ -23,7 +23,6 @@ public sealed class ZvFUpserter(
             config,
             LogManager.GetCurrentClassLogger()),
         IZvFUpserter {
-    private ZvFImportStats _stats = null!;
 
     // =====================================================================
     // ENTRYPOINT mit Progress
@@ -34,7 +33,7 @@ public sealed class ZvFUpserter(
         IProgress<UpsertProgressInfo>? progress,
         CancellationToken              token) {
 
-        _stats = new ZvFImportStats();
+        var stats = new ZvFImportStats();
 
         // -------------------------------------------------
         // PHASE A: Referenzen (kurz, sichtbar)
@@ -49,6 +48,7 @@ public sealed class ZvFUpserter(
         // PHASE B: Datei-Inhalte (TX)
         // -------------------------------------------------
         IDbContextTransaction? tx = null;
+        var autoDetectChangesBeforeImport = db.ChangeTracker.AutoDetectChangesEnabled;
 
         try {
             tx = await db.Database.BeginTransactionAsync(token);
@@ -60,15 +60,34 @@ public sealed class ZvFUpserter(
             await UpsertBbmnAsync(dto, token, db, vorgangRef);
 
             // -------------------------------------------------
-            // ZÜGE + ABWEICHUNGEN + ENTFALLENE (Bulk)
+            // ZÜGE + ABWEICHUNGEN
             // -------------------------------------------------
             db.ChangeTracker.AutoDetectChangesEnabled = false;
 
-            // -----------------------------
-            // ZÜGE + ABWEICHUNGEN
-            // -----------------------------
+            // Load only keys present in the incoming document, once per file.
+            // PostgreSQL translates array Contains into an indexed ANY lookup.
+            var zugnummern = dto.Document.Zuege
+                .Select(z => z.Zugnummer).Distinct().ToArray();
+            var verkehrstage = dto.Document.Zuege
+                .Select(z => z.Verkehrstag).Distinct().ToArray();
+
+            var vorhandeneZuege = zugnummern.Length == 0
+                ? new Dictionary<(long Zugnr, DateOnly Verkehrstag), ZvfDokumentZug>()
+                : await db.ZvfDokumentZug
+                    .AsTracking()
+                    .Where(z => z.ZvfDokumentRef == dokumentRef
+                                && zugnummern.Contains(z.Zugnr)
+                                && verkehrstage.Contains(z.Verkehrstag))
+                    .ToDictionaryAsync(z => (z.Zugnr, z.Verkehrstag), token);
+
             var totalZuege = dto.Document.Zuege.Count;
             var index      = 0;
+
+            // Collect train keys until EF has assigned database IDs to
+            // newly inserted trains. The last duplicate in the mapped input
+            // wins, just as with repeated updates to the same train.
+            var zuegeMitAbweichungen =
+                new Dictionary<(long Zugnr, DateOnly Verkehrstag), ZvFZugDto>();
 
             foreach (var zug in dto.Document.Zuege) {
                 token.ThrowIfCancellationRequested();
@@ -82,10 +101,35 @@ public sealed class ZvFUpserter(
                     });
                 }
 
-                var zugRef = await ResolveOrInsertZugAsync(db, zug, dokumentRef, token);
+                await ResolveOrInsertZugAsync(
+                    db, zug, dokumentRef, vorhandeneZuege, stats, token);
 
-                // ✅ Hier bleibt der Parameter korrekt: zug (Dto)
-                await UpsertAbweichungenAsync(db, zug, zugRef, token);
+                zuegeMitAbweichungen[(zug.Zugnummer, zug.Verkehrstag)] = zug;
+            }
+
+            // Flush all newly created and modified trains as EF Core batches
+            // (MaxBatchSize is configured in the API), rather than saving
+            // each newly inserted train separately. Generated IDs are now
+            // available for the related deviations.
+            db.ChangeTracker.AutoDetectChangesEnabled = true;
+            await db.SaveChangesAsync(token);
+            db.ChangeTracker.AutoDetectChangesEnabled = false;
+
+            // PostgreSQL receives one DELETE for all imported train IDs
+            // instead of one DELETE for each train.
+            var zugRefs = zuegeMitAbweichungen.Keys
+                .Select(key => vorhandeneZuege[key].Id)
+                .ToArray();
+            if (zugRefs.Length > 0) {
+                await db.ZvfDokumentZugAbweichung
+                    .Where(a => zugRefs.Contains(a.ZvfDokumentZugRef))
+                    .ExecuteDeleteAsync(token);
+            }
+
+            foreach (var (key, zug) in zuegeMitAbweichungen) {
+                token.ThrowIfCancellationRequested();
+                await UpsertAbweichungenAsync(
+                    db, zug, vorhandeneZuege[key].Id, stats, token);
             }
 
             // -----------------------------
@@ -115,7 +159,7 @@ public sealed class ZvFUpserter(
                     });
                 }
 
-                await UpsertEntfallenAsync(db, e, dokumentRef, token);
+                await UpsertEntfallenAsync(db, e, dokumentRef, stats, token);
             }
 
             db.ChangeTracker.AutoDetectChangesEnabled = true;
@@ -126,7 +170,7 @@ public sealed class ZvFUpserter(
 
             return new UpsertResult {
                 DokumentRef = dokumentRef,
-                ZvFStats    = _stats
+                ZvFStats    = stats
             };
         }
         catch (OperationCanceledException) {
@@ -146,6 +190,7 @@ public sealed class ZvFUpserter(
             throw;
         }
         finally {
+            db.ChangeTracker.AutoDetectChangesEnabled = autoDetectChangesBeforeImport;
             if (tx != null)
                 await tx.DisposeAsync();
         }
@@ -270,12 +315,10 @@ public sealed class ZvFUpserter(
         UjBauDbContext    db,
         ZvFZugDto         zug,
         long              zugRef,
+        ZvFImportStats    stats,
         CancellationToken token) {
-        // --------------------------------------------------
-        // 0) Alte Abweichungen dieses Zuges löschen
-        // --------------------------------------------------
-        await DeleteExistingAbweichungenAsync(db, zugRef, token);
-
+        // The old deviations have already been removed in a single
+        // document-wide DELETE for exactly the imported train IDs.
         if (zug.Abweichungen.Count == 0)
             return;
 
@@ -321,11 +364,11 @@ public sealed class ZvFUpserter(
         // --------------------------------------------------
         foreach (var abw in aggregated) {
             if (string.IsNullOrWhiteSpace(abw.AnchorRl100)) {
-                _stats.AbweichungSkippedNoAnchor++;
+                stats.AbweichungSkippedNoAnchor++;
                 continue;
             }
 
-            await InsertAbweichungAsync(db, abw, zugRef, token);
+            await InsertAbweichungAsync(db, abw, zugRef, stats, token);
         }
 
         Logger.Debug(
@@ -333,14 +376,15 @@ public sealed class ZvFUpserter(
             zug.Zugnummer,
             zug.Verkehrstag,
             zug.Abweichungen.Count,
-            aggregated.Count - _stats.AbweichungSkippedNoAnchor,
-            _stats.AbweichungSkippedNoAnchor);
+            aggregated.Count - stats.AbweichungSkippedNoAnchor,
+            stats.AbweichungSkippedNoAnchor);
     }
 
     private async Task InsertAbweichungAsync(
         UjBauDbContext    db,
         ZvFZugAbweichung  abw,
         long              zugRef,
+        ZvFImportStats    stats,
         CancellationToken token) {
         // --------------------------------------------------
         // Betriebsstelle auflösen / anlegen
@@ -354,7 +398,7 @@ public sealed class ZvFUpserter(
             Logger.Error("Abweichung verworfen – Betriebsstelle ungültig: RL100='{0}'",
                 abw.AnchorRl100);
 
-            _stats.AbweichungSkippedInvalidBst++;
+            stats.AbweichungSkippedInvalidBst++;
             bstRef = 0;
         }
 
@@ -369,7 +413,7 @@ public sealed class ZvFUpserter(
                 AbBstRef          = bstRef > 0 ? bstRef : 0
             });
 
-        _stats.AbweichungInserted++;
+        stats.AbweichungInserted++;
     }
     
     // =====================================================================
@@ -379,6 +423,7 @@ public sealed class ZvFUpserter(
         UjBauDbContext     db,
         ZvFZugEntfallenDto e,
         long               dokumentRef,
+        ZvFImportStats     stats,
         CancellationToken  token) {
 
         var zugnr = (int)e.Zugnr;
@@ -413,7 +458,7 @@ public sealed class ZvFUpserter(
             Art            = e.RegelungsartAlt
         });
 
-        _stats.EntfallenInserted++;
+        stats.EntfallenInserted++;
     }
 
     // =====================================================================
@@ -491,20 +536,16 @@ public sealed class ZvFUpserter(
     // =====================================================================
     // Züge
     // =====================================================================
-    private async Task<long> ResolveOrInsertZugAsync(
+    private async Task ResolveOrInsertZugAsync(
         UjBauDbContext    db,
         ZvFZugDto         zug,
         long              dokumentRef,
+        Dictionary<(long Zugnr, DateOnly Verkehrstag), ZvfDokumentZug> vorhandeneZuege,
+        ZvFImportStats    stats,
         CancellationToken token) {
 
-        // Exists?
-        var existing = await db.ZvfDokumentZug
-            .AsTracking()
-            .FirstOrDefaultAsync(z =>
-                    z.ZvfDokumentRef == dokumentRef   &&
-                    z.Zugnr          == zug.Zugnummer &&
-                    z.Verkehrstag    == zug.Verkehrstag,
-                token);
+        // A single document-wide lookup has already loaded all existing trains.
+        vorhandeneZuege.TryGetValue((zug.Zugnummer, zug.Verkehrstag), out var existing);
 
         // Referenzen auflösen (FKs sind NOT NULL)
         var kundeRef = await resolver.ResolveOrCreateKundeAsync(db, zug.Betreiber, token);
@@ -555,12 +596,12 @@ public sealed class ZvFUpserter(
                 Sonderzug     = zug.Sonder,
             };
 
-            _stats.ZuegeInserted++;
+            stats.ZuegeInserted++;
 
             db.ZvfDokumentZug.Add(entity);
-            await db.SaveChangesAsync(token); // (wie bei dir; kann man später noch optimieren)
+            vorhandeneZuege[(zug.Zugnummer, zug.Verkehrstag)] = entity;
 
-            return entity.Id;
+            return;
         }
 
         // UPDATE (nur bei echten Änderungen)
@@ -579,8 +620,7 @@ public sealed class ZvFUpserter(
         SetIfDifferent(existing.RegelwegAbgangBstRef, abgangBstRef, v => existing.RegelwegAbgangBstRef = v);
         SetIfDifferent(existing.RegelwegZielBstRef, zielBstRef, v => existing.RegelwegZielBstRef       = v);
 
-        _stats.ZuegeUpdated++;
-        return existing.Id;
+        stats.ZuegeUpdated++;
     }
 
     // =====================================================================
@@ -596,12 +636,4 @@ public sealed class ZvFUpserter(
         setter(next);
     }
 
-    private static async Task DeleteExistingAbweichungenAsync(
-        UjBauDbContext    db,
-        long              zugRef,
-        CancellationToken token) {
-        await db.ZvfDokumentZugAbweichung
-            .Where(x => x.ZvfDokumentZugRef == zugRef)
-            .ExecuteDeleteAsync(token);
-    }
 }

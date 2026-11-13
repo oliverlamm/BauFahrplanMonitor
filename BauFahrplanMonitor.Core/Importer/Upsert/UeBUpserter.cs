@@ -25,7 +25,6 @@ public sealed class UeBUpserter(
     ConfigService                     config)
     : ImportUpserterBase(config, LogManager.GetCurrentClassLogger()), IUeBUpserter {
     
-    private UeBImportStats Stats { get; set; } = new();
 
     // =====================================================================
     // ENTRYPOINT
@@ -37,7 +36,7 @@ public sealed class UeBUpserter(
         CancellationToken             token) {
         token.ThrowIfCancellationRequested();
 
-        Stats = new UeBImportStats { Dokumente = 1 };
+        var stats = new UeBImportStats { Dokumente = 1 };
         var sw = Stopwatch.StartNew();
 
         // -------------------------------------------------
@@ -58,7 +57,7 @@ public sealed class UeBUpserter(
             await UpsertStreckenabschnitteAsync(dto, token, db, dokumentRef);
             var factoryResult = UebZugFactory.Build(dto.Document);
 
-            Stats.SevsGelesen              += factoryResult.SevsGelesen;
+            stats.SevsGelesen              += factoryResult.SevsGelesen;
             
             var total = factoryResult.Zuege.Count;
             var index = 0;
@@ -67,13 +66,16 @@ public sealed class UeBUpserter(
                 token.ThrowIfCancellationRequested();
                 index++;
 
-                progress?.Report(new UpsertProgressInfo {
-                    Phase   = UpsertPhase.Zuege,
-                    Current = index,
-                    Total   = total
-                });
+                // Throttle UI updates for large documents; always report the final train.
+                if (index % 10 == 0 || index == total) {
+                    progress?.Report(new UpsertProgressInfo {
+                        Phase   = UpsertPhase.Zuege,
+                        Current = index,
+                        Total   = total
+                    });
+                }
 
-                var zugRef = await ResolveOrInsertZugAsync(db, zug, dokumentRef, dto, token);
+                var zugRef = await ResolveOrInsertZugAsync(db, zug, dokumentRef, dto, stats, token);
 
                 await UpsertKnotenzeitenAsync(db, zug, zugRef, token);
 
@@ -88,11 +90,11 @@ public sealed class UeBUpserter(
             await tx.CommitAsync(token);
 
             sw.Stop();
-            Logger.Info($"ÜB-Import abgeschlossen: Datei={dto.Document.Dateiname}, Dauer={sw.Elapsed}, Stats={Stats}");
+            Logger.Info($"ÜB-Import abgeschlossen: Datei={dto.Document.Dateiname}, Dauer={sw.Elapsed}, Stats={stats}");
 
             return new UpsertResult {
                 DokumentRef = dokumentRef,
-                UeBStats    = Stats
+                UeBStats    = stats
             };
         }
         catch (Exception ex) {
@@ -130,6 +132,7 @@ public sealed class UeBUpserter(
         UebZugDto         zug,
         long              dokumentRef,
         UebXmlDocumentDto dto,
+        UeBImportStats    stats,
         CancellationToken token) {
         var existing =
             await db.UebDokumentZug.FirstOrDefaultAsync(
@@ -172,7 +175,7 @@ public sealed class UeBUpserter(
             existing.RegelwegLinie       = zug.Regelweg?.LinienNr ?? string.Empty;
             existing.RegelwegAbBstRef    = regelwegAbBstRef;
             existing.RegelwegZielBstRef  = regelwegZielBstRef;
-            Stats.ZuegeUpdated++;
+            stats.ZuegeUpdated++;
             return existing.Id;
         }
 
@@ -203,7 +206,7 @@ public sealed class UeBUpserter(
         db.UebDokumentZug.Add(entity);
         await db.SaveChangesAsync(token);
 
-        Stats.ZuegeInserted++;
+        stats.ZuegeInserted++;
         return entity.Id;
     }
 

@@ -122,6 +122,7 @@ public sealed class ZvFExportImporter(
                 // 1) XML laden
                 // -------------------------------------------------
                 var zvfExport = _xmlLoader.Load(filePath);
+                var readDone = stopwatch.Elapsed;
                 Report(progress, filePath, ImportSteps.Read, "XML laden");
 
                 token.ThrowIfCancellationRequested();
@@ -148,6 +149,8 @@ public sealed class ZvFExportImporter(
                         json);
                 }
 
+                var mapDone = stopwatch.Elapsed;
+
                 token.ThrowIfCancellationRequested();
 
                 // -------------------------------------------------
@@ -160,6 +163,7 @@ public sealed class ZvFExportImporter(
                     dto.Document.ZuegeRaw.Count,
                     dto.Document.Zuege.Count);
 
+                var preparationDone = stopwatch.Elapsed;
                 Report(progress, filePath, ImportSteps.Merge, "Züge mergen");
 
                 token.ThrowIfCancellationRequested();
@@ -191,6 +195,7 @@ public sealed class ZvFExportImporter(
                 });
 
                 var result      = await _zvFupserter.UpsertAsync(db, dto, upsertProgress, token);
+                var upsertDone  = stopwatch.Elapsed;
                 var dokumentRef = result.DokumentRef;
                 var stats       = result.ZvFStats;
 
@@ -204,6 +209,7 @@ public sealed class ZvFExportImporter(
                 // 6) Finalisieren
                 // -------------------------------------------------
                 await _zvFupserter.MarkImportCompletedAsync(dokumentRef, token);
+                LogPhaseDurations("ZvF", filePath, readDone, mapDone, preparationDone, upsertDone, stopwatch.Elapsed);
                 Report(progress, filePath, ImportSteps.Finalize, "Abgeschlossen");
 
                 stopwatch.Stop();
@@ -254,6 +260,7 @@ public sealed class ZvFExportImporter(
                 // 1) XML laden
                 // -------------------------------------------------
                 var uebExport = _xmlLoader.Load(filePath);
+                var readDone = stopwatch.Elapsed;
                 Report(progress, filePath, ImportSteps.Read, "XML laden");
 
                 token.ThrowIfCancellationRequested();
@@ -279,6 +286,8 @@ public sealed class ZvFExportImporter(
                     Logger.Debug("ÜB DTO nach Mapping:{0}{1}", Environment.NewLine, json);
                 }
 
+                var mapDone = stopwatch.Elapsed;
+
                 token.ThrowIfCancellationRequested();
 
                 // -------------------------------------------------
@@ -287,6 +296,7 @@ public sealed class ZvFExportImporter(
                 dto.Document.Zuege.Clear();
                 dto.Document.Zuege.AddRange(dto.Document.ZuegeRaw);
 
+                var preparationDone = stopwatch.Elapsed;
                 Report(progress, filePath, ImportSteps.Merge, "Vorverarbeitung");
 
                 token.ThrowIfCancellationRequested();
@@ -324,9 +334,10 @@ public sealed class ZvFExportImporter(
                         dto,
                         upsertProgress,
                         token);
+                var upsertDone = stopwatch.Elapsed;
 
                 var dokumentRef = result.DokumentRef;
-                var stats       = result.ZvFStats;
+                var stats       = result.UeBStats;
 
                 // -------------------------------------------------
                 // 5) Aufräumen
@@ -340,6 +351,7 @@ public sealed class ZvFExportImporter(
                 await _ueBUpserter.MarkImportCompletedAsync(
                     dokumentRef,
                     token);
+                LogPhaseDurations("ÜB", filePath, readDone, mapDone, preparationDone, upsertDone, stopwatch.Elapsed);
 
                 Report(progress, filePath, ImportSteps.Finalize, "Abgeschlossen");
 
@@ -387,6 +399,7 @@ public sealed class ZvFExportImporter(
                 // 1) XML laden
                 // -------------------------------------------------
                 var uebExport = _xmlLoader.Load(filePath);
+                var readDone = stopwatch.Elapsed;
                 Report(progress, filePath, ImportSteps.Read, "XML laden");
 
                 token.ThrowIfCancellationRequested();
@@ -415,6 +428,8 @@ public sealed class ZvFExportImporter(
                         json);
                 }
 
+                var mapDone = stopwatch.Elapsed;
+
                 token.ThrowIfCancellationRequested();
 
                 // -------------------------------------------------
@@ -423,6 +438,7 @@ public sealed class ZvFExportImporter(
                 dto.Document.Zuege.Clear();
                 dto.Document.Zuege.AddRange(dto.Document.ZuegeRaw);
 
+                var preparationDone = stopwatch.Elapsed;
                 Report(progress, filePath, ImportSteps.Merge, "Vorverarbeitung");
 
                 token.ThrowIfCancellationRequested();
@@ -460,9 +476,10 @@ public sealed class ZvFExportImporter(
                         dto,
                         upsertProgress,
                         token);
+                var upsertDone = stopwatch.Elapsed;
 
                 var dokumentRef = result.DokumentRef;
-                var stats       = result.ZvFStats;
+                var stats       = result.FploStats;
 
                 // -------------------------------------------------
                 // 5) Aufräumen
@@ -476,6 +493,7 @@ public sealed class ZvFExportImporter(
                 await _fploUpserter.MarkImportCompletedAsync(
                     dokumentRef,
                     token);
+                LogPhaseDurations("FPLO", filePath, readDone, mapDone, preparationDone, upsertDone, stopwatch.Elapsed);
 
                 Report(progress, filePath, ImportSteps.Finalize, "Abgeschlossen");
 
@@ -501,6 +519,28 @@ public sealed class ZvFExportImporter(
                 throw;
             }
         }
+    }
+
+    // =====================================================================
+    // Per-file timing; does not include queueing before the importer starts.
+    // =====================================================================
+    private static void LogPhaseDurations(
+        string format,
+        string filePath,
+        TimeSpan readDone,
+        TimeSpan mapDone,
+        TimeSpan preparationDone,
+        TimeSpan upsertDone,
+        TimeSpan finished) {
+        Logger.Info(
+            "Importphasen: Format={Format}, Datei={Datei}, LesenMs={LesenMs}, MappingMs={MappingMs}, VorbereitenMs={VorbereitenMs}, UpsertMs={UpsertMs}, AbschlussMs={AbschlussMs}",
+            format,
+            Path.GetFileName(filePath),
+            Math.Round(readDone.TotalMilliseconds),
+            Math.Round((mapDone - readDone).TotalMilliseconds),
+            Math.Round((preparationDone - mapDone).TotalMilliseconds),
+            Math.Round((upsertDone - preparationDone).TotalMilliseconds),
+            Math.Round((finished - upsertDone).TotalMilliseconds));
     }
 
     // =====================================================================

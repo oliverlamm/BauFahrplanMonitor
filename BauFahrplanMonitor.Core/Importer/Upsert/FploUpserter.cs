@@ -25,7 +25,6 @@ public sealed class FploUpserter(
     ConfigService                     config)
     : ImportUpserterBase(config, LogManager.GetCurrentClassLogger()), IFploUpserter {
 
-    private FploImportStats Stats { get; set; } = new();
 
     // =====================================================================
     // ENTRYPOINT
@@ -37,7 +36,7 @@ public sealed class FploUpserter(
         CancellationToken             token) {
         token.ThrowIfCancellationRequested();
 
-        Stats = new FploImportStats {
+        var stats = new FploImportStats {
             Dokumente = 1
         };
         var sw = Stopwatch.StartNew();
@@ -68,7 +67,7 @@ public sealed class FploUpserter(
                 await UpsertStreckenabschnitteAsync(dto, token, db, dokumentRef);
                 var factoryResult = FploZugFactory.Build(dto.Document);
 
-                Stats.SevsGelesen += factoryResult.SevsGelesen;
+                stats.SevsGelesen += factoryResult.SevsGelesen;
 
                 var total = factoryResult.Zuege.Count;
                 var index = 0;
@@ -85,16 +84,19 @@ public sealed class FploUpserter(
                         continue;
                     }
 
-                    progress?.Report(new UpsertProgressInfo {
-                        Phase   = UpsertPhase.Zuege,
-                        Current = index,
-                        Total   = total
-                    });
+                    // Throttle UI updates for large documents; always report the final train.
+                    if (index % 10 == 0 || index == total) {
+                        progress?.Report(new UpsertProgressInfo {
+                            Phase   = UpsertPhase.Zuege,
+                            Current = index,
+                            Total   = total
+                        });
+                    }
 
                     using (ScopeContext.PushProperty("Zugnr", zug.Zugnummer))
                     using (ScopeContext.PushProperty("Verkehrstag", zug.Verkehrstag.ToString("yyyy-MM-dd"))) {
                         try {
-                            var zugRef = await ResolveOrInsertZugAsync(db, zug, dokumentRef, dto, token);
+                            var zugRef = await ResolveOrInsertZugAsync(db, zug, dokumentRef, dto, stats, token);
 
                             // ✅ Fahrplan
                             if (zug.Fahrplan is { Count: > 0 }) {
@@ -114,6 +116,7 @@ public sealed class FploUpserter(
                                 dto.Document.Dateiname,
                                 dto.Vorgang.MasterFplo
                             });
+                            throw;
                         }
                     }
                 }
@@ -123,11 +126,11 @@ public sealed class FploUpserter(
 
                 sw.Stop();
                 Logger.Info(
-                    $"Fplo-Import abgeschlossen: Datei={dto.Document.Dateiname}, Dauer={sw.Elapsed}, Stats={Stats}");
+                    $"Fplo-Import abgeschlossen: Datei={dto.Document.Dateiname}, Dauer={sw.Elapsed}, Stats={stats}");
 
                 return new UpsertResult {
                     DokumentRef = dokumentRef,
-                    FploStats   = Stats
+                    FploStats   = stats
                 };
             }
             catch (Exception ex) {
@@ -215,6 +218,7 @@ public sealed class FploUpserter(
         FploZugDto         zug,
         long               dokumentRef,
         FploXmlDocumentDto dto,
+        FploImportStats    stats,
         CancellationToken  token) {
         var existing =
             await db.FploDokumentZug.FirstOrDefaultAsync(
@@ -264,7 +268,7 @@ public sealed class FploUpserter(
             existing.RegelwegLinie       = zug.Regelweg?.LinienNr ?? string.Empty;
             existing.RegelwegAbBstRef    = regelwegAbBstRef;
             existing.RegelwegZielBstRef  = regelwegZielBstRef;
-            Stats.ZuegeUpdated++;
+            stats.ZuegeUpdated++;
             return existing.Id;
         }
 
@@ -296,7 +300,7 @@ public sealed class FploUpserter(
         db.FploDokumentZug.Add(entity);
         await db.SaveChangesAsync(token);
 
-        Stats.ZuegeInserted++;
+        stats.ZuegeInserted++;
         return entity.Id;
     }
 
