@@ -83,9 +83,11 @@ public sealed class ZvFUpserter(
             var totalZuege = dto.Document.Zuege.Count;
             var index      = 0;
 
-            // The last occurrence wins if a train occurs more than once in
-            // the mapped input. Only one set of deviations is written per key.
-            var zuegeMitAbweichungen = new Dictionary<long, ZvFZugDto>();
+            // Collect train keys until EF has assigned database IDs to
+            // newly inserted trains. The last duplicate in the mapped input
+            // wins, just as with repeated updates to the same train.
+            var zuegeMitAbweichungen =
+                new Dictionary<(long Zugnr, DateOnly Verkehrstag), ZvFZugDto>();
 
             foreach (var zug in dto.Document.Zuege) {
                 token.ThrowIfCancellationRequested();
@@ -99,24 +101,35 @@ public sealed class ZvFUpserter(
                     });
                 }
 
-                var zugRef = await ResolveOrInsertZugAsync(
+                await ResolveOrInsertZugAsync(
                     db, zug, dokumentRef, vorhandeneZuege, stats, token);
 
-                zuegeMitAbweichungen[zugRef] = zug;
+                zuegeMitAbweichungen[(zug.Zugnummer, zug.Verkehrstag)] = zug;
             }
+
+            // Flush all newly created and modified trains as EF Core batches
+            // (MaxBatchSize is configured in the API), rather than saving
+            // each newly inserted train separately. Generated IDs are now
+            // available for the related deviations.
+            db.ChangeTracker.AutoDetectChangesEnabled = true;
+            await db.SaveChangesAsync(token);
+            db.ChangeTracker.AutoDetectChangesEnabled = false;
 
             // PostgreSQL receives one DELETE for all imported train IDs
             // instead of one DELETE for each train.
-            var zugRefs = zuegeMitAbweichungen.Keys.ToArray();
+            var zugRefs = zuegeMitAbweichungen.Keys
+                .Select(key => vorhandeneZuege[key].Id)
+                .ToArray();
             if (zugRefs.Length > 0) {
                 await db.ZvfDokumentZugAbweichung
                     .Where(a => zugRefs.Contains(a.ZvfDokumentZugRef))
                     .ExecuteDeleteAsync(token);
             }
 
-            foreach (var (zugRef, zug) in zuegeMitAbweichungen) {
+            foreach (var (key, zug) in zuegeMitAbweichungen) {
                 token.ThrowIfCancellationRequested();
-                await UpsertAbweichungenAsync(db, zug, zugRef, stats, token);
+                await UpsertAbweichungenAsync(
+                    db, zug, vorhandeneZuege[key].Id, stats, token);
             }
 
             // -----------------------------
@@ -523,7 +536,7 @@ public sealed class ZvFUpserter(
     // =====================================================================
     // Züge
     // =====================================================================
-    private async Task<long> ResolveOrInsertZugAsync(
+    private async Task ResolveOrInsertZugAsync(
         UjBauDbContext    db,
         ZvFZugDto         zug,
         long              dokumentRef,
@@ -586,10 +599,9 @@ public sealed class ZvFUpserter(
             stats.ZuegeInserted++;
 
             db.ZvfDokumentZug.Add(entity);
-            await db.SaveChangesAsync(token); // ID needed for deviations; batched inserts follow separately.
             vorhandeneZuege[(zug.Zugnummer, zug.Verkehrstag)] = entity;
 
-            return entity.Id;
+            return;
         }
 
         // UPDATE (nur bei echten Änderungen)
@@ -609,7 +621,6 @@ public sealed class ZvFUpserter(
         SetIfDifferent(existing.RegelwegZielBstRef, zielBstRef, v => existing.RegelwegZielBstRef       = v);
 
         stats.ZuegeUpdated++;
-        return existing.Id;
     }
 
     // =====================================================================
