@@ -12,7 +12,7 @@ public class ZvFVorgangDto
     public bool         IstKs     { get; set; } = false;
     public List<string> Bbmn      { get; set; } = [];
 
-    public void ApplyTo(UjbauVorgang entity) {
+    public new void ApplyTo(UjbauVorgang entity) {
         entity.Extension = Extension;
         entity.Kigbau    = KigBau;
         entity.Korridor  = Korridor;
